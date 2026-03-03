@@ -1,0 +1,60 @@
+@startuml GoFlowPay_UseCases
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecaseWidth 600
+
+actor "Гость" as Guest
+actor "Пользователь" as User
+actor "Администратор" as Admin
+
+User --|> Guest
+Admin --|> User
+
+package "Система платежей" {
+    package "Аутентификация" {
+        usecase "Зарегистрироваться" as UC1
+        usecase "Войти в систему" as UC2
+        usecase "Выйти из системы" as UC3
+    }
+
+    package "Управление счётом" {
+        usecase "Просмотреть баланс счёта" as UC4
+        usecase "Просмотреть данные счёта" as UC5
+    }
+
+    package "Платежи" {
+        usecase "Создать платёж" as UC6
+        usecase "Просмотреть статус платежа" as UC7
+        usecase "Просмотреть историю транзакций" as UC8
+        usecase "Получить уведомление\nо результате платежа" as UC9
+
+        usecase "Проверить достаточность баланса" as UC_ext1
+        usecase "Проверить идемпотентность запроса" as UC_ext2
+    }
+
+    package "Администрирование" {
+        usecase "Просмотреть лог\nвсех транзакций" as UC10
+        usecase "Управлять компаниями" as UC11
+    }
+}
+
+
+Guest --> UC1
+Guest --> UC2
+
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+User --> UC9
+
+Admin --> UC10
+Admin --> UC11
+
+UC6 ..> UC_ext1 : <<extend>>
+UC6 ..> UC_ext2 : <<extend>>
+
+@enduml
