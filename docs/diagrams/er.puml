@@ -1,0 +1,88 @@
+@startchen
+left to right direction
+
+'skinparam linetype ortho
+
+entity "Счёт" as Account {
+    ID счёта <<key>>
+    Баланс
+    Валюта
+    Дата и время создания
+}
+
+entity "Транзакция" as Transaction {
+    ID транзакции <<key>>
+    Сумма
+    Статус платежа
+    Ключ идемпотентности
+    Дата и время создания
+}
+
+entity "Компания" as Company {
+    ID компании <<key>>
+    Название
+    Дата и время создания
+}
+
+entity "Пользователь" as User {
+    ID пользователя <<key>>
+    Логин
+    Электронная почта
+    Пароль
+    Роль
+    Дата и время создания
+}
+
+entity "Журнал аудита" as AuditLog {
+    ID записи <<key>>
+    Тип события
+    Данные события
+    Дата и время создания
+}
+
+entity "Уведомление" as Notification {
+    ID уведомления <<key>>
+    Тип события
+    Статус отправки
+    Дата и время отправки
+}
+
+
+relationship "Принадлежит" as belongs {
+}
+
+relationship "Отправляет" as sent {
+}
+
+relationship "Получает" as receive {
+}
+
+
+relationship "Имеет" as have {
+}
+
+relationship "Фиксирует" as logs {
+}
+
+relationship "Создаёт" as notifies {
+}
+
+User =1= belongs
+Company =1= belongs
+
+Company =1= have
+Account =N= have
+
+Account =1= sent
+Transaction =N= sent
+
+Account =1= receive
+Transaction =N= receive
+
+Transaction =1= logs
+AuditLog =N= logs
+
+Transaction =1= notifies
+Notification =N= notifies
+
+@endchen

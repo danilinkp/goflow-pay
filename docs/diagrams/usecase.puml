@@ -1,0 +1,84 @@
+@startuml GoFlowPay_UseCases
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Гость" as Guest
+actor "Пользователь" as User
+actor "Администратор" as Admin
+actor "Банк" as Bank
+
+User --|> Guest
+Admin --|> User
+
+rectangle "GoFlow Pay" {
+    package "Аутентификация" {
+        usecase "Зарегистрироваться" as UC1
+        usecase "Войти в систему" as UC2
+        usecase "Выйти из системы" as UC3
+    }
+
+    package "Управление счётом" {
+        usecase "Просмотреть баланс счёта" as UC4
+        usecase "Просмотреть данные счёта" as UC5
+        usecase "Привязать банковский счёт" as UC6
+    }
+
+    package "Пополнение и вывод" {
+        usecase "Создать заявку на пополнение" as UC7
+        usecase "Создать заявку на вывод" as UC8
+        usecase "Просмотреть историю\nпополнений и выводов" as UC9
+    }
+
+    package "Платежи" {
+        usecase "Создать платёж" as UC10
+        usecase "Просмотреть статус платежа" as UC11
+        usecase "Просмотреть историю транзакций" as UC12
+        usecase "Получить уведомление\nо результате платежа" as UC13
+    }
+
+    package "Администрирование" {
+        usecase "Просмотреть аудит-лог\nвсех транзакций" as UC14
+        usecase "Управлять компаниями" as UC15
+    }
+
+    package "Взаимодействие с банком" {
+        usecase "Подтвердить поступление средств" as UC_bank1
+        usecase "Подтвердить вывод средств" as UC_bank2
+        usecase "Получить статус операции" as UC_bank3
+    }
+
+    usecase "Проверить достаточность баланса" as UC_ext1
+    usecase "Зачислить средства на счёт" as UC_ext2
+    usecase "Списать средства со счёта" as UC_ext3
+}
+
+Guest --> UC1
+Guest --> UC2
+
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+User --> UC9
+User --> UC10
+User --> UC11
+User --> UC12
+User --> UC13
+
+Admin --> UC14
+Admin --> UC15
+
+Bank --> UC_bank1
+Bank --> UC_bank2
+Bank --> UC_bank3
+
+UC10 ..> UC_ext1  : <<extend>>
+UC7  ..> UC_bank1 : <<extend>>
+UC7  ..> UC_ext2  : <<extend>>
+UC8  ..> UC_bank2 : <<extend>>
+UC8  ..> UC_ext3  : <<extend>>
+
+@enduml
