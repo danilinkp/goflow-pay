@@ -1,0 +1,250 @@
+@startuml account_service
+!theme plain
+skinparam classBackgroundColor #f8f9fa
+skinparam classBorderColor #495057
+skinparam arrowColor #1168bd
+skinparam packageBackgroundColor #e9ecef
+skinparam packageBorderColor #adb5bd
+
+title Диаграмма классов сервиса счетов
+
+package "domain" {
+    enum OperationType {
+        DEPOSIT
+        WITHDRAWAL
+    }
+
+    enum OperationStatus {
+        PENDING
+        COMPLETED
+        FAILED
+    }
+
+    class Account {
+        - id
+        - companyId
+        - balance
+        - currency
+        - createdAt
+    }
+
+    class BankAccount {
+        - id
+        - companyId
+        - bankName
+        - accountNumber
+        - bik
+        - createdAt
+    }
+
+    class BankOperation {
+        - id
+        - bankAccountId
+        - accountId
+        - type
+        - amount
+        - status
+        - bankReference
+        - createdAt
+        - updatedAt
+    }
+
+    BankOperation --> OperationType
+    BankOperation --> OperationStatus
+    BankAccount "1" -- "0..*" BankOperation
+    Account "1" -- "0..*" BankOperation
+}
+
+'package "dto" {
+'    class GetBalanceRequest {
+'        + accountId : UUID
+'    }
+'    class GetBalanceResponse {
+'        + accountId : UUID
+'        + balance   : Integer
+'        + currency  : String
+'    }
+'    class TransferRequest {
+'        + fromAccountId : UUID
+'        + toAccountId   : UUID
+'        + amount        : Integer
+'        + transactionId : UUID
+'    }
+'    class TransferResponse {
+'        + success : Boolean
+'    }
+'    class CreateDepositRequest {
+'        + bankAccountId : UUID
+'        + amount        : Integer
+'    }
+'    class CreateDepositResponse {
+'        + operationId   : UUID
+'        + bankReference : String
+'        + status        : String
+'    }
+'    class CreateWithdrawalRequest {
+'        + bankAccountId : UUID
+'        + amount        : Integer
+'    }
+'    class CreateWithdrawalResponse {
+'        + operationId   : UUID
+'        + bankReference : String
+'        + status        : String
+'    }
+'}
+
+package "service" {
+    interface IAccountRepository {
+        + getById()
+        + getByCompanyId()
+        + debit()
+        + credit()
+    }
+
+    interface IBankAccountRepository {
+        + save()
+        + getById()
+        + getByCompanyId()
+    }
+
+    interface IBankOperationRepository {
+        + save()
+        + getById()
+        + updateStatus()
+    }
+
+    interface IBankGateway {
+        + sendDeposit()
+        + sendWithdrawal()
+    }
+
+    interface IEventProducer {
+        + publish()
+    }
+
+    class AccountService {
+        - accountRepository     : IAccountRepository
+        - bankAccountRepository : IBankAccountRepository
+        - bankOpRepository      : IBankOperationRepository
+        - bankGateway           : IBankGateway
+        - eventProducer         : IEventProducer
+        --
+        + getBalance()
+        + transfer()
+        + deposit()
+        + withdraw()
+        - validateAmount()
+        - checkSufficientFunds()
+    }
+
+    AccountService --> IAccountRepository
+    AccountService --> IBankAccountRepository
+    AccountService --> IBankOperationRepository
+    AccountService --> IBankGateway
+    AccountService --> IEventProducer
+'    AccountService ..> GetBalanceRequest
+'    AccountService ..> GetBalanceResponse
+'    AccountService ..> TransferRequest
+'    AccountService ..> TransferResponse
+'    AccountService ..> CreateDepositRequest
+'    AccountService ..> CreateDepositResponse
+'    AccountService ..> CreateWithdrawalRequest
+'    AccountService ..> CreateWithdrawalResponse
+}
+
+package "repository" {
+    class AccountRepository {
+        + getById()
+        + getByCompanyId()
+        + debit()
+        + credit()
+    }
+
+    class BankAccountRepository {
+        + save()
+        + getById()
+        + getByCompanyId()
+    }
+
+    class BankOperationRepository {
+        + save()
+        + getById()
+        + updateStatus()
+    }
+
+    AccountRepository ..|> IAccountRepository
+    BankAccountRepository ..|> IBankAccountRepository
+    BankOperationRepository ..|> IBankOperationRepository
+}
+
+package "gateway" {
+    class MockBankGateway {
+        + sendDeposit()
+        + sendWithdrawal()
+    }
+
+    MockBankGateway ..|> IBankGateway
+}
+
+package "handler" {
+    class AccountHandler {
+        - service : AccountService
+        --
+        + getBalance()
+        + checkBalance()
+        + deposit()
+        + withdraw()
+    }
+
+    class PaymentEventConsumer {
+        - service : AccountService
+        --
+        + run()
+        - handle()
+    }
+
+    AccountHandler --> AccountService
+    PaymentEventConsumer --> AccountService
+}
+
+
+package "model" {
+    class AccountModel {
+        + id
+        + companyId
+        + balance
+        + currency
+        + createdAt
+    }
+
+    class BankAccountModel {
+        + id
+        + companyId
+        + bankName
+        + accountNumber
+        + bik
+        + createdAt
+    }
+
+    class BankOperationModel {
+        + id
+        + bankAccountId
+        + accountId
+        + type
+        + amount
+        + status
+        + bankReference
+        + createdAt
+        + updatedAt
+    }
+
+    AccountRepository ..> AccountModel
+    BankAccountRepository ..> BankAccountModel
+    BankOperationRepository ..> BankOperationModel
+    AccountModel ..> Account
+    BankAccountModel ..> BankAccount
+    BankOperationModel ..> BankOperation
+}
+
+
+@enduml

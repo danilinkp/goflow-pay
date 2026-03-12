@@ -1,0 +1,194 @@
+@startuml transaction_service
+!theme plain
+skinparam classBackgroundColor #f8f9fa
+skinparam classBorderColor #495057
+skinparam arrowColor #1168bd
+skinparam packageBackgroundColor #e9ecef
+skinparam packageBorderColor #adb5bd
+
+title Диаграмма классов сервиса транзакций
+
+package "domain" {
+    enum TransactionStatus {
+        PENDING
+        PROCESSING
+        COMPLETED
+        FAILED
+    }
+
+    class Transaction {
+        + ID
+        + FromAccountID
+        + ToAccountID
+        + Amount
+        + Status
+        + IdempotencyKey
+        + CreatedAt
+        + UpdatedAt
+    }
+
+    class OutboxEvent {
+        + ID
+        + EventType
+        + Payload
+        + CreatedAt
+        + SentAt
+        + IsSent()
+    }
+
+    Transaction --> TransactionStatus
+}
+
+'package "dto" {
+'    class CreateTransactionRequest {
+'        + FromAccountID  : string
+'        + ToAccountID    : string
+'        + Amount         : int64
+'        + IdempotencyKey : string
+'    }
+'    class CreateTransactionResponse {
+'        + TransactionID : string
+'        + Status        : string
+'    }
+'    class GetTransactionRequest {
+'        + TransactionID : string
+'    }
+'    class GetTransactionResponse {
+'        + TransactionID : string
+'        + FromAccountID : string
+'        + ToAccountID   : string
+'        + Amount        : int64
+'        + Status        : string
+'        + CreatedAt     : string
+'    }
+'}
+
+package "service" {
+    interface ITransactionRepository {
+        + Save()
+        + GetByID()
+        + GetByIdempotencyKey()
+        + UpdateStatus()
+    }
+
+    interface IOutboxRepository {
+        + Save()
+        + GetUnsent()
+        + MarkAsSent()
+    }
+
+    interface IBalanceChecker {
+        + CheckBalance()
+    }
+
+    interface IKafkaProducer {
+        + Publish()
+    }
+
+    class TransactionService {
+        - repo          : ITransactionRepository
+        - outbox        : IOutboxRepository
+        - balanceChecker: IBalanceChecker
+        --
+        + NewTransactionService()
+        + CreateTransaction()
+        + GetTransaction()
+        - checkIdempotency()
+        - validateAmount()
+    }
+
+    class OutboxWorker {
+        - outbox   : IOutboxRepository
+        - producer : IKafkaProducer
+        - interval : time.Duration
+        --
+        + NewOutboxWorker()
+        + Run()
+        - processEvents()
+    }
+
+    TransactionService --> ITransactionRepository
+    TransactionService --> IOutboxRepository
+    TransactionService --> IBalanceChecker
+    OutboxWorker --> IOutboxRepository
+    OutboxWorker --> IKafkaProducer
+'    TransactionService ..> CreateTransactionRequest
+'    TransactionService ..> CreateTransactionResponse
+'    TransactionService ..> GetTransactionRequest
+'    TransactionService ..> GetTransactionResponse
+}
+
+package "repository" {
+    class TransactionRepository {
+        - db
+        --
+        + NewTransactionRepository()
+        + Save()
+        + GetByID()
+        + GetByIdempotencyKey()
+        + UpdateStatus()
+    }
+
+    class OutboxRepository {
+        - db
+        --
+        + NewOutboxRepository()
+        + Save()
+        + GetUnsent()
+        + MarkAsSent()
+    }
+
+    TransactionRepository ..|> ITransactionRepository
+    OutboxRepository ..|> IOutboxRepository
+}
+
+package "client" {
+    class AccountGRPCClient {
+        - conn
+        --
+        + NewAccountGRPCClient()
+        + CheckBalance()
+    }
+
+    AccountGRPCClient ..|> IBalanceChecker
+}
+
+package "handler" {
+    class TransactionGRPCHandler {
+        - service : *TransactionService
+        --
+        + NewTransactionGRPCHandler()
+        + CreateTransaction()
+        + GetTransaction()
+    }
+
+    TransactionGRPCHandler --> TransactionService
+}
+
+package "model" {
+    class TransactionModel {
+        + ID
+        + FromAccountID
+        + ToAccountID
+        + Amount
+        + Status
+        + IdempotencyKey
+        + CreatedAt
+        + UpdatedAt
+    }
+
+    class OutboxModel {
+        + ID
+        + EventType
+        + Payload
+        + CreatedAt
+        + SentAt
+    }
+
+    TransactionRepository ..> TransactionModel
+    OutboxRepository ..> OutboxModel
+    TransactionModel ..> Transaction
+    OutboxModel ..> OutboxEvent
+}
+
+@enduml

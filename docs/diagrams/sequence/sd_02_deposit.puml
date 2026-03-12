@@ -1,0 +1,45 @@
+@startuml SD_02_Deposit
+!theme plain
+
+actor       "Пользователь"       as User
+participant "GoFlow Pay"         as GW
+participant "Account Service"    as ACC
+participant "Банк"        as Bank
+participant "Notification Service" as NOTIF
+
+
+User -> GW  : Выбирает банковский счёт\nи вводит сумму пополнения
+GW   -> GW  : Проверяет личность\nпользователя
+
+alt Пользователь не авторизован
+    GW --> User : Отказ: требуется авторизация
+end
+
+GW -> ACC : Создать заявку на пополнение
+
+
+ACC -> ACC  : Регистрирует заявку
+ACC -> Bank : Запрос на зачисление средств
+
+alt Банк отклонил операцию
+    Bank --> ACC  : Отказ
+    ACC  -> ACC   : Фиксирует неудачную операцию
+    ACC  --> GW   : Отказ: банк\nклонил пополнение
+    GW   --> User : Отказ: банк\nотклонил пополнение
+
+    ACC -> NOTIF : Уведомить о неудаче
+    NOTIF --> User : Уведомление:\nпополнение отклонено
+end
+
+Bank --> ACC : Подтверждение операции
+
+
+ACC -> ACC : Зачисляет сумму на счёт
+ACC -> ACC : Фиксирует успешную операцию
+ACC --> GW  : Операция выполнена
+GW  --> User : Пополнение выполнено
+
+ACC -> NOTIF : Уведомить об успехе
+NOTIF --> User : Уведомление: счёт пополнен
+
+@enduml

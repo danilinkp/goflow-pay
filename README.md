@@ -106,3 +106,130 @@
 
 ### Процесс вывода средств с внутреннего счёта
 ![BPMN3](docs/img/bpmn3.svg)
+
+## Технологический стек
+### Frontend
+- Тип приложения: Web SPA
+- Язык программирования: TypeScript
+- Фреймворк: React + Bootstrap
+### Backend
+- Язык программирования: Go
+- Внутренне взаимодействие: gRPC
+- Фреймворк: Gin
+- Доступ к базе данных: pgx
+- Миграции: goose
+- Веб сервер: Nginx
+### Инфраструктура и Данные
+- Основная БД: PostgreSQL
+- In-Memory БД: Redis
+- Брокер сообщений: Apache Kafka
+- Контейнеризация: Docker, Docker Compose
+
+## C4
+
+### Уровень L1
+![L1_SystemContext.svg](docs/img/L1_SystemContext.svg)
+
+### Уровень L2
+![L2_Containers.svg](docs/img/L2_Containers.svg)
+
+### Уровень L3
+![L3_Gateway.svg](docs/img/L3_Gateway.svg)
+![L3_Account.svg](docs/img/L3_Account.svg)
+![L3_Audit.svg](docs/img/L3_Audit.svg)
+![L3_Auth.svg](docs/img/L3_Auth.svg)
+![L3_Notification.svg](docs/img/L3_Notification.svg)
+![L3_Transaction.svg](docs/img/L3_Transaction.svg)
+
+### Уровень L4.
+![gateway_uml.svg](docs/img/gateway_uml.svg)
+![transaction_uml.svg](docs/img/transaction_uml.svg)
+![auth_uml.svg](docs/img/auth_uml.svg)
+![account_uml.svg](docs/img/account_uml.svg)
+
+## Диаграмма последовательностей
+![sequence_01.svg](docs/img/sequence_01.svg)
+![sequence_02.svg](docs/img/sequence_02.svg)
+![sequence_03.svg](docs/img/sequence_03.svg)
+
+## Диаграмма БД
+
+```mermaid
+erDiagram
+    users {
+        uuid id PK
+        varchar email
+        varchar role
+        timestamp created_at
+    }
+    api_keys {
+        uuid id PK
+        uuid user_id FK
+        varchar key_hash
+        timestamp expires_at
+    }
+
+    accounts {
+        uuid id PK
+        uuid company_id
+        bigint balance
+        varchar currency
+    }
+    bank_accounts {
+        uuid id PK
+        uuid company_id
+        varchar bank_name
+        varchar account_number
+        varchar bik
+    }
+    bank_operations {
+        uuid id PK
+        uuid bank_account_id FK
+        uuid account_id FK
+        varchar type
+        bigint amount
+        varchar status
+        varchar bank_reference
+    }
+
+    transactions {
+        uuid id PK
+        uuid from_account_id
+        uuid to_account_id
+        bigint amount
+        varchar status
+        varchar idempotency_key
+    }
+    outbox {
+        uuid id PK
+        varchar event_type
+        jsonb payload
+        timestamp sent_at
+    }
+    notifications {
+        uuid id PK
+        uuid transaction_id
+        varchar event_type
+        varchar status
+        timestamp sent_at
+    }
+
+    audit_log {
+        uuid id PK
+        varchar event_type
+        jsonb payload
+        timestamp created_at
+    }
+
+    users ||--o{ api_keys : ""
+
+    bank_accounts ||--o{ bank_operations : ""
+    accounts ||--o{ bank_operations : ""
+
+    users ||--o{ accounts : "логическая: company_id"
+    users ||--o{ bank_accounts : "логическая: company_id"
+    accounts ||--o{ transactions : "логическая: from_account_id"
+    accounts ||--o{ transactions : "логическая: to_account_id"
+    transactions ||--o{ notifications : "логическая: transaction_id"
+    transactions ||--o{ audit_log : "логическая: payload.transaction_id"
+```

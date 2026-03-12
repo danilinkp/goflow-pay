@@ -1,0 +1,151 @@
+@startuml auth_service
+!theme plain
+skinparam classBackgroundColor #f8f9fa
+skinparam classBorderColor #495057
+skinparam arrowColor #1168bd
+skinparam packageBackgroundColor #e9ecef
+skinparam packageBorderColor #adb5bd
+
+title Диаграмма классов сервиса аутентификации
+
+package "domain" {
+    enum Role {
+        GUEST
+        USER
+        ADMIN
+    }
+
+    class User {
+        + ID
+        + Email
+        + PasswordHash
+        + Role
+        + CreatedAt
+        + HasRole(required Role)
+    }
+
+    class ApiKey {
+        + ID
+        + UserID
+        + KeyHash
+        + CreatedAt
+        + ExpiresAt
+        + IsExpired()
+    }
+
+    User --> Role
+    User "1" -- "0..*" ApiKey
+}
+
+'package "dto" {
+'    class RegisterRequest {
+'        + Email
+'        + Password
+'        + CompanyName
+'    }
+'    class RegisterResponse {
+'        + Token
+'        + UserID
+'    }
+'    class LoginRequest {
+'        + Email
+'        + Password
+'    }
+'    class LoginResponse {
+'        + Token
+'    }
+'    class ValidateTokenRequest {
+'        + Token
+'    }
+'    class ValidateTokenResponse {
+'        + UserID
+'        + Role
+'    }
+'}
+
+package "service" {
+    interface IUserRepository {
+        + Save(User)
+        + GetByEmail(email)
+        + GetByID(id)
+    }
+
+    interface ITokenBlacklist {
+        + Add(token, ttl)
+        + Exists(token)
+    }
+
+    class AuthService {
+        - userRepo   : IUserRepository
+        - blacklist  : ITokenBlacklist
+        - jwtSecret  : string
+        --
+        + NewAuthService(repo, blacklist, secret)
+        + Register(req)
+        + Login(req)
+        + ValidateToken(кeq)
+        + Logout(token)
+        - hashPassword(password)
+        - generateJWT(user)
+    }
+
+    AuthService --> IUserRepository
+    AuthService --> ITokenBlacklist
+'    AuthService ..> RegisterRequest
+'    AuthService ..> RegisterResponse
+'    AuthService ..> LoginRequest
+'    AuthService ..> LoginResponse
+'    AuthService ..> ValidateTokenRequest
+'    AuthService ..> ValidateTokenResponse
+}
+
+package "repository" {
+    class UserRepository {
+        - db
+        --
+        + NewUserRepository(db)
+        + Save(user)
+        + GetByEmail(email)
+        + GetByID(id)
+    }
+
+    class TokenBlacklistRepository {
+        - redis
+        --
+        + NewTokenBlacklistRepository(redis)
+        + Add(token, ttl) :
+        + Exists(ctx, token: string) : (bool, error)
+    }
+
+    UserRepository ..|> IUserRepository
+    TokenBlacklistRepository ..|> ITokenBlacklist
+}
+
+package "handler" {
+    class AuthGRPCHandler {
+        - service : *AuthService
+        --
+        + NewAuthGRPCHandler()
+        + Register(req)
+        + Login(req)
+        + ValidateToken(req)
+        + Logout(req)
+    }
+
+    AuthGRPCHandler --> AuthService
+}
+
+package "model" {
+    class UserModel {
+        + ID
+        + Email
+        + PasswordHash
+        + Role
+        + CreatedAt
+    }
+
+    UserRepository ..> UserModel
+    UserModel ..> User
+}
+
+@enduml

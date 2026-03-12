@@ -1,0 +1,140 @@
+@startuml gateway_service
+!theme plain
+skinparam classBackgroundColor #f8f9fa
+skinparam classBorderColor #495057
+skinparam arrowColor #1168bd
+skinparam packageBackgroundColor #e9ecef
+skinparam packageBorderColor #adb5bd
+
+title Диаграмма классов Gateway сервиса
+
+package "dto" {
+    class CreatePaymentRequest {
+        + FromAccountID  : string
+        + ToAccountID    : string
+        + Amount         : int
+        + IdempotencyKey : string
+    }
+    class CreatePaymentResponse {
+        + TransactionID : string
+        + Status        : string
+    }
+    class GetBalanceRequest {
+        + AccountID : string
+    }
+    class GetBalanceResponse {
+        + Balance  : int
+        + Currency : string
+    }
+}
+
+package "service" {
+    interface ITokenValidator {
+        + Validate()
+    }
+
+    interface IRateLimiter {
+        + Allow()
+    }
+
+    interface ITransactionClient {
+        + CreateTransaction(CreatePaymentRequest)
+        + GetTransaction(id)
+    }
+
+    interface IAccountClient {
+        + GetBalance()
+    }
+
+    class UserClaims {
+    }
+
+    class GatewayService {
+        - tokenValidator : ITokenValidator
+        - rateLimiter    : IRateLimiter
+        - txnClient      : ITransactionClient
+        - accClient      : IAccountClient
+        --
+        + NewGatewayService()
+        + Authenticate()
+        + CheckRateLimit()
+    }
+
+    GatewayService --> ITokenValidator
+    GatewayService --> IRateLimiter
+    GatewayService --> ITransactionClient
+    GatewayService --> IAccountClient
+    GatewayService ..> UserClaims
+}
+
+package "client" {
+    class AuthGRPCClient {
+        - conn
+        --
+        + NewAuthGRPCClient()
+        + Validate()
+    }
+
+    class TransactionGRPCClient {
+        - conn
+        --
+        + NewTransactionGRPCClient()
+        + CreateTransaction()
+        + GetTransaction()
+    }
+
+    class AccountGRPCClient {
+        - conn : *grpc.ClientConn
+        --
+        + NewAccountGRPCClient()
+        + GetBalance()
+    }
+
+    AuthGRPCClient ..|> ITokenValidator
+    TransactionGRPCClient ..|> ITransactionClient
+    AccountGRPCClient ..|> IAccountClient
+
+}
+
+package "repository" {
+    class RateLimiterRepository {
+        - redis
+        --
+        + NewRateLimiterRepository(redis)
+        + Allow()
+    }
+    RateLimiterRepository ..|> IRateLimiter
+}
+
+package "handler" {
+    class PaymentHandler {
+        - gateway : *GatewayService
+        --
+        + NewPaymentHandler(gw)
+        + CreatePayment()
+        + GetPayment()
+        + GetBalance()
+    }
+
+    class AuthHandler {
+        - gateway
+        --
+        + NewAuthHandler(gw)
+        + Register()
+        + Login()
+        + Logout()
+    }
+
+    class AuthMiddleware {
+        - gateway : *GatewayService
+        --
+        + NewAuthMiddleware(gw)
+        + Handle()
+    }
+
+    PaymentHandler --> GatewayService
+    AuthHandler --> GatewayService
+    AuthMiddleware --> GatewayService
+}
+
+@enduml

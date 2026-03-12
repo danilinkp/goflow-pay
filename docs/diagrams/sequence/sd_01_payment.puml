@@ -1,0 +1,48 @@
+@startuml SD_01_Payment
+!theme plain
+
+
+actor       "Пользователь"       as User
+participant "GoFlow Pay"         as GW
+participant "Transaction Service" as TXN
+participant "Account Service"    as ACC
+participant "Notification Service" as NOTIF
+actor       "Получатель"         as Recipient
+
+
+User -> GW  : Отправляет запрос на платёж\n(получатель, сумма)
+GW   -> GW  : Проверяет личность пользователя
+
+alt Пользователь не авторизован
+    GW --> User : Отказ: требуется авторизация
+end
+
+GW -> TXN : Создать платёж
+
+TXN -> TXN : Проверяет уникальность запроса
+
+alt Запрос уже обрабатывался
+    TXN --> GW  : Результат предыдущего платежа
+    GW  --> User : Результат предыдущего платежа
+end
+
+TXN -> ACC : Проверить баланс отправителя
+
+alt Баланс недостаточен
+    ACC --> TXN : Недостаточно средств
+    TXN --> GW  : Отказ: недостаточно средств
+    GW  --> User : Отказ: недостаточно средств
+end
+
+TXN -> TXN  : Принимает платёж в обработку
+TXN --> GW  : Платёж принят
+GW  --> User : Платёж принят в обработку
+
+ACC -> ACC : Списывает средства\nсо счёта отправителя
+ACC -> ACC : Зачисляет средства\nна счёт получателя
+
+ACC  -> NOTIF : Уведомить об успешном платеже
+NOTIF --> User      : Уведомление: платёж выполнен
+NOTIF --> Recipient : Уведомление: получен платёж
+
+@enduml
