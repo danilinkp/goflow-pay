@@ -12,6 +12,8 @@ workspace "GoFlow Pay" "Процессинговый шлюз для B2B пла�
 
             frontend = container "Frontend SPA" "Веб-интерфейс. Дашборд, список транзакций, форма создания платежа, просмотр счетов." "React, TypeScript" "Web Browser"
 
+            nginx = container "Nginx" "Веб сервер, проксирует API запросы" "Nginx" "Web Browser"
+
             gatewayService = container "Gateway Service" "Единая точка входа, маршрутизирует запросы по gRPC." "Go, REST/HTTP" {
                 gwHandler = component "RouterHandler" "Принимает HTTP-запросы, извлекает токен, вызывает AuthClient для валидации." "Go, net/http"
                 gwAuthClient = component "AuthGRPCClient" "gRPC-клиент для обращения к Auth Service. Реализует интерфейс TokenValidator." "Go, gRPC"
@@ -97,7 +99,8 @@ workspace "GoFlow Pay" "Процессинговый шлюз для B2B пла�
 
             redis = container "Redis" "" "Redis" "Database"
 
-            frontend -> gatewayService "REST/HTTPS — создание платежей, просмотр истории"
+            nginx -> frontend "раздаёт статику"
+            nginx -> gatewayService "проксирует запросы"
             gatewayService -> authService "gRPC"
             gatewayService -> transactionService "gRPC"
             gatewayService -> accountService "gRPC"
@@ -116,9 +119,9 @@ workspace "GoFlow Pay" "Процессинговый шлюз для B2B пла�
         admin -> goflowpay "Управляет системой, просматривает аудит-лог"
         goflowpay -> smtpSystem "Отправляет email-уведомления, SMTP"
 
-        guest -> frontend "Открывает в браузере"
-        user -> frontend "Использует веб-интерфейс"
-        admin -> frontend "Использует веб-интерфейс"
+        guest -> nginx "Открывает в браузере"
+        user -> nginx "Открывает в браузере"
+        admin -> nginx "Открывает в браузере"
 
         emailSender -> smtpSystem "Отправляет письмо, SMTP"
         auditConsumer -> kafka "Читает события"
