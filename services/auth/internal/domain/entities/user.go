@@ -1,0 +1,102 @@
+package entities
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Role string
+
+const (
+	RoleAdmin        Role = "admin"
+	RoleCompanyAdmin Role = "company_admin"
+	RoleEmployee     Role = "employee"
+	RoleGuest        Role = "guest"
+)
+
+func (r Role) IsValid() bool {
+	return r == RoleAdmin || r == RoleCompanyAdmin || r == RoleEmployee || r == RoleGuest
+}
+
+type User struct {
+	id           uuid.UUID
+	companyId    uuid.UUID
+	login        string
+	email        string
+	passwordHash string
+	role         Role
+	createdAt    time.Time
+	updatedAt    time.Time
+}
+
+func NewUser(companyId uuid.UUID, login, email, passwordHash string, role Role) (*User, error) {
+	if login == "" || email == "" {
+		return nil, fmt.Errorf("%s: login and email are required", "create user")
+	}
+	if passwordHash == "" {
+		return nil, fmt.Errorf("%s: password hash is required", "create user")
+	}
+	if !role.IsValid() {
+		return nil, fmt.Errorf("%s: invalid role: %v", "create user", role)
+	}
+
+	now := time.Now().UTC()
+	return &User{
+		id:           uuid.New(),
+		companyId:    companyId,
+		login:        login,
+		email:        email,
+		passwordHash: passwordHash,
+		role:         role,
+		createdAt:    now,
+		updatedAt:    now,
+	}, nil
+}
+
+func (u *User) ID() uuid.UUID        { return u.id }
+func (u *User) CompanyID() uuid.UUID { return u.companyId }
+func (u *User) Login() string        { return u.login }
+func (u *User) Email() string        { return u.email }
+func (u *User) Role() Role           { return u.role }
+func (u *User) PasswordHash() string { return u.passwordHash }
+func (u *User) CreatedAt() time.Time { return u.createdAt }
+func (u *User) UpdatedAt() time.Time { return u.updatedAt }
+
+func (u *User) UpdateEmail(newEmail string) error {
+	if newEmail == "" {
+		return fmt.Errorf("%s: email cannot be empty", "update email")
+	}
+	u.email = newEmail
+	u.updatedAt = time.Now().UTC()
+	return nil
+}
+
+func (u *User) UpdateLogin(newLogin string) error {
+	if newLogin == "" {
+		return fmt.Errorf("%s: login cannot be empty", "update login")
+	}
+	u.login = newLogin
+	u.updatedAt = time.Now().UTC()
+	return nil
+}
+
+func (u *User) UpdatePasswordHash(newPasswordHash string) error {
+	if newPasswordHash == "" {
+		return fmt.Errorf("%s: password cannot be empty", "update password")
+	}
+	u.passwordHash = newPasswordHash
+	u.updatedAt = time.Now().UTC()
+	return nil
+}
+
+func (u *User) UpdateRole(newRole Role) error {
+	if !newRole.IsValid() {
+		return fmt.Errorf("%s: invalid role: %v", "update role", newRole)
+	}
+
+	u.role = newRole
+	u.updatedAt = time.Now().UTC()
+	return nil
+}
