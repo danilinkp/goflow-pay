@@ -22,18 +22,18 @@ type Account struct {
 	accountId uuid.UUID
 	companyId uuid.UUID
 	balance   int64
-	currency  string
+	currency  Currency
 	status    AccountStatus
 	createdAt time.Time
 	updatedAt time.Time
 }
 
-func NewAccount(companyId uuid.UUID, balance int64, currency string, status AccountStatus) (*Account, error) {
+func NewAccount(companyId uuid.UUID, balance int64, currency Currency, status AccountStatus) (*Account, error) {
 	if balance < 0 {
 		return nil, fmt.Errorf("%s: account balance cannot be negative", "create account")
 	}
-	if currency == "" {
-		return nil, fmt.Errorf("%s: account currency cannot be empty", "create account")
+	if !currency.IsValid() {
+		return nil, fmt.Errorf("%s: account currency must be valid", "create account")
 	}
 	if !status.IsValid() {
 		return nil, fmt.Errorf("%s: account status must be valid", "create account")
@@ -54,7 +54,7 @@ func NewAccount(companyId uuid.UUID, balance int64, currency string, status Acco
 func (a *Account) AccountId() uuid.UUID  { return a.accountId }
 func (a *Account) CompanyId() uuid.UUID  { return a.companyId }
 func (a *Account) Balance() int64        { return a.balance }
-func (a *Account) Currency() string      { return a.currency }
+func (a *Account) Currency() Currency    { return a.currency }
 func (a *Account) Status() AccountStatus { return a.status }
 func (a *Account) CreatedAt() time.Time  { return a.createdAt }
 func (a *Account) UpdatedAt() time.Time  { return a.updatedAt }
@@ -86,9 +86,9 @@ func (a *Account) RemoveBalance(amount int64) error {
 	return nil
 }
 
-func (a *Account) UpdateCurrency(newCurrency string) error {
-	if newCurrency == "" {
-		return fmt.Errorf("%s: account currency cannot be empty", "update account")
+func (a *Account) UpdateCurrency(newCurrency Currency) error {
+	if !newCurrency.IsValid() {
+		return fmt.Errorf("%s: account currency must be valid", "update account")
 	}
 	a.currency = newCurrency
 	a.updatedAt = time.Now().UTC()

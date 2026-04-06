@@ -90,7 +90,7 @@ func NewAccountService(
 	}
 }
 
-func (a *AccountService) CreateAccount(ctx context.Context, companyId uuid.UUID, currency string) (*entities.Account, error) {
+func (a *AccountService) CreateAccount(ctx context.Context, companyId uuid.UUID, currency entities.Currency) (*entities.Account, error) {
 	op := "AccountService.CreateAccount"
 
 	acc, err := entities.NewAccount(companyId, 0, currency, entities.ActiveStatus)

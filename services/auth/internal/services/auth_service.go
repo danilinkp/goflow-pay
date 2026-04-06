@@ -53,6 +53,7 @@ type PasswordHasher interface {
 	Hash(password string) (string, error)
 	Verify(password, hash string) error
 }
+
 type AuthService struct {
 	userRepository      UserRepository
 	companyRepository   CompanyRepository
@@ -99,7 +100,7 @@ func (a *AuthService) RegisterWithNewCompany(ctx context.Context, userRequest re
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	user, err := entities.NewUser(company.CompanyId(), userRequest.Login, userRequest.Login, passwordHash, entities.RoleCompanyAdmin)
+	user, err := entities.NewUser(company.CompanyId(), userRequest.Login, userRequest.Email, passwordHash, entities.RoleCompanyAdmin)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

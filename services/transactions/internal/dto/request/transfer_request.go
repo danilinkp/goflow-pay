@@ -1,6 +1,8 @@
 package request
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type TransferRequest struct {
 	FromAccountId  uuid.UUID

@@ -17,7 +17,7 @@ func TestNewAccount_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, companyId, acc.CompanyId())
 	assert.Equal(t, int64(0), acc.Balance())
-	assert.Equal(t, "USD", acc.Currency())
+	assert.Equal(t, entities.Currency("USD"), acc.Currency())
 	assert.Equal(t, entities.ActiveStatus, acc.Status())
 	assert.NotEqual(t, uuid.Nil, acc.AccountId())
 }
@@ -118,7 +118,7 @@ func TestAccount_UpdateCurrency_Success(t *testing.T) {
 	err := acc.UpdateCurrency("EUR")
 
 	require.NoError(t, err)
-	assert.Equal(t, "EUR", acc.Currency())
+	assert.Equal(t, entities.Currency("EUR"), acc.Currency())
 }
 
 func TestAccount_UpdateCurrency_Empty(t *testing.T) {
@@ -127,5 +127,5 @@ func TestAccount_UpdateCurrency_Empty(t *testing.T) {
 	err := acc.UpdateCurrency("")
 
 	assert.Error(t, err)
-	assert.Equal(t, "USD", acc.Currency())
+	assert.Equal(t, entities.Currency("USD"), acc.Currency())
 }

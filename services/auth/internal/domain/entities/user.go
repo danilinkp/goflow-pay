@@ -2,10 +2,17 @@ package entities
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var emailRe = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+func validateEmail(email string) bool {
+	return emailRe.MatchString(email)
+}
 
 type Role string
 
@@ -32,8 +39,11 @@ type User struct {
 }
 
 func NewUser(companyId uuid.UUID, login, email, passwordHash string, role Role) (*User, error) {
-	if login == "" || email == "" {
-		return nil, fmt.Errorf("%s: login and email are required", "create user")
+	if login == "" {
+		return nil, fmt.Errorf("%s: login is required", "create user")
+	}
+	if !validateEmail(email) {
+		return nil, fmt.Errorf("%s: invalid email format", "create user")
 	}
 	if passwordHash == "" {
 		return nil, fmt.Errorf("%s: password hash is required", "create user")
@@ -65,8 +75,8 @@ func (u *User) CreatedAt() time.Time { return u.createdAt }
 func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 
 func (u *User) UpdateEmail(newEmail string) error {
-	if newEmail == "" {
-		return fmt.Errorf("%s: email cannot be empty", "update email")
+	if !validateEmail(newEmail) {
+		return fmt.Errorf("%s: email must be valid", "update email")
 	}
 	u.email = newEmail
 	u.updatedAt = time.Now().UTC()

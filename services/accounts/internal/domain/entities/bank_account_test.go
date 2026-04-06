@@ -9,17 +9,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testBIC        = "044525225"
+	testAccountUSD = "40702840500000000001"
+)
+
 func TestNewBankAccount_Success(t *testing.T) {
 	companyId := uuid.New()
 
-	ba, err := entities.NewBankAccount(companyId, "Bank", "BIC123", "ACC123", "USD")
+	ba, err := entities.NewBankAccount(companyId, "Bank", testBIC, testAccountUSD, "USD")
 
 	require.NoError(t, err)
 	assert.Equal(t, companyId, ba.CompanyId())
 	assert.Equal(t, "Bank", ba.Name())
-	assert.Equal(t, "BIC123", ba.BIC())
-	assert.Equal(t, "ACC123", ba.SettlementAccount())
-	assert.Equal(t, "USD", ba.Currency())
+	assert.Equal(t, testBIC, ba.BIC())
+	assert.Equal(t, testAccountUSD, ba.SettlementAccount())
+	assert.Equal(t, entities.Currency("USD"), ba.Currency())
 	assert.NotEqual(t, uuid.Nil, ba.BankAccountId())
 }
 
@@ -49,7 +54,7 @@ func TestNewBankAccount_EmptyCurrency(t *testing.T) {
 }
 
 func TestBankAccount_UpdateName_Success(t *testing.T) {
-	ba, _ := entities.NewBankAccount(uuid.New(), "Old", "BIC", "ACC", "USD")
+	ba, _ := entities.NewBankAccount(uuid.New(), "Old", testBIC, testAccountUSD, "USD")
 
 	err := ba.UpdateName("New")
 
@@ -58,7 +63,7 @@ func TestBankAccount_UpdateName_Success(t *testing.T) {
 }
 
 func TestBankAccount_UpdateName_Empty(t *testing.T) {
-	ba, _ := entities.NewBankAccount(uuid.New(), "Old", "BIC", "ACC", "USD")
+	ba, _ := entities.NewBankAccount(uuid.New(), "Old", testBIC, testAccountUSD, "USD")
 
 	err := ba.UpdateName("")
 
@@ -67,37 +72,37 @@ func TestBankAccount_UpdateName_Empty(t *testing.T) {
 }
 
 func TestBankAccount_UpdateBIC_Success(t *testing.T) {
-	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", "OldBIC", "ACC", "USD")
+	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", testBIC, testAccountUSD, "USD")
 
-	err := ba.UpdateBIC("NewBIC")
+	err := ba.UpdateBIC("043525225")
 
 	require.NoError(t, err)
-	assert.Equal(t, "NewBIC", ba.BIC())
+	assert.Equal(t, "043525225", ba.BIC())
 }
 
 func TestBankAccount_UpdateBIC_Empty(t *testing.T) {
-	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", "OldBIC", "ACC", "USD")
+	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", testBIC, testAccountUSD, "USD")
 
 	err := ba.UpdateBIC("")
 
 	assert.Error(t, err)
-	assert.Equal(t, "OldBIC", ba.BIC())
+	assert.Equal(t, testBIC, ba.BIC())
 }
 
 func TestBankAccount_UpdateSettlementAccount_Success(t *testing.T) {
-	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", "BIC", "OldACC", "USD")
+	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", testBIC, testAccountUSD, "USD")
 
-	err := ba.UpdateSettlementAccount("NewACC")
+	err := ba.UpdateSettlementAccount("40702840500000000002")
 
 	require.NoError(t, err)
-	assert.Equal(t, "NewACC", ba.SettlementAccount())
+	assert.Equal(t, "40702840500000000002", ba.SettlementAccount())
 }
 
 func TestBankAccount_UpdateCurrency_Success(t *testing.T) {
-	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", "BIC", "ACC", "USD")
+	ba, _ := entities.NewBankAccount(uuid.New(), "Bank", testBIC, testAccountUSD, "USD")
 
 	err := ba.UpdateCurrency("EUR")
 
-	require.NoError(t, err)
-	assert.Equal(t, "EUR", ba.Currency())
+	require.Error(t, err)
+	assert.Equal(t, entities.Currency("USD"), ba.Currency())
 }

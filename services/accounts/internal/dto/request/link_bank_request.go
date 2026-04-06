@@ -1,6 +1,10 @@
 package request
 
-import "github.com/google/uuid"
+import (
+	"accounts/internal/domain/entities"
+
+	"github.com/google/uuid"
+)
 
 type LinkBankRequest struct {
 	AccountID         uuid.UUID
@@ -9,5 +13,5 @@ type LinkBankRequest struct {
 	Name              string
 	Bic               string
 	SettlementAccount string
-	Currency          string
+	Currency          entities.Currency
 }

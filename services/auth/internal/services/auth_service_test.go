@@ -77,7 +77,7 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 		hasher.On("Hash", userReq.Password).Return("hashed_password", nil)
 
 		expectedLogin := userReq.Login
-		expectedEmail := userReq.Login
+		expectedEmail := userReq.Email
 
 		companyRepo.On("Save", mock.Anything, mock.MatchedBy(func(c *entities.Company) bool {
 			return c != nil && c.Name() == companyReq.CompanyName && c.InviteCode() != ""
@@ -465,6 +465,6 @@ func TestAuthService_InputValidation(t *testing.T) {
 		resp, err := svc.RegisterWithNewCompany(ctx, userReq, companyReq)
 		assert.Error(t, err)
 		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "login and email are required")
+		assert.Contains(t, err.Error(), "login is required")
 	})
 }
