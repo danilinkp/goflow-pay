@@ -1,0 +1,7 @@
+dir: "mocks/{{.InterfaceDirRelative}}"
+filename: "mock_{{.InterfaceName}}.go"
+template: testify
+packages:
+  auth/internal/services:
+    config:
+      all: true

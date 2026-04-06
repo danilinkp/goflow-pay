@@ -1,0 +1,64 @@
+package entities
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Notification struct {
+	id        uuid.UUID
+	userId    uuid.UUID
+	title     string
+	message   string
+	sourceId  uuid.UUID
+	createdAt time.Time
+	updatedAt time.Time
+}
+
+func NewNotification(userId uuid.UUID, title, message string, sourceId uuid.UUID) (*Notification, error) {
+	op := "create notification"
+	if userId == uuid.Nil {
+		return nil, fmt.Errorf("%s: user id is required", op)
+	}
+	if title == "" || message == "" {
+		return nil, fmt.Errorf("%s: title and message cannot be blank", op)
+	}
+
+	now := time.Now().UTC()
+	return &Notification{
+		id:        uuid.New(),
+		userId:    userId,
+		title:     title,
+		message:   message,
+		sourceId:  sourceId,
+		createdAt: now,
+	}, nil
+}
+
+func (n *Notification) ID() uuid.UUID        { return n.id }
+func (n *Notification) UserID() uuid.UUID    { return n.userId }
+func (n *Notification) Title() string        { return n.title }
+func (n *Notification) Message() string      { return n.message }
+func (n *Notification) SourceID() uuid.UUID  { return n.sourceId }
+func (n *Notification) CreatedAt() time.Time { return n.createdAt }
+func (n *Notification) UpdatedAt() time.Time { return n.updatedAt }
+
+func (n *Notification) UpdateTitle(newTitle string) error {
+	if newTitle == "" {
+		return fmt.Errorf("%s: title cannot be blank", "update notification title")
+	}
+	n.title = newTitle
+	n.updatedAt = time.Now().UTC()
+	return nil
+}
+
+func (n *Notification) UpdateMessage(newMessage string) error {
+	if newMessage == "" {
+		return fmt.Errorf("%s: message cannot be blank", "update notification message")
+	}
+	n.message = newMessage
+	n.updatedAt = time.Now().UTC()
+	return nil
+}
