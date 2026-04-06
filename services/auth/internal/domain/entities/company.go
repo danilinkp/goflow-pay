@@ -31,6 +31,16 @@ func NewCompany(name string) (*Company, error) {
 	}, nil
 }
 
+func ReconstructCompany(companyId uuid.UUID, name, inviteCode string, createdAt, updatedAt time.Time) *Company {
+	return &Company{
+		companyId:  companyId,
+		name:       name,
+		inviteCode: inviteCode,
+		createdAt:  createdAt,
+		updatedAt:  updatedAt,
+	}
+}
+
 func (c *Company) CompanyId() uuid.UUID { return c.companyId }
 func (c *Company) Name() string         { return c.name }
 func (c *Company) InviteCode() string   { return c.inviteCode }

@@ -23,6 +23,10 @@ const (
 	RoleGuest        Role = "guest"
 )
 
+func (r Role) String() string {
+	return string(r)
+}
+
 func (r Role) IsValid() bool {
 	return r == RoleAdmin || r == RoleCompanyAdmin || r == RoleEmployee || r == RoleGuest
 }
@@ -63,6 +67,19 @@ func NewUser(companyId uuid.UUID, login, email, passwordHash string, role Role) 
 		createdAt:    now,
 		updatedAt:    now,
 	}, nil
+}
+
+func ReconstructUser(id, companyId uuid.UUID, login, email, hash string, role Role, createdAt, updateAt time.Time) *User {
+	return &User{
+		id:           id,
+		companyId:    companyId,
+		login:        login,
+		email:        email,
+		passwordHash: hash,
+		role:         role,
+		createdAt:    createdAt,
+		updatedAt:    updateAt,
+	}
 }
 
 func (u *User) ID() uuid.UUID        { return u.id }
