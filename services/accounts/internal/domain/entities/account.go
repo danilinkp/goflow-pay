@@ -14,6 +14,10 @@ const (
 	InactiveStatus AccountStatus = "inactive"
 )
 
+func (as AccountStatus) String() string {
+	return string(as)
+}
+
 func (as AccountStatus) IsValid() bool {
 	return as == ActiveStatus || as == InactiveStatus
 }
@@ -49,6 +53,18 @@ func NewAccount(companyId uuid.UUID, balance int64, currency Currency, status Ac
 		createdAt: now,
 		updatedAt: now,
 	}, nil
+}
+
+func ReconstructAccount(accountId uuid.UUID, companyId uuid.UUID, balance int64, currency Currency, status AccountStatus, createdAt, updatedAt time.Time) *Account {
+	return &Account{
+		accountId: accountId,
+		companyId: companyId,
+		balance:   balance,
+		currency:  currency,
+		status:    status,
+		createdAt: createdAt,
+		updatedAt: updatedAt,
+	}
 }
 
 func (a *Account) AccountId() uuid.UUID  { return a.accountId }

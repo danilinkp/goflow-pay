@@ -20,6 +20,19 @@ type AccountOperation struct {
 	updatedAt       time.Time
 }
 
+func ReconstructAccountOperation(operationId, accountId, transactionId uuid.UUID, operationType OperationType, status OperationStatus, amount int64, createdAt, updatedAt time.Time) *AccountOperation {
+	return &AccountOperation{
+		operationId:     operationId,
+		accountId:       accountId,
+		transactionId:   transactionId,
+		operationType:   operationType,
+		operationStatus: status,
+		amount:          amount,
+		createdAt:       createdAt,
+		updatedAt:       updatedAt,
+	}
+}
+
 func NewAccountOperation(accountId uuid.UUID, transactionId uuid.UUID, operationType OperationType, operationStatus OperationStatus, amount int64) (*AccountOperation, error) {
 	if accountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create bank operation")

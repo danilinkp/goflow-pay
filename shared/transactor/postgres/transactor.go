@@ -3,27 +3,17 @@ package postgres
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
-type Transactor struct {
-	db *pgxpool.Pool
+type TransactionAdapter struct {
+	trm *manager.Manager
 }
 
-func NewTransactor(db *pgxpool.Pool) *Transactor {
-	return &Transactor{db: db}
+func NewTransactionAdapter(trm *manager.Manager) *TransactionAdapter {
+	return &TransactionAdapter{trm: trm}
 }
 
-func (t *Transactor) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
-	tx, err := t.db.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	if err := fn(ctx); err != nil {
-		return err
-	}
-
-	return tx.Commit(ctx)
+func (a *TransactionAdapter) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return a.trm.Do(ctx, fn)
 }

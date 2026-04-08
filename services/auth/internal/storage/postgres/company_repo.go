@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,24 +16,28 @@ import (
 )
 
 type CompanyRepo struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	getter *trmpgx.CtxGetter
 }
 
-func NewCompanyRepo(pool *pgxpool.Pool) *CompanyRepo {
+func NewCompanyRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *CompanyRepo {
 	return &CompanyRepo{
-		pool: pool,
+		pool:   pool,
+		getter: c,
 	}
 }
 
 func (r *CompanyRepo) Save(ctx context.Context, company *entities.Company) error {
 	op := "CompanyRepo.Save"
 
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
 	companyModel := models.ToCompanyModel(company)
 
 	query := `INSERT INTO companies(company_id, name, invite_code, created_at, updated_at)
 			  VALUES ($1, $2, $3, $4, $5)`
 
-	_, err := r.pool.Exec(ctx, query,
+	_, err := conn.Exec(ctx, query,
 		companyModel.CompanyId,
 		companyModel.Name,
 		companyModel.InviteCode,
@@ -54,11 +59,13 @@ func (r *CompanyRepo) Save(ctx context.Context, company *entities.Company) error
 func (r *CompanyRepo) GetById(ctx context.Context, companyId uuid.UUID) (*entities.Company, error) {
 	op := "CompanyRepo.GetById"
 
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
 	query := `SELECT company_id, name, invite_code, created_at, updated_at 
 			  FROM companies WHERE id = $1;`
 
 	var companyModel models.CompanyModel
-	err := r.pool.QueryRow(ctx, query, companyId).Scan(
+	err := conn.QueryRow(ctx, query, companyId).Scan(
 		&companyModel.CompanyId,
 		&companyModel.Name,
 		&companyModel.InviteCode,
@@ -78,12 +85,13 @@ func (r *CompanyRepo) GetById(ctx context.Context, companyId uuid.UUID) (*entiti
 
 func (r *CompanyRepo) GetByInviteCode(ctx context.Context, inviteCode string) (*entities.Company, error) {
 	op := "CompanyRepo.GetById"
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
 	query := `SELECT company_id, name, invite_code, created_at, updated_at 
 			  FROM companies WHERE invite_code = $1;`
 
 	var companyModel models.CompanyModel
-	err := r.pool.QueryRow(ctx, query, inviteCode).Scan(
+	err := conn.QueryRow(ctx, query, inviteCode).Scan(
 		&companyModel.CompanyId,
 		&companyModel.Name,
 		&companyModel.InviteCode,

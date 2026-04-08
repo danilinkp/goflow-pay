@@ -7,6 +7,7 @@ import (
 	"notifications/internal/dto/response"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/singleflight"
 )
 
 type AccountClient interface {
@@ -18,7 +19,7 @@ type UserClient interface {
 }
 
 type NotificationRepository interface {
-	Save(ctx context.Context, operation *entities.Notification) error
+	Save(ctx context.Context, notification *entities.Notification) error
 	GetById(ctx context.Context, id uuid.UUID) (*entities.Notification, error)
 }
 
@@ -37,6 +38,7 @@ type NotificationService struct {
 	notificationRepository NotificationRepository
 	emailSender            EmailSender
 	cache                  CacheRepository
+	singleFlightGroup      *singleflight.Group
 }
 
 func NewNotificationService(accountClient AccountClient, userClient UserClient, notificationRepository NotificationRepository, emailSender EmailSender, cache CacheRepository) *NotificationService {
@@ -46,6 +48,7 @@ func NewNotificationService(accountClient AccountClient, userClient UserClient, 
 		notificationRepository: notificationRepository,
 		emailSender:            emailSender,
 		cache:                  cache,
+		singleFlightGroup:      &singleflight.Group{},
 	}
 }
 
@@ -155,13 +158,22 @@ func (n *NotificationService) getCompanyId(ctx context.Context, accountId uuid.U
 	if err == nil {
 		return companyId, nil
 	}
+	key := accountId.String()
 
-	companyId, err = n.accountClient.GetCompanyIdByAccountId(ctx, accountId)
+	v, err, _ := n.singleFlightGroup.Do(key, func() (any, error) {
+		id, clientErr := n.accountClient.GetCompanyIdByAccountId(ctx, accountId)
+		if clientErr != nil {
+			return uuid.Nil, clientErr
+		}
+
+		_ = n.cache.SetCompanyId(ctx, accountId, id)
+
+		return id, nil
+	})
+
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	_ = n.cache.SetCompanyId(ctx, accountId, companyId)
-
-	return companyId, nil
+	return v.(uuid.UUID), nil
 }

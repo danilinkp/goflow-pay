@@ -89,6 +89,19 @@ func NewBankAccount(companyId uuid.UUID, name string, bic string, settlementAcco
 	}, nil
 }
 
+func ReconstructBankAccount(bankAccountId, companyId uuid.UUID, name, bic, settlementAccount string, currency Currency, createdAt, updatedAt time.Time) *BankAccount {
+	return &BankAccount{
+		bankAccountId:     bankAccountId,
+		companyId:         companyId,
+		name:              name,
+		bic:               bic,
+		settlementAccount: settlementAccount,
+		currency:          currency,
+		createdAt:         createdAt,
+		updatedAt:         updatedAt,
+	}
+}
+
 func (ba *BankAccount) BankAccountId() uuid.UUID  { return ba.bankAccountId }
 func (ba *BankAccount) CompanyId() uuid.UUID      { return ba.companyId }
 func (ba *BankAccount) Name() string              { return ba.name }

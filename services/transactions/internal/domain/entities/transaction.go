@@ -18,6 +18,10 @@ const (
 	ProcessingStatus TransactionStatus = "processing"
 )
 
+func (t TransactionStatus) String() string {
+	return string(t)
+}
+
 func (s TransactionStatus) IsValid() bool {
 	return s == PendingStatus || s == SuccessStatus || s == FailedStatus || s == ProcessingStatus
 }
@@ -27,14 +31,14 @@ type Transaction struct {
 	fromAccountId  uuid.UUID
 	toAccountId    uuid.UUID
 	amount         int64
-	currency       string
+	currency       Currency
 	idempotencyKey string
 	status         TransactionStatus
 	createdAt      time.Time
 	updatedAt      time.Time
 }
 
-func NewTransaction(fromAccountId uuid.UUID, toAccountId uuid.UUID, amount int64, currency string, status TransactionStatus, idempotencyKey string) (*Transaction, error) {
+func NewTransaction(fromAccountId uuid.UUID, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string) (*Transaction, error) {
 	if fromAccountId == uuid.Nil || toAccountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create transaction")
 	}
@@ -44,7 +48,7 @@ func NewTransaction(fromAccountId uuid.UUID, toAccountId uuid.UUID, amount int64
 	if amount <= 0 {
 		return nil, fmt.Errorf("%s: amount must be positive", "create transaction")
 	}
-	if currency == "" {
+	if !currency.IsValid() {
 		return nil, fmt.Errorf("%s: currency cannot be blank", "create transaction")
 	}
 	if !status.IsValid() {
@@ -68,18 +72,32 @@ func NewTransaction(fromAccountId uuid.UUID, toAccountId uuid.UUID, amount int64
 	}, nil
 }
 
+func ReconstructTransaction(transactionId, fromAccountId, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string, createdAt, updatedAt time.Time) *Transaction {
+	return &Transaction{
+		transactionId:  transactionId,
+		fromAccountId:  fromAccountId,
+		toAccountId:    toAccountId,
+		amount:         amount,
+		currency:       currency,
+		idempotencyKey: idempotencyKey,
+		status:         status,
+		createdAt:      createdAt,
+		updatedAt:      updatedAt,
+	}
+}
+
 func (t *Transaction) TransactionID() uuid.UUID  { return t.transactionId }
 func (t *Transaction) FromAccountID() uuid.UUID  { return t.fromAccountId }
 func (t *Transaction) ToAccountID() uuid.UUID    { return t.toAccountId }
 func (t *Transaction) Amount() int64             { return t.amount }
-func (t *Transaction) Currency() string          { return t.currency }
+func (t *Transaction) Currency() Currency        { return t.currency }
 func (t *Transaction) IdempotencyKey() string    { return t.idempotencyKey }
 func (t *Transaction) Status() TransactionStatus { return t.status }
 func (t *Transaction) CreatedAt() time.Time      { return t.createdAt }
 func (t *Transaction) UpdatedAt() time.Time      { return t.updatedAt }
 
-func (t *Transaction) UpdateCurrency(newCurrency string) error {
-	if newCurrency == "" {
+func (t *Transaction) UpdateCurrency(newCurrency Currency) error {
+	if !newCurrency.IsValid() {
 		return fmt.Errorf("%s: currency cannot be blank", "update currency")
 	}
 	t.currency = newCurrency
@@ -117,7 +135,7 @@ func (t *Transaction) ToOutboxEvent() (*outbox.Event, error) {
 		FromAccountID: t.fromAccountId,
 		ToAccountID:   t.toAccountId,
 		Amount:        t.amount,
-		Currency:      t.currency,
+		Currency:      t.currency.String(),
 		Status:        string(t.status),
 		CreatedAt:     t.createdAt,
 	})

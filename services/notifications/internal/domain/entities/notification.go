@@ -37,6 +37,18 @@ func NewNotification(userId uuid.UUID, title, message string, sourceId uuid.UUID
 	}, nil
 }
 
+func ReconstructNotification(id, userId uuid.UUID, title, message string, sourceId uuid.UUID, createdAt, updatedAt time.Time) *Notification {
+	return &Notification{
+		id:        id,
+		userId:    userId,
+		title:     title,
+		message:   message,
+		sourceId:  sourceId,
+		createdAt: createdAt,
+		updatedAt: updatedAt,
+	}
+}
+
 func (n *Notification) ID() uuid.UUID        { return n.id }
 func (n *Notification) UserID() uuid.UUID    { return n.userId }
 func (n *Notification) Title() string        { return n.title }

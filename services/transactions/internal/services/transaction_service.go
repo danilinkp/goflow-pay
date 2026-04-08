@@ -14,7 +14,7 @@ import (
 type TransactionRepository interface {
 	Save(ctx context.Context, transaction *entities.Transaction) error
 	GetById(ctx context.Context, id uuid.UUID) (*entities.Transaction, error)
-	GetByIdempotencyKey(ctx context.Context, IdempotencyKey string) (*entities.Transaction, error)
+	GetByIdempotencyKey(ctx context.Context, idempotencyKey string) (*entities.Transaction, error)
 	GetByAccountId(ctx context.Context, accountId uuid.UUID) ([]*entities.Transaction, error)
 	GetStale(ctx context.Context, olderThan time.Duration, statuses []string) ([]*entities.Transaction, error)
 	UpdateStatus(ctx context.Context, txId uuid.UUID, status string) error

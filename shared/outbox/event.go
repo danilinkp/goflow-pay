@@ -28,16 +28,16 @@ func (e EventType) Topic() string {
 }
 
 type Event struct {
-	ID            uuid.UUID
-	AggregateID   uuid.UUID
-	AggregateType string
-	EventType     EventType
-	Topic         string
-	Payload       []byte
-	CreatedAt     time.Time
-	PublishedAt   *time.Time
-	FailedReason  *string
-	Attempts      int
+	ID            uuid.UUID  `db:"id"`
+	AggregateID   uuid.UUID  `db:"aggregate_id"`
+	AggregateType string     `db:"aggregate_type"`
+	EventType     EventType  `db:"event_type"`
+	Topic         string     `db:"topic"`
+	Payload       []byte     `db:"payload"`
+	CreatedAt     time.Time  `db:"created_at"`
+	PublishedAt   *time.Time `db:"published_at"`
+	FailedReason  *string    `db:"failed_reason"`
+	Attempts      int        `db:"attempts"`
 }
 
 type Outboxable interface {

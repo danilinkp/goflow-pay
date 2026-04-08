@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,24 +16,28 @@ import (
 )
 
 type UserRepo struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	getter *trmpgx.CtxGetter
 }
 
-func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
+func NewUserRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *UserRepo {
 	return &UserRepo{
-		pool: pool,
+		pool:   pool,
+		getter: c,
 	}
 }
 
 func (r *UserRepo) Save(ctx context.Context, user *entities.User) error {
 	op := "UserRepo.Save"
 
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
 	userModel := models.ToUserModel(user)
 
 	query := `INSERT INTO users(id, company_id, login, email, password_hash, role, created_at, updated_at)
 			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	_, err := r.pool.Exec(ctx, query,
+	_, err := conn.Exec(ctx, query,
 		userModel.Id,
 		userModel.CompanyId,
 		userModel.Login,
@@ -56,13 +61,16 @@ func (r *UserRepo) Save(ctx context.Context, user *entities.User) error {
 func (r *UserRepo) GetById(ctx context.Context, userId uuid.UUID) (*entities.User, error) {
 	op := "UserRepo.GetById"
 
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
 	query := `SELECT id, company_id, login, email, password_hash, role, created_at, updated_at 
 			  FROM users WHERE id = $1;`
 
 	var user models.UserModel
-	err := r.pool.QueryRow(ctx, query, userId).Scan(
+	err := conn.QueryRow(ctx, query, userId).Scan(
 		&user.Id,
 		&user.CompanyId,
+		&user.Login,
 		&user.Email,
 		&user.Role,
 		&user.PasswordHash,
@@ -83,11 +91,13 @@ func (r *UserRepo) GetById(ctx context.Context, userId uuid.UUID) (*entities.Use
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
 	op := "UserRepo.GetByEmail"
 
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
 	query := `SELECT id, company_id, login, email, password_hash, role, created_at, updated_at 
 			  FROM users WHERE email = $1;`
 
 	var user models.UserModel
-	err := r.pool.QueryRow(ctx, query, email).Scan(
+	err := conn.QueryRow(ctx, query, email).Scan(
 		&user.Id,
 		&user.CompanyId,
 		&user.Login,
@@ -111,9 +121,11 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*entities.User
 func (r *UserRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error) {
 	op := "UserRepo.GetByCompanyId"
 
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
 	query := `SELECT id, company_id, login, email, password_hash, role, created_at, updated_at from users WHERE company_id = $1;`
 
-	rows, err := r.pool.Query(ctx, query, companyId)
+	rows, err := conn.Query(ctx, query, companyId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

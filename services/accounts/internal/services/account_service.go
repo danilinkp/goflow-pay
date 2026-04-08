@@ -20,10 +20,10 @@ var (
 
 type AccountRepository interface {
 	Save(ctx context.Context, account *entities.Account) error
-	UpdateBalance(ctx context.Context, accountId uuid.UUID, amount int64) error
-	UpdateStatus(ctx context.Context, accountId uuid.UUID, status string) error
 	GetById(ctx context.Context, id uuid.UUID) (*entities.Account, error)
 	GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.Account, error)
+	UpdateBalance(ctx context.Context, accountId uuid.UUID, amount int64) error
+	UpdateStatus(ctx context.Context, accountId uuid.UUID, status entities.AccountStatus) error
 }
 
 type AccountOperationRepository interface {
@@ -125,7 +125,7 @@ func (a *AccountService) SetAccountInActive(ctx context.Context, accountId uuid.
 			return err
 		}
 
-		if err = a.accountRepository.UpdateStatus(ctx, accountId, string(entities.InactiveStatus)); err != nil {
+		if err = a.accountRepository.UpdateStatus(ctx, accountId, entities.InactiveStatus); err != nil {
 			return err
 		}
 
