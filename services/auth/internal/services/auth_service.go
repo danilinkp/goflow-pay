@@ -217,6 +217,26 @@ func (a *AuthService) Logout(ctx context.Context, token string) error {
 	return nil
 }
 
+func (a *AuthService) IsTokenValid(ctx context.Context, token string) (*auth.AccessClaims, error) {
+	op := "Auth.IsTokenValid"
+
+	claims, err := a.validator.Validate(token)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	revoked, err := a.blackListRepository.Exists(ctx, claims.TokenID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if revoked {
+		return nil, fmt.Errorf("%s: %w", op, errors.New("token is revoked"))
+	}
+
+	return claims, nil
+}
+
 func (a *AuthService) GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*response.UserResponse, error) {
 	op := "Auth.GetUsersByCompanyId"
 
