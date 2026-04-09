@@ -16,11 +16,11 @@ func TestNewNotification_Success(t *testing.T) {
 	n, err := entities.NewNotification(userId, "Title", "Message", sourceId)
 
 	require.NoError(t, err)
-	assert.Equal(t, userId, n.UserID())
+	assert.Equal(t, userId, n.UserId())
 	assert.Equal(t, "Title", n.Title())
 	assert.Equal(t, "Message", n.Message())
-	assert.Equal(t, sourceId, n.SourceID())
-	assert.NotEqual(t, uuid.Nil, n.ID())
+	assert.Equal(t, sourceId, n.SourceId())
+	assert.NotEqual(t, uuid.Nil, n.NotificationId())
 }
 
 func TestNewNotification_NilUserId(t *testing.T) {

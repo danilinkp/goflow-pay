@@ -109,7 +109,7 @@ func (r *AccountOperationRepo) GetByTransactionId(ctx context.Context, transacti
 func (r *AccountOperationRepo) UpdateStatus(ctx context.Context, operation uuid.UUID, status string) error {
 	op := "AccountOperationRepo.UpdateStatus"
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	query := `UPDATE account_operations SET operation_status = $1 WHERE account_operation_id = $2;`
+	query := `UPDATE account_operations SET operation_status = $1 WHERE operation_id = $2;`
 
 	result, err := conn.Exec(ctx, query, status, operation)
 	if err != nil {

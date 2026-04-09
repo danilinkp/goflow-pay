@@ -69,9 +69,9 @@ func (r *BankOperationRepo) GetByIdempotencyKey(ctx context.Context, idempotency
 		&bankOpModel.BankAccountId,
 		&bankOpModel.OperationType,
 		&bankOpModel.OperationStatus,
+		&bankOpModel.Amount,
 		&bankOpModel.IdempotencyKey,
 		&bankOpModel.ExternalId,
-		&bankOpModel.Amount,
 		&bankOpModel.UpdatedAt,
 		&bankOpModel.CreatedAt,
 	)

@@ -1,0 +1,67 @@
+package postgres_test
+
+import (
+	"context"
+	"os"
+	"testing"
+	"time"
+	"transactions/internal/infrastructure/db"
+
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
+)
+
+var (
+	testPool   *pgxpool.Pool
+	testGetter *trmpgx.CtxGetter
+)
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+
+	container, err := postgres.Run(ctx,
+		"postgres:16",
+		postgres.WithDatabase("transactions_db"),
+		postgres.WithUsername("postgres"),
+		postgres.WithPassword("postgres"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(30*time.Second),
+		),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer container.Terminate(ctx)
+
+	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+
+	testPool, err = db.NewPool(ctx, connStr)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.RunMigrations(testPool)
+	if err != nil {
+		panic(err)
+	}
+
+	testGetter = trmpgx.DefaultCtxGetter
+
+	os.Exit(m.Run())
+}
+
+func truncate(t *testing.T) {
+	t.Helper()
+	_, err := testPool.Exec(context.Background(),
+		"TRUNCATE transactions CASCADE")
+	require.NoError(t, err)
+}

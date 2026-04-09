@@ -32,7 +32,7 @@ func (r Role) IsValid() bool {
 }
 
 type User struct {
-	id           uuid.UUID
+	userId       uuid.UUID
 	companyId    uuid.UUID
 	login        string
 	email        string
@@ -58,7 +58,7 @@ func NewUser(companyId uuid.UUID, login, email, passwordHash string, role Role) 
 
 	now := time.Now().UTC()
 	return &User{
-		id:           uuid.New(),
+		userId:       uuid.New(),
 		companyId:    companyId,
 		login:        login,
 		email:        email,
@@ -71,7 +71,7 @@ func NewUser(companyId uuid.UUID, login, email, passwordHash string, role Role) 
 
 func ReconstructUser(id, companyId uuid.UUID, login, email, hash string, role Role, createdAt, updateAt time.Time) *User {
 	return &User{
-		id:           id,
+		userId:       id,
 		companyId:    companyId,
 		login:        login,
 		email:        email,
@@ -82,8 +82,8 @@ func ReconstructUser(id, companyId uuid.UUID, login, email, hash string, role Ro
 	}
 }
 
-func (u *User) ID() uuid.UUID        { return u.id }
-func (u *User) CompanyID() uuid.UUID { return u.companyId }
+func (u *User) UserId() uuid.UUID    { return u.userId }
+func (u *User) CompanyId() uuid.UUID { return u.companyId }
 func (u *User) Login() string        { return u.login }
 func (u *User) Email() string        { return u.email }
 func (u *User) Role() Role           { return u.role }

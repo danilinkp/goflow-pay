@@ -8,7 +8,7 @@ import (
 )
 
 type UserModel struct {
-	Id           uuid.UUID `db:"id"`
+	UserId       uuid.UUID `db:"user_id"`
 	CompanyId    uuid.UUID `db:"company_id"`
 	Login        string    `db:"login"`
 	Email        string    `db:"email"`
@@ -20,7 +20,7 @@ type UserModel struct {
 
 func (m *UserModel) ToDomain() *entities.User {
 	return entities.ReconstructUser(
-		m.Id,
+		m.UserId,
 		m.CompanyId,
 		m.Login,
 		m.Email,
@@ -33,8 +33,8 @@ func (m *UserModel) ToDomain() *entities.User {
 
 func ToUserModel(user *entities.User) *UserModel {
 	return &UserModel{
-		Id:           user.ID(),
-		CompanyId:    user.CompanyID(),
+		UserId:       user.UserId(),
+		CompanyId:    user.CompanyId(),
 		Login:        user.Login(),
 		Email:        user.Email(),
 		PasswordHash: user.PasswordHash(),

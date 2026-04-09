@@ -88,7 +88,7 @@ func (r *BankAccountRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUI
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
 	query := `SELECT bank_account_id, company_id, name, bic, settlement_account, currency, updated_at, created_at
-			  FROM account WHERE company_id = $1;`
+			  FROM bank_accounts WHERE company_id = $1;`
 
 	rows, err := conn.Query(ctx, query, companyId)
 	if err != nil {

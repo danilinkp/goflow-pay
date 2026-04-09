@@ -1,10 +1,10 @@
 package services
 
 import (
+	"auth/internal/domain"
 	"auth/internal/domain/entities"
 	"auth/internal/dto/request"
 	"auth/internal/dto/response"
-	"auth/internal/storage"
 	"context"
 	"errors"
 	"fmt"
@@ -115,14 +115,14 @@ func (a *AuthService) RegisterWithNewCompany(ctx context.Context, userRequest re
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	token, err := a.tokenService.Generate(user.ID(), user.CompanyID(), string(user.Role()))
+	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return &response.AuthResponse{
-		UserID:    user.ID(),
-		CompanyID: user.CompanyID(),
+		UserID:    user.UserId(),
+		CompanyID: user.CompanyId(),
 		Email:     user.Email(),
 		Role:      string(user.Role()),
 		Token:     token,
@@ -155,14 +155,14 @@ func (a *AuthService) RegisterWithExistingCompany(ctx context.Context, userReque
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	token, err := a.tokenService.Generate(user.ID(), user.CompanyID(), string(user.Role()))
+	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return &response.AuthResponse{
-		UserID:    user.ID(),
-		CompanyID: user.CompanyID(),
+		UserID:    user.UserId(),
+		CompanyID: user.CompanyId(),
 		Email:     user.Email(),
 		Role:      string(user.Role()),
 		Token:     token,
@@ -173,7 +173,7 @@ func (a *AuthService) Login(ctx context.Context, request request.LoginRequest) (
 	op := "Auth.Login"
 	user, err := a.userRepository.GetByEmail(ctx, request.Email)
 	if err != nil {
-		if errors.Is(err, storage.ErrUserNotFound) {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -183,14 +183,14 @@ func (a *AuthService) Login(ctx context.Context, request request.LoginRequest) (
 		return nil, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	token, err := a.tokenService.Generate(user.ID(), user.CompanyID(), string(user.Role()))
+	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return &response.AuthResponse{
-		UserID:    user.ID(),
-		CompanyID: user.CompanyID(),
+		UserID:    user.UserId(),
+		CompanyID: user.CompanyId(),
 		Email:     user.Email(),
 		Role:      string(user.Role()),
 		Token:     token,
@@ -228,7 +228,7 @@ func (a *AuthService) GetUsersByCompanyId(ctx context.Context, companyId uuid.UU
 	result := make([]*response.UserResponse, 0, len(users))
 	for _, u := range users {
 		result = append(result, &response.UserResponse{
-			ID:    u.ID(),
+			ID:    u.UserId(),
 			Email: u.Email(),
 		})
 	}

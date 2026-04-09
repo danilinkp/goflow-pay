@@ -51,6 +51,7 @@ func NewBankOperation(accountId uuid.UUID, bankAccountId uuid.UUID, operationTyp
 		operationType:   operationType,
 		operationStatus: operationStatus,
 		amount:          amount,
+		idempotencyKey:  idempotencyKey,
 		externalId:      externalId,
 		createdAt:       now,
 		updatedAt:       now,
@@ -79,6 +80,7 @@ func (bo *BankOperation) BankAccountId() uuid.UUID         { return bo.bankAccou
 func (bo *BankOperation) OperationType() OperationType     { return bo.operationType }
 func (bo *BankOperation) OperationStatus() OperationStatus { return bo.operationStatus }
 func (bo *BankOperation) Amount() int64                    { return bo.amount }
+func (bo *BankOperation) IdempotencyKey() string           { return bo.idempotencyKey }
 func (bo *BankOperation) ExternalId() string               { return bo.externalId }
 func (bo *BankOperation) CreatedAt() time.Time             { return bo.createdAt }
 func (bo *BankOperation) UpdatedAt() time.Time             { return bo.updatedAt }

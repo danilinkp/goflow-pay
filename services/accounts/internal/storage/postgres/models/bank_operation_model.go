@@ -43,6 +43,8 @@ func ToBankOperationModel(bankOperation *entities.BankOperation) *BankOperationM
 		OperationType:   bankOperation.OperationType().String(),
 		OperationStatus: bankOperation.OperationStatus().String(),
 		Amount:          bankOperation.Amount(),
+		IdempotencyKey:  bankOperation.IdempotencyKey(),
+		ExternalId:      bankOperation.ExternalId(),
 		CreatedAt:       bankOperation.CreatedAt(),
 		UpdatedAt:       bankOperation.UpdatedAt(),
 	}

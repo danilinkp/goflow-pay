@@ -34,7 +34,7 @@ func (r *AccountRepo) Save(ctx context.Context, account *entities.Account) error
 
 	accountModel := models.ToAccountModel(account)
 
-	query := `INSERT INTO account(account_id, company_id, balance, currency, status, updated_at, created_at)
+	query := `INSERT INTO accounts(account_id, company_id, balance, currency, status, updated_at, created_at)
 			  VALUES ($1, $2, $3, $4, $5, $6, $7);`
 
 	_, err := conn.Exec(ctx, query,
@@ -61,7 +61,7 @@ func (r *AccountRepo) GetById(ctx context.Context, id uuid.UUID) (*entities.Acco
 	op := "AccountRepo.GetById"
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 	query := `SELECT account_id, company_id, balance, currency, status, created_at, updated_at
-			  FROM account WHERE account_id = $1;`
+			  FROM accounts WHERE account_id = $1;`
 
 	var accountModel models.AccountModel
 	err := conn.QueryRow(ctx, query, id).Scan(
@@ -90,7 +90,7 @@ func (r *AccountRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUID) (
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
 	query := `SELECT account_id, company_id, balance, currency, status, created_at, updated_at
-			  FROM account WHERE company_id = $1;`
+			  FROM accounts WHERE company_id = $1;`
 
 	rows, err := conn.Query(ctx, query, companyId)
 	if err != nil {
@@ -115,7 +115,7 @@ func (r *AccountRepo) UpdateBalance(ctx context.Context, accountId uuid.UUID, am
 	op := "AccountRepo.UpdateBalance"
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
-	query := `UPDATE accounts SET balance = balanc + $1 WHERE account_id = $2;`
+	query := `UPDATE accounts SET balance = balance + $1 WHERE account_id = $2;`
 
 	result, err := conn.Exec(ctx, query, amount, accountId)
 	if err != nil {

@@ -34,11 +34,11 @@ func (r *UserRepo) Save(ctx context.Context, user *entities.User) error {
 
 	userModel := models.ToUserModel(user)
 
-	query := `INSERT INTO users(id, company_id, login, email, password_hash, role, created_at, updated_at)
+	query := `INSERT INTO users(user_id, company_id, login, email, password_hash, role, created_at, updated_at)
 			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	_, err := conn.Exec(ctx, query,
-		userModel.Id,
+		userModel.UserId,
 		userModel.CompanyId,
 		userModel.Login,
 		userModel.Email,
@@ -63,12 +63,12 @@ func (r *UserRepo) GetById(ctx context.Context, userId uuid.UUID) (*entities.Use
 
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
-	query := `SELECT id, company_id, login, email, password_hash, role, created_at, updated_at 
+	query := `SELECT user_id, company_id, login, email, password_hash, role, created_at, updated_at 
 			  FROM users WHERE id = $1;`
 
 	var user models.UserModel
 	err := conn.QueryRow(ctx, query, userId).Scan(
-		&user.Id,
+		&user.UserId,
 		&user.CompanyId,
 		&user.Login,
 		&user.Email,
@@ -93,12 +93,12 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*entities.User
 
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
-	query := `SELECT id, company_id, login, email, password_hash, role, created_at, updated_at 
+	query := `SELECT user_id, company_id, login, email, password_hash, role, created_at, updated_at 
 			  FROM users WHERE email = $1;`
 
 	var user models.UserModel
 	err := conn.QueryRow(ctx, query, email).Scan(
-		&user.Id,
+		&user.UserId,
 		&user.CompanyId,
 		&user.Login,
 		&user.Email,
@@ -123,7 +123,7 @@ func (r *UserRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*
 
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
-	query := `SELECT id, company_id, login, email, password_hash, role, created_at, updated_at from users WHERE company_id = $1;`
+	query := `SELECT user_id, company_id, login, email, password_hash, role, created_at, updated_at from users WHERE company_id = $1;`
 
 	rows, err := conn.Query(ctx, query, companyId)
 	if err != nil {

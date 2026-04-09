@@ -61,7 +61,7 @@ func TestNotificationService_NotifyTransferCompleted(t *testing.T) {
 		for _, user := range users {
 			notificationRepo.On("Save", mock.Anything, mock.MatchedBy(func(n *entities.Notification) bool {
 				return n != nil &&
-					n.UserID() == user.ID &&
+					n.UserId() == user.ID &&
 					n.Title() == expectedTitle &&
 					n.Message() == expectedMessage
 			})).Return(nil)

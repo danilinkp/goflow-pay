@@ -147,9 +147,11 @@ func (r *TransactionRepo) GetStale(ctx context.Context, olderThan time.Duration,
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
 	query := `SELECT transaction_id, from_account_id, to_account_id, amount, currency, idempotency_key, status, updated_at, created_at
-			  FROM transactions WHERE WHERE status = ANY($1) AND updated_at < $2;`
+			  FROM transactions WHERE status = ANY($1) AND updated_at < $2;`
 
-	rows, err := conn.Query(ctx, query, statuses)
+	threshold := time.Now().Add(-olderThan)
+
+	rows, err := conn.Query(ctx, query, statuses, threshold)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

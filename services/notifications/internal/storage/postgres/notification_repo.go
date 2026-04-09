@@ -32,11 +32,11 @@ func (r *NotificationRepo) Save(ctx context.Context, notification *entities.Noti
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 	notificationModel := models.ToNotificationModel(notification)
 
-	query := `INSERT INTO notifications(id, user_id, title, message, source_id, updated_at, created_at)
+	query := `INSERT INTO notifications(notification_id, user_id, title, message, source_id, updated_at, created_at)
 			  VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := conn.Exec(ctx, query,
-		notificationModel.Id,
+		notificationModel.NotificationId,
 		notificationModel.UserId,
 		notificationModel.Title,
 		notificationModel.Message,
@@ -60,18 +60,16 @@ func (r *NotificationRepo) GetById(ctx context.Context, id uuid.UUID) (*entities
 	op := "NotificationRepo.GetById"
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
-	query := `SELECT id, user_id, title, message, source_id, updated_at, created_at
-			  FROM notifications WHERE id = $1`
-	var notificationModel models.NotificationModel
-	err := conn.QueryRow(ctx, query, id).Scan(
-		&notificationModel.Id,
-		&notificationModel.UserId,
-		&notificationModel.Title,
-		&notificationModel.Message,
-		&notificationModel.SourceId,
-		&notificationModel.UpdatedAt,
-		&notificationModel.CreatedAt,
-	)
+	query := `SELECT notification_id, user_id, title, message, source_id, updated_at, created_at
+			  FROM notifications WHERE notification_id = $1`
+
+	rows, err := conn.Query(ctx, query, id)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	notificationModel, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.NotificationModel])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrNotificationNotFound)

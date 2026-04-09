@@ -62,7 +62,7 @@ func (r *CompanyRepo) GetById(ctx context.Context, companyId uuid.UUID) (*entiti
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
 	query := `SELECT company_id, name, invite_code, created_at, updated_at 
-			  FROM companies WHERE id = $1;`
+			  FROM companies WHERE company_id = $1;`
 
 	var companyModel models.CompanyModel
 	err := conn.QueryRow(ctx, query, companyId).Scan(

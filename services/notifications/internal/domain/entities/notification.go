@@ -8,13 +8,13 @@ import (
 )
 
 type Notification struct {
-	id        uuid.UUID
-	userId    uuid.UUID
-	title     string
-	message   string
-	sourceId  uuid.UUID
-	createdAt time.Time
-	updatedAt time.Time
+	notificationId uuid.UUID
+	userId         uuid.UUID
+	title          string
+	message        string
+	sourceId       uuid.UUID
+	createdAt      time.Time
+	updatedAt      time.Time
 }
 
 func NewNotification(userId uuid.UUID, title, message string, sourceId uuid.UUID) (*Notification, error) {
@@ -28,34 +28,34 @@ func NewNotification(userId uuid.UUID, title, message string, sourceId uuid.UUID
 
 	now := time.Now().UTC()
 	return &Notification{
-		id:        uuid.New(),
-		userId:    userId,
-		title:     title,
-		message:   message,
-		sourceId:  sourceId,
-		createdAt: now,
+		notificationId: uuid.New(),
+		userId:         userId,
+		title:          title,
+		message:        message,
+		sourceId:       sourceId,
+		createdAt:      now,
 	}, nil
 }
 
 func ReconstructNotification(id, userId uuid.UUID, title, message string, sourceId uuid.UUID, createdAt, updatedAt time.Time) *Notification {
 	return &Notification{
-		id:        id,
-		userId:    userId,
-		title:     title,
-		message:   message,
-		sourceId:  sourceId,
-		createdAt: createdAt,
-		updatedAt: updatedAt,
+		notificationId: id,
+		userId:         userId,
+		title:          title,
+		message:        message,
+		sourceId:       sourceId,
+		createdAt:      createdAt,
+		updatedAt:      updatedAt,
 	}
 }
 
-func (n *Notification) ID() uuid.UUID        { return n.id }
-func (n *Notification) UserID() uuid.UUID    { return n.userId }
-func (n *Notification) Title() string        { return n.title }
-func (n *Notification) Message() string      { return n.message }
-func (n *Notification) SourceID() uuid.UUID  { return n.sourceId }
-func (n *Notification) CreatedAt() time.Time { return n.createdAt }
-func (n *Notification) UpdatedAt() time.Time { return n.updatedAt }
+func (n *Notification) NotificationId() uuid.UUID { return n.notificationId }
+func (n *Notification) UserId() uuid.UUID         { return n.userId }
+func (n *Notification) Title() string             { return n.title }
+func (n *Notification) Message() string           { return n.message }
+func (n *Notification) SourceId() uuid.UUID       { return n.sourceId }
+func (n *Notification) CreatedAt() time.Time      { return n.createdAt }
+func (n *Notification) UpdatedAt() time.Time      { return n.updatedAt }
 
 func (n *Notification) UpdateTitle(newTitle string) error {
 	if newTitle == "" {
