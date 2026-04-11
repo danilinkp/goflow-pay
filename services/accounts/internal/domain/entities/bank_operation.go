@@ -22,7 +22,8 @@ type BankOperation struct {
 	updatedAt       time.Time
 }
 
-func NewBankOperation(accountId uuid.UUID, bankAccountId uuid.UUID, operationType OperationType, operationStatus OperationStatus, amount int64, idempotencyKey string, externalId string) (*BankOperation, error) {
+func NewBankOperation(accountId uuid.UUID, bankAccountId uuid.UUID, operationType OperationType,
+	operationStatus OperationStatus, amount int64, idempotencyKey string, externalId string) (*BankOperation, error) {
 	if accountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create bank operation")
 	}
@@ -50,10 +51,27 @@ func NewBankOperation(accountId uuid.UUID, bankAccountId uuid.UUID, operationTyp
 		operationType:   operationType,
 		operationStatus: operationStatus,
 		amount:          amount,
+		idempotencyKey:  idempotencyKey,
 		externalId:      externalId,
 		createdAt:       now,
 		updatedAt:       now,
 	}, nil
+}
+
+func ReconstructBankAccountOperation(bankOperationId, accountId, bankAccountId uuid.UUID, operationType OperationType,
+	status OperationStatus, amount int64, idempotencyKey, externalId string, createdAt, updatedAt time.Time) *BankOperation {
+	return &BankOperation{
+		bankOperationId: bankOperationId,
+		accountId:       accountId,
+		bankAccountId:   bankAccountId,
+		operationType:   operationType,
+		operationStatus: status,
+		amount:          amount,
+		idempotencyKey:  idempotencyKey,
+		externalId:      externalId,
+		createdAt:       createdAt,
+		updatedAt:       updatedAt,
+	}
 }
 
 func (bo *BankOperation) BankOperationId() uuid.UUID       { return bo.bankOperationId }
@@ -62,6 +80,7 @@ func (bo *BankOperation) BankAccountId() uuid.UUID         { return bo.bankAccou
 func (bo *BankOperation) OperationType() OperationType     { return bo.operationType }
 func (bo *BankOperation) OperationStatus() OperationStatus { return bo.operationStatus }
 func (bo *BankOperation) Amount() int64                    { return bo.amount }
+func (bo *BankOperation) IdempotencyKey() string           { return bo.idempotencyKey }
 func (bo *BankOperation) ExternalId() string               { return bo.externalId }
 func (bo *BankOperation) CreatedAt() time.Time             { return bo.createdAt }
 func (bo *BankOperation) UpdatedAt() time.Time             { return bo.updatedAt }

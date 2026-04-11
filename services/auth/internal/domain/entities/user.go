@@ -23,12 +23,16 @@ const (
 	RoleGuest        Role = "guest"
 )
 
+func (r Role) String() string {
+	return string(r)
+}
+
 func (r Role) IsValid() bool {
 	return r == RoleAdmin || r == RoleCompanyAdmin || r == RoleEmployee || r == RoleGuest
 }
 
 type User struct {
-	id           uuid.UUID
+	userId       uuid.UUID
 	companyId    uuid.UUID
 	login        string
 	email        string
@@ -54,7 +58,7 @@ func NewUser(companyId uuid.UUID, login, email, passwordHash string, role Role) 
 
 	now := time.Now().UTC()
 	return &User{
-		id:           uuid.New(),
+		userId:       uuid.New(),
 		companyId:    companyId,
 		login:        login,
 		email:        email,
@@ -65,8 +69,21 @@ func NewUser(companyId uuid.UUID, login, email, passwordHash string, role Role) 
 	}, nil
 }
 
-func (u *User) ID() uuid.UUID        { return u.id }
-func (u *User) CompanyID() uuid.UUID { return u.companyId }
+func ReconstructUser(id, companyId uuid.UUID, login, email, hash string, role Role, createdAt, updateAt time.Time) *User {
+	return &User{
+		userId:       id,
+		companyId:    companyId,
+		login:        login,
+		email:        email,
+		passwordHash: hash,
+		role:         role,
+		createdAt:    createdAt,
+		updatedAt:    updateAt,
+	}
+}
+
+func (u *User) UserId() uuid.UUID    { return u.userId }
+func (u *User) CompanyId() uuid.UUID { return u.companyId }
 func (u *User) Login() string        { return u.login }
 func (u *User) Email() string        { return u.email }
 func (u *User) Role() Role           { return u.role }

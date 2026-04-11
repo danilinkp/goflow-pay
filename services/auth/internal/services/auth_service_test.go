@@ -1,11 +1,11 @@
 package services_test
 
 import (
+	"auth/internal/domain"
 	"auth/internal/domain/entities"
 	"auth/internal/dto/request"
 	"auth/internal/services"
 	mocks "auth/internal/services/mocks"
-	"auth/internal/storage"
 	"context"
 	"errors"
 	"shared/auth"
@@ -203,12 +203,12 @@ func TestAuthService_RegisterWithExistingCompany(t *testing.T) {
 		userReq := validRegisterEmployeeReq()
 		userReq.CompanyInviteCode = "INVALID"
 
-		companyRepo.On("GetByInviteCode", mock.Anything, userReq.CompanyInviteCode).Return(nil, storage.ErrCompanyNotFound)
+		companyRepo.On("GetByInviteCode", mock.Anything, userReq.CompanyInviteCode).Return(nil, domain.ErrCompanyNotFound)
 
 		resp, err := svc.RegisterWithExistingCompany(ctx, userReq)
 		assert.Error(t, err)
 		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), storage.ErrCompanyNotFound.Error())
+		assert.Contains(t, err.Error(), domain.ErrCompanyNotFound.Error())
 	})
 
 	t.Run("Invite code mismatch", func(t *testing.T) {
@@ -264,7 +264,7 @@ func TestAuthService_Login(t *testing.T) {
 		user, err := entities.NewUser(companyID, "login", email, "hashed", entities.RoleEmployee)
 		assert.NoError(t, err)
 
-		userID := user.ID()
+		userID := user.UserId()
 
 		userRepo.On("GetByEmail", mock.Anything, email).Return(user, nil)
 		hasher.On("Verify", password, user.PasswordHash()).Return(nil)
@@ -281,7 +281,7 @@ func TestAuthService_Login(t *testing.T) {
 	t.Run("User not found", func(t *testing.T) {
 		svc, userRepo, _, _, _, _, _, _ := setupAuthService(t, defaultTokenTTL)
 
-		userRepo.On("GetByEmail", mock.Anything, email).Return(nil, storage.ErrUserNotFound)
+		userRepo.On("GetByEmail", mock.Anything, email).Return(nil, domain.ErrUserNotFound)
 
 		resp, err := svc.Login(ctx, validLoginReq(email, password))
 		assert.Error(t, err)

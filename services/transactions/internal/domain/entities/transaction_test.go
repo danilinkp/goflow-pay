@@ -19,7 +19,7 @@ func TestNewTransaction_Success(t *testing.T) {
 	assert.Equal(t, from, tx.FromAccountID())
 	assert.Equal(t, to, tx.ToAccountID())
 	assert.Equal(t, int64(1000), tx.Amount())
-	assert.Equal(t, "USD", tx.Currency())
+	assert.Equal(t, entities.Currency("USD"), tx.Currency())
 	assert.Equal(t, entities.PendingStatus, tx.Status())
 }
 
@@ -108,7 +108,7 @@ func TestTransaction_UpdateCurrency_Success(t *testing.T) {
 	err := tx.UpdateCurrency("EUR")
 
 	require.NoError(t, err)
-	assert.Equal(t, "EUR", tx.Currency())
+	assert.Equal(t, entities.Currency("EUR"), tx.Currency())
 }
 
 func TestTransaction_UpdateCurrency_Empty(t *testing.T) {
@@ -117,7 +117,7 @@ func TestTransaction_UpdateCurrency_Empty(t *testing.T) {
 	err := tx.UpdateCurrency("")
 
 	assert.Error(t, err)
-	assert.Equal(t, "USD", tx.Currency())
+	assert.Equal(t, entities.Currency("USD"), tx.Currency())
 }
 
 func TestTransaction_ToOutboxEvent_Pending_ReturnsNil(t *testing.T) {
