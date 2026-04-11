@@ -7,6 +7,7 @@ import (
 	"notifications/internal/domain"
 	"notifications/internal/domain/entities"
 	"notifications/internal/storage/postgres/models"
+	postgresLib "shared/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -16,14 +17,16 @@ import (
 )
 
 type NotificationRepo struct {
-	pool   *pgxpool.Pool
-	getter *trmpgx.CtxGetter
+	pool    *pgxpool.Pool
+	getter  *trmpgx.CtxGetter
+	factory *postgresLib.SelectFactory[models.NotificationModel]
 }
 
 func NewNotificationRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *NotificationRepo {
 	return &NotificationRepo{
-		pool:   pool,
-		getter: c,
+		pool:    pool,
+		getter:  c,
+		factory: postgresLib.NewSelectFactory[models.NotificationModel](pool, c, "notifications", models.NotificationColumns()),
 	}
 }
 
@@ -58,18 +61,7 @@ func (r *NotificationRepo) Save(ctx context.Context, notification *entities.Noti
 
 func (r *NotificationRepo) GetById(ctx context.Context, id uuid.UUID) (*entities.Notification, error) {
 	op := "NotificationRepo.GetById"
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT notification_id, user_id, title, message, source_id, updated_at, created_at
-			  FROM notifications WHERE notification_id = $1`
-
-	rows, err := conn.Query(ctx, query, id)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	defer rows.Close()
-
-	notificationModel, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.NotificationModel])
+	notificationModel, err := r.factory.GetOne(ctx, "notification_id = $1", id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrNotificationNotFound)

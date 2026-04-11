@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	postgresLib "shared/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -16,14 +17,16 @@ import (
 )
 
 type BankAccountRepo struct {
-	pool   *pgxpool.Pool
-	getter *trmpgx.CtxGetter
+	pool    *pgxpool.Pool
+	getter  *trmpgx.CtxGetter
+	factory *postgresLib.SelectFactory[models.BankAccountModel]
 }
 
 func NewBankAccountRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *BankAccountRepo {
 	return &BankAccountRepo{
-		pool:   pool,
-		getter: c,
+		pool:    pool,
+		getter:  c,
+		factory: postgresLib.NewSelectFactory[models.BankAccountModel](pool, c, "bank_accounts", models.BankAccountColumns()),
 	}
 }
 
@@ -57,20 +60,8 @@ func (r *BankAccountRepo) Save(ctx context.Context, bankAccount *entities.BankAc
 
 func (r *BankAccountRepo) GetById(ctx context.Context, id uuid.UUID) (*entities.BankAccount, error) {
 	op := "BankAccountRepo.GetById"
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	var bankAccountModel models.BankAccountModel
-	query := `SELECT bank_account_id, company_id, name, bic, settlement_account, currency, updated_at, created_at
-			FROM bank_accounts WHERE bank_account_id = $1`
-	err := conn.QueryRow(ctx, query, id).Scan(
-		&bankAccountModel.BankAccountId,
-		&bankAccountModel.CompanyId,
-		&bankAccountModel.Name,
-		&bankAccountModel.Bic,
-		&bankAccountModel.SettlementAccount,
-		&bankAccountModel.Currency,
-		&bankAccountModel.UpdatedAt,
-		&bankAccountModel.CreatedAt,
-	)
+
+	bankAccountModel, err := r.factory.GetOne(ctx, "bank_account_id = $1", id)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -85,18 +76,7 @@ func (r *BankAccountRepo) GetById(ctx context.Context, id uuid.UUID) (*entities.
 func (r *BankAccountRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.BankAccount, error) {
 	op := "AccountRepo.GetByCompanyId"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT bank_account_id, company_id, name, bic, settlement_account, currency, updated_at, created_at
-			  FROM bank_accounts WHERE company_id = $1;`
-
-	rows, err := conn.Query(ctx, query, companyId)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	defer rows.Close()
-
-	bankAccounts, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.BankAccountModel])
+	bankAccounts, err := r.factory.List(ctx, "company_id = $1", companyId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

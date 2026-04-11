@@ -32,3 +32,15 @@ func ToAccountModel(en *entities.Account) *AccountModel {
 		UpdatedAt: en.UpdatedAt(),
 	}
 }
+
+func AccountColumns() []string {
+	return []string{
+		"account_id",
+		"company_id",
+		"balance",
+		"currency",
+		"status",
+		"created_at",
+		"updated_at",
+	}
+}

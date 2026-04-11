@@ -43,3 +43,16 @@ func ToUserModel(user *entities.User) *UserModel {
 		UpdatedAt:    user.UpdatedAt(),
 	}
 }
+
+func UserColumns() []string {
+	return []string{
+		"user_id",
+		"company_id",
+		"login",
+		"email",
+		"password_hash",
+		"role",
+		"updated_at",
+		"created_at",
+	}
+}

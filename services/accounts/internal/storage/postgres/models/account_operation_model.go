@@ -43,3 +43,16 @@ func ToAccountOperationModel(a *entities.AccountOperation) *AccountOperationMode
 		UpdatedAt:       a.UpdatedAt(),
 	}
 }
+
+func AccountOperationColumns() []string {
+	return []string{
+		"operation_id",
+		"account_id",
+		"transaction_id",
+		"operation_type",
+		"operation_status",
+		"amount",
+		"updated_at",
+		"created_at",
+	}
+}

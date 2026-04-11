@@ -28,3 +28,13 @@ func ToCompanyModel(in *entities.Company) *CompanyModel {
 		UpdatedAt:  in.UpdatedAt(),
 	}
 }
+
+func CompanyColumns() []string {
+	return []string{
+		"company_id",
+		"name",
+		"invite_code",
+		"updated_at",
+		"created_at",
+	}
+}

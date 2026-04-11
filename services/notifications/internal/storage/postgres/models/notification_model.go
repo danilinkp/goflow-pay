@@ -32,3 +32,15 @@ func ToNotificationModel(in *entities.Notification) *NotificationModel {
 		UpdatedAt:      in.UpdatedAt(),
 	}
 }
+
+func NotificationColumns() []string {
+	return []string{
+		"notification_id",
+		"user_id",
+		"title",
+		"message",
+		"source_id",
+		"updated_at",
+		"created_at",
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	postgresLib "shared/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -16,14 +17,16 @@ import (
 )
 
 type AccountOperationRepo struct {
-	pool   *pgxpool.Pool
-	getter *trmpgx.CtxGetter
+	pool    *pgxpool.Pool
+	getter  *trmpgx.CtxGetter
+	factory *postgresLib.SelectFactory[models.AccountOperationModel]
 }
 
 func NewAccountOperationRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *AccountOperationRepo {
 	return &AccountOperationRepo{
-		pool:   pool,
-		getter: c,
+		pool:    pool,
+		getter:  c,
+		factory: postgresLib.NewSelectFactory[models.AccountOperationModel](pool, c, "account_operations", models.AccountOperationColumns()),
 	}
 }
 
@@ -57,20 +60,9 @@ func (r *AccountOperationRepo) Save(ctx context.Context, accountOp *entities.Acc
 
 func (r *AccountOperationRepo) GetByTransactionIdAndType(ctx context.Context, transactionId uuid.UUID, operationType string) (*entities.AccountOperation, error) {
 	op := "AccountOperationRepo.GetByTransactionIdAndType"
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	query := `SELECT operation_id, account_id, transaction_id, operation_type, operation_status, amount, updated_at, created_at
- 			  FROM account_operations WHERE transaction_id = $1 AND operation_type = $2`
-	var accountOpModel models.AccountOperationModel
-	err := conn.QueryRow(ctx, query, transactionId, operationType).Scan(
-		&accountOpModel.OperationId,
-		&accountOpModel.AccountId,
-		&accountOpModel.TransactionId,
-		&accountOpModel.OperationType,
-		&accountOpModel.OperationStatus,
-		&accountOpModel.Amount,
-		&accountOpModel.UpdatedAt,
-		&accountOpModel.CreatedAt,
-	)
+
+	accountOpModel, err := r.factory.GetOne(ctx, "transaction_id = $1 AND operation_type = $2", transactionId, operationType)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrAccountOperationNotFound)
@@ -83,17 +75,8 @@ func (r *AccountOperationRepo) GetByTransactionIdAndType(ctx context.Context, tr
 
 func (r *AccountOperationRepo) GetByTransactionId(ctx context.Context, transactionId uuid.UUID) ([]*entities.AccountOperation, error) {
 	op := "AccountOperationRepo.GetByTransactionId"
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	query := `SELECT operation_id, account_id, transaction_id, operation_type, operation_status, amount, updated_at, created_at
-			  FROM account_operations WHERE transaction_id = $1`
 
-	rows, err := conn.Query(ctx, query, transactionId)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	defer rows.Close()
-
-	ops, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.AccountOperationModel])
+	ops, err := r.factory.List(ctx, "transaction_id = $1", transactionId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

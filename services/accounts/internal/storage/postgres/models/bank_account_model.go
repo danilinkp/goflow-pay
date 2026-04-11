@@ -34,3 +34,7 @@ func ToBankAccountModel(from *entities.BankAccount) *BankAccountModel {
 		UpdatedAt:         from.UpdatedAt(),
 	}
 }
+
+func BankAccountColumns() []string {
+	return []string{"bank_account_id", "company_id", "name", "bic", "settlement_account", "currency", "created_at", "updated_at"}
+}

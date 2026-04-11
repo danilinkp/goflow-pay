@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	postgresLib "shared/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -16,14 +17,16 @@ import (
 )
 
 type CompanyRepo struct {
-	pool   *pgxpool.Pool
-	getter *trmpgx.CtxGetter
+	pool    *pgxpool.Pool
+	getter  *trmpgx.CtxGetter
+	factory *postgresLib.SelectFactory[models.CompanyModel]
 }
 
 func NewCompanyRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *CompanyRepo {
 	return &CompanyRepo{
-		pool:   pool,
-		getter: c,
+		pool:    pool,
+		getter:  c,
+		factory: postgresLib.NewSelectFactory[models.CompanyModel](pool, c, "companies", models.CompanyColumns()),
 	}
 }
 
@@ -59,20 +62,7 @@ func (r *CompanyRepo) Save(ctx context.Context, company *entities.Company) error
 func (r *CompanyRepo) GetById(ctx context.Context, companyId uuid.UUID) (*entities.Company, error) {
 	op := "CompanyRepo.GetById"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT company_id, name, invite_code, created_at, updated_at 
-			  FROM companies WHERE company_id = $1;`
-
-	var companyModel models.CompanyModel
-	err := conn.QueryRow(ctx, query, companyId).Scan(
-		&companyModel.CompanyId,
-		&companyModel.Name,
-		&companyModel.InviteCode,
-		&companyModel.CreatedAt,
-		&companyModel.UpdatedAt,
-	)
-
+	companyModel, err := r.factory.GetOne(ctx, "company_id = $1", companyId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrCompanyNotFound)
@@ -85,20 +75,8 @@ func (r *CompanyRepo) GetById(ctx context.Context, companyId uuid.UUID) (*entiti
 
 func (r *CompanyRepo) GetByInviteCode(ctx context.Context, inviteCode string) (*entities.Company, error) {
 	op := "CompanyRepo.GetById"
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
-	query := `SELECT company_id, name, invite_code, created_at, updated_at 
-			  FROM companies WHERE invite_code = $1;`
-
-	var companyModel models.CompanyModel
-	err := conn.QueryRow(ctx, query, inviteCode).Scan(
-		&companyModel.CompanyId,
-		&companyModel.Name,
-		&companyModel.InviteCode,
-		&companyModel.CreatedAt,
-		&companyModel.UpdatedAt,
-	)
-
+	companyModel, err := r.factory.GetOne(ctx, "invite_code = $1", inviteCode)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrCompanyNotFound)

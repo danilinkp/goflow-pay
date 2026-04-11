@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	postgresLib "shared/db/postgres"
 	"time"
 	"transactions/internal/domain"
 	"transactions/internal/domain/entities"
@@ -17,14 +18,16 @@ import (
 )
 
 type TransactionRepo struct {
-	pool   *pgxpool.Pool
-	getter *trmpgx.CtxGetter
+	pool    *pgxpool.Pool
+	getter  *trmpgx.CtxGetter
+	factory *postgresLib.SelectFactory[models.TransactionModel]
 }
 
 func NewTransactionRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *TransactionRepo {
 	return &TransactionRepo{
-		pool:   pool,
-		getter: c,
+		pool:    pool,
+		getter:  c,
+		factory: postgresLib.NewSelectFactory[models.TransactionModel](pool, c, "transactions", models.TransactionColumns()),
 	}
 }
 
@@ -60,22 +63,7 @@ func (r *TransactionRepo) Save(ctx context.Context, transaction *entities.Transa
 func (r *TransactionRepo) GetById(ctx context.Context, id uuid.UUID) (*entities.Transaction, error) {
 	op := "TransactionService.GetById"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	query := `SELECT transaction_id, from_account_id, to_account_id, amount, currency, idempotency_key, status, updated_at, created_at
-			  FROM transactions WHERE transaction_id = $1`
-
-	var txModel models.TransactionModel
-	err := conn.QueryRow(ctx, query, id).Scan(
-		&txModel.TransactionId,
-		&txModel.FromAccountId,
-		&txModel.ToAccountId,
-		&txModel.Amount,
-		&txModel.Currency,
-		&txModel.IdempotencyKey,
-		&txModel.Status,
-		&txModel.UpdatedAt,
-		&txModel.CreatedAt,
-	)
+	txModel, err := r.factory.GetOne(ctx, "transaction_id = $1", id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrTransactionNotFound)
@@ -89,22 +77,7 @@ func (r *TransactionRepo) GetById(ctx context.Context, id uuid.UUID) (*entities.
 func (r *TransactionRepo) GetByIdempotencyKey(ctx context.Context, idempotencyKey string) (*entities.Transaction, error) {
 	op := "TransactionService.GetByIdempotencyKey"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	query := `SELECT transaction_id, from_account_id, to_account_id, amount, currency, idempotency_key, status, updated_at, created_at
-			  FROM transactions WHERE idempotency_key = $1`
-
-	var txModel models.TransactionModel
-	err := conn.QueryRow(ctx, query, idempotencyKey).Scan(
-		&txModel.TransactionId,
-		&txModel.FromAccountId,
-		&txModel.ToAccountId,
-		&txModel.Amount,
-		&txModel.Currency,
-		&txModel.IdempotencyKey,
-		&txModel.Status,
-		&txModel.UpdatedAt,
-		&txModel.CreatedAt,
-	)
+	txModel, err := r.factory.GetOne(ctx, "idempotency_key = $1", idempotencyKey)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrTransactionNotFound)
@@ -118,19 +91,7 @@ func (r *TransactionRepo) GetByIdempotencyKey(ctx context.Context, idempotencyKe
 func (r *TransactionRepo) GetByAccountId(ctx context.Context, accountId uuid.UUID) ([]*entities.Transaction, error) {
 	op := "TransactionService.GetByAccountId"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT transaction_id, from_account_id, to_account_id, amount, currency, idempotency_key, status, updated_at, created_at
-			  FROM transactions WHERE from_account_id = $1 or to_account_id = $1
-			  ORDER BY created_at DESC;`
-
-	rows, err := conn.Query(ctx, query, accountId)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	defer rows.Close()
-
-	transactions, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.TransactionModel])
+	transactions, err := r.factory.List(ctx, "from_account_id = $1 or to_account_id = $1 ORDER BY created_at DESC", accountId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -144,20 +105,8 @@ func (r *TransactionRepo) GetByAccountId(ctx context.Context, accountId uuid.UUI
 func (r *TransactionRepo) GetStale(ctx context.Context, olderThan time.Duration, statuses []string) ([]*entities.Transaction, error) {
 	op := "TransactionService.GetStale"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT transaction_id, from_account_id, to_account_id, amount, currency, idempotency_key, status, updated_at, created_at
-			  FROM transactions WHERE status = ANY($1) AND updated_at < $2;`
-
 	threshold := time.Now().Add(-olderThan)
-
-	rows, err := conn.Query(ctx, query, statuses, threshold)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	defer rows.Close()
-
-	transactions, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.TransactionModel])
+	transactions, err := r.factory.List(ctx, "status = ANY($1) AND updated_at < $2", statuses, threshold)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

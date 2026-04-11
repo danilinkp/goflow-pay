@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	postgresLib "shared/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -16,14 +17,16 @@ import (
 )
 
 type UserRepo struct {
-	pool   *pgxpool.Pool
-	getter *trmpgx.CtxGetter
+	pool    *pgxpool.Pool
+	getter  *trmpgx.CtxGetter
+	factory *postgresLib.SelectFactory[models.UserModel]
 }
 
 func NewUserRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *UserRepo {
 	return &UserRepo{
-		pool:   pool,
-		getter: c,
+		pool:    pool,
+		getter:  c,
+		factory: postgresLib.NewSelectFactory[models.UserModel](pool, c, "users", models.UserColumns()),
 	}
 }
 
@@ -61,23 +64,7 @@ func (r *UserRepo) Save(ctx context.Context, user *entities.User) error {
 func (r *UserRepo) GetById(ctx context.Context, userId uuid.UUID) (*entities.User, error) {
 	op := "UserRepo.GetById"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT user_id, company_id, login, email, password_hash, role, created_at, updated_at 
-			  FROM users WHERE id = $1;`
-
-	var user models.UserModel
-	err := conn.QueryRow(ctx, query, userId).Scan(
-		&user.UserId,
-		&user.CompanyId,
-		&user.Login,
-		&user.Email,
-		&user.Role,
-		&user.PasswordHash,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
+	user, err := r.factory.GetOne(ctx, "user_id = $1", userId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
@@ -91,23 +78,7 @@ func (r *UserRepo) GetById(ctx context.Context, userId uuid.UUID) (*entities.Use
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
 	op := "UserRepo.GetByEmail"
 
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT user_id, company_id, login, email, password_hash, role, created_at, updated_at 
-			  FROM users WHERE email = $1;`
-
-	var user models.UserModel
-	err := conn.QueryRow(ctx, query, email).Scan(
-		&user.UserId,
-		&user.CompanyId,
-		&user.Login,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Role,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
+	user, err := r.factory.GetOne(ctx, "email = $1", email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
@@ -120,18 +91,7 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*entities.User
 
 func (r *UserRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error) {
 	op := "UserRepo.GetByCompanyId"
-
-	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-
-	query := `SELECT user_id, company_id, login, email, password_hash, role, created_at, updated_at from users WHERE company_id = $1;`
-
-	rows, err := conn.Query(ctx, query, companyId)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	defer rows.Close()
-
-	users, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.UserModel])
+	users, err := r.factory.List(ctx, "company_id = $1", companyId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

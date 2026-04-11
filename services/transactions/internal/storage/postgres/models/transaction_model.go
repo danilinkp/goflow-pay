@@ -46,3 +46,17 @@ func ToTransactionModel(transaction *entities.Transaction) *TransactionModel {
 		UpdatedAt:      transaction.UpdatedAt(),
 	}
 }
+
+func TransactionColumns() []string {
+	return []string{
+		"transaction_id",
+		"from_account_id",
+		"to_account_id",
+		"amount",
+		"currency",
+		"idempotency_key",
+		"status",
+		"updated_at",
+		"created_at",
+	}
+}

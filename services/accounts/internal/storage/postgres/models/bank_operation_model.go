@@ -49,3 +49,18 @@ func ToBankOperationModel(bankOperation *entities.BankOperation) *BankOperationM
 		UpdatedAt:       bankOperation.UpdatedAt(),
 	}
 }
+
+func BankOperationColumns() []string {
+	return []string{
+		"bank_operation_id",
+		"account_id",
+		"bank_account_id",
+		"operation_type",
+		"operation_status",
+		"amount",
+		"idempotency_key",
+		"external_id",
+		"updated_at",
+		"created_at",
+	}
+}
