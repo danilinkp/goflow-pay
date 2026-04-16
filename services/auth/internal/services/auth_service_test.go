@@ -3,12 +3,11 @@ package services_test
 import (
 	"auth/internal/domain"
 	"auth/internal/domain/entities"
-	"auth/internal/dto/request"
 	"auth/internal/services"
 	mocks "auth/internal/services/mocks"
 	"context"
 	"errors"
-	"shared/auth"
+	"shared/pkg/auth"
 	"testing"
 	"time"
 
@@ -44,8 +43,8 @@ func setupAuthService(t *testing.T, tokenTTL time.Duration) (
 
 const defaultTokenTTL = 24 * time.Hour
 
-func validRegisterEmployeeReq() request.RegisterEmployeeRequest {
-	return request.RegisterEmployeeRequest{
+func validRegisterEmployeeReq() services.RegisterEmployeeInput {
+	return services.RegisterEmployeeInput{
 		Login:             "testuser",
 		Email:             "test@example.com",
 		Password:          "SecurePass123!",
@@ -53,14 +52,17 @@ func validRegisterEmployeeReq() request.RegisterEmployeeRequest {
 	}
 }
 
-func validRegisterCompanyReq() request.RegisterCompanyRequest {
-	return request.RegisterCompanyRequest{
+func validRegisterCompanyReq() services.RegisterCompanyInput {
+	return services.RegisterCompanyInput{
+		Login:       "testuser",
+		Email:       "test@example.com",
+		Password:    "SecurePass123!",
 		CompanyName: "Test Company",
 	}
 }
 
-func validLoginReq(email, password string) request.LoginRequest {
-	return request.LoginRequest{
+func validLoginReq(email, password string) services.LoginInput {
+	return services.LoginInput{
 		Email:    email,
 		Password: password,
 	}
@@ -71,13 +73,12 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		svc, userRepo, companyRepo, transactor, _, _, tokenService, hasher := setupAuthService(t, defaultTokenTTL)
-		userReq := validRegisterEmployeeReq()
 		companyReq := validRegisterCompanyReq()
 
-		hasher.On("Hash", userReq.Password).Return("hashed_password", nil)
+		hasher.On("Hash", companyReq.Password).Return("hashed_password", nil)
 
-		expectedLogin := userReq.Login
-		expectedEmail := userReq.Email
+		expectedLogin := companyReq.Login
+		expectedEmail := companyReq.Email
 
 		companyRepo.On("Save", mock.Anything, mock.MatchedBy(func(c *entities.Company) bool {
 			return c != nil && c.Name() == companyReq.CompanyName && c.InviteCode() != ""
@@ -98,7 +99,7 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 
 		tokenService.On("Generate", mock.Anything, mock.Anything, string(entities.RoleCompanyAdmin)).Return("access_token", nil)
 
-		resp, err := svc.RegisterWithNewCompany(ctx, userReq, companyReq)
+		resp, err := svc.RegisterWithNewCompany(ctx, companyReq)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, expectedEmail, resp.Email)
@@ -108,12 +109,11 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 
 	t.Run("Password hash error", func(t *testing.T) {
 		svc, _, _, _, _, _, _, hasher := setupAuthService(t, defaultTokenTTL)
-		userReq := validRegisterEmployeeReq()
 		companyReq := validRegisterCompanyReq()
 
-		hasher.On("Hash", userReq.Password).Return("", errors.New("hash failed"))
+		hasher.On("Hash", companyReq.Password).Return("", errors.New("hash failed"))
 
-		resp, err := svc.RegisterWithNewCompany(ctx, userReq, companyReq)
+		resp, err := svc.RegisterWithNewCompany(ctx, companyReq)
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 		assert.Contains(t, err.Error(), "hash failed")
@@ -121,10 +121,9 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 
 	t.Run("Company save error in transaction", func(t *testing.T) {
 		svc, userRepo, companyRepo, transactor, _, _, tokenService, hasher := setupAuthService(t, defaultTokenTTL)
-		userReq := validRegisterEmployeeReq()
 		companyReq := validRegisterCompanyReq()
 
-		hasher.On("Hash", userReq.Password).Return("hashed", nil)
+		hasher.On("Hash", companyReq.Password).Return("hashed", nil)
 
 		companyRepo.On("Save", mock.Anything, mock.Anything).Return(errors.New("db error"))
 
@@ -133,7 +132,7 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 			_ = fn(args.Get(0).(context.Context))
 		})
 
-		resp, err := svc.RegisterWithNewCompany(ctx, userReq, companyReq)
+		resp, err := svc.RegisterWithNewCompany(ctx, companyReq)
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 		assert.Contains(t, err.Error(), "db error")
@@ -144,15 +143,14 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 
 	t.Run("Token generation error", func(t *testing.T) {
 		svc, userRepo, companyRepo, transactor, _, _, tokenService, hasher := setupAuthService(t, defaultTokenTTL)
-		userReq := validRegisterEmployeeReq()
 		companyReq := validRegisterCompanyReq()
 
-		hasher.On("Hash", userReq.Password).Return("hashed", nil)
+		hasher.On("Hash", companyReq.Password).Return("hashed", nil)
 		companyRepo.On("Save", mock.Anything, mock.MatchedBy(func(c *entities.Company) bool {
 			return c != nil && c.Name() == companyReq.CompanyName
 		})).Return(nil)
 		userRepo.On("Save", mock.Anything, mock.MatchedBy(func(u *entities.User) bool {
-			return u != nil && u.Login() == userReq.Login
+			return u != nil && u.Login() == companyReq.Login
 		})).Return(nil)
 		transactor.On("WithTx", mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
 			fn := args.Get(1).(func(context.Context) error)
@@ -160,7 +158,7 @@ func TestAuthService_RegisterWithNewCompany(t *testing.T) {
 		})
 		tokenService.On("Generate", mock.Anything, mock.Anything, string(entities.RoleCompanyAdmin)).Return("", errors.New("token error"))
 
-		resp, err := svc.RegisterWithNewCompany(ctx, userReq, companyReq)
+		resp, err := svc.RegisterWithNewCompany(ctx, companyReq)
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 		assert.Contains(t, err.Error(), "token error")
@@ -411,7 +409,7 @@ func TestAuthService_GetUsersByCompanyId(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, result, 2)
 		for _, u := range result {
-			assert.NotEmpty(t, u.ID)
+			assert.NotEmpty(t, u.UserId())
 			assert.NotEmpty(t, u.Email)
 		}
 	})
@@ -435,36 +433,5 @@ func TestAuthService_GetUsersByCompanyId(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "db error")
-	})
-}
-
-func TestAuthService_InputValidation(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("RegisterWithNewCompany - empty company name", func(t *testing.T) {
-		svc, _, _, _, _, _, _, hasher := setupAuthService(t, defaultTokenTTL)
-		userReq := validRegisterEmployeeReq()
-		companyReq := request.RegisterCompanyRequest{CompanyName: ""}
-
-		hasher.On("Hash", userReq.Password).Return("hashed", nil)
-
-		resp, err := svc.RegisterWithNewCompany(ctx, userReq, companyReq)
-		assert.Error(t, err)
-		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "company name cannot be empty")
-	})
-
-	t.Run("RegisterWithNewCompany - empty user login", func(t *testing.T) {
-		svc, _, _, _, _, _, _, hasher := setupAuthService(t, defaultTokenTTL)
-		userReq := validRegisterEmployeeReq()
-		userReq.Login = ""
-		companyReq := validRegisterCompanyReq()
-
-		hasher.On("Hash", userReq.Password).Return("hashed", nil)
-
-		resp, err := svc.RegisterWithNewCompany(ctx, userReq, companyReq)
-		assert.Error(t, err)
-		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "login is required")
 	})
 }

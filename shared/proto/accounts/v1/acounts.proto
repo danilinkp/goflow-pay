@@ -1,0 +1,208 @@
+syntax = "proto3";
+
+package accounts.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "shared/pkg/gen/go/accounts/v1;accountsv1";
+
+service AccountService {
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  rpc SetAccountInActive(SetAccountInActiveRequest) returns (SetAccountInActiveResponse);
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc LinkBankAccount(LinkBankAccountRequest) returns (LinkBankAccountResponse);
+  rpc ReserveWithdraw(ReserveWithdrawRequest) returns (ReserveWithdrawResponse);
+  rpc ReserveDeposit(ReserveDepositRequest) returns (ReserveDepositResponse);
+  rpc ConfirmOperation(ConfirmOperationRequest) returns (ConfirmOperationResponse);
+  rpc CancelOperation(CancelOperationRequest) returns (CancelOperationResponse);
+  rpc MakeBankDeposit(MakeBankDepositRequest) returns (MakeBankDepositResponse);
+  rpc MakeBankWithdrawal(MakeBankWithdrawalRequest) returns (MakeBankWithdrawalResponse);
+  rpc GetAccounts(GetAccountsRequest) returns (GetAccountsResponse);
+  rpc GetBankAccounts(GetBankAccountsRequest) returns (GetBankAccountsResponse);
+  rpc GetCompanyIdByAccountId(GetCompanyIdByAccountIdRequest) returns (GetCompanyIdByAccountIdResponse);
+}
+
+enum AccountStatus {
+  ACCOUNT_STATUS_UNSPECIFIED = 0;
+  ACCOUNT_STATUS_ACTIVE = 1;
+  ACCOUNT_STATUS_INACTIVE = 2;
+}
+
+enum OperationType {
+  OPERATION_TYPE_UNSPECIFIED = 0;
+  OPERATION_TYPE_DEPOSIT = 1;
+  OPERATION_TYPE_WITHDRAWAL = 2;
+}
+
+enum OperationStatus {
+  OPERATION_STATUS_UNSPECIFIED = 0;
+  OPERATION_STATUS_PENDING = 1;
+  OPERATION_STATUS_SUCCESS = 2;
+  OPERATION_STATUS_FAILED = 3;
+}
+
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  CURRENCY_EUR = 1;
+  CURRENCY_USD = 2;
+  CURRENCY_RUB = 3;
+  CURRENCY_CNY = 4;
+}
+
+message Account {
+  string id = 1;
+  string company_id = 2;
+  int64 balance = 3;
+  Currency currency = 4;
+  AccountStatus status = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message BankAccount {
+  string bank_account_id = 1;
+  string company_id = 2;
+  string name = 3;
+  string bic = 4;
+  string settlement_account = 5;
+  Currency currency = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message AccountOperation {
+  string operation_id = 1;
+  string account_id = 2;
+  string transaction_id = 3;
+  OperationType operation_type = 4;
+  OperationStatus operation_status = 5;
+  int64 amount = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message BankOperation {
+  string bank_operation_id = 1;
+  string account_id = 2;
+  string bank_account_id = 3;
+  OperationType operation_type = 4;
+  OperationStatus operation_status = 5;
+  int64 amount = 6;
+  string idempotency_key = 7;
+  string external_id = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message CreateAccountRequest {
+  string company_id = 1;
+  Currency currency = 2;
+}
+
+message CreateAccountResponse {
+  Account account = 1;
+}
+
+message SetAccountInActiveRequest {
+  string account_id = 1;
+}
+
+message SetAccountInActiveResponse {
+  Account account = 1;
+}
+
+message GetBalanceRequest {
+  string account_id = 1;
+}
+
+message GetBalanceResponse {
+  int64 balance = 1;
+}
+
+message LinkBankAccountRequest {
+  string account_id = 1;
+  string bank_id = 2;
+  string company_id = 3;
+  string name = 4;
+  string bic = 5;
+  string settlement_account = 6;
+  Currency currency = 7;
+}
+
+message LinkBankAccountResponse {
+  BankAccount bank_account = 1;
+}
+
+message ReserveWithdrawRequest {
+  string account_id = 1;
+  string tx_id = 2;
+  int64 amount = 3;
+}
+
+message ReserveWithdrawResponse {
+  AccountOperation account_operation = 1;
+}
+
+message ReserveDepositRequest {
+  string account_id = 1;
+  string tx_id = 2;
+  int64 amount = 3;
+}
+
+message ReserveDepositResponse {
+  AccountOperation account_operation = 1;
+}
+
+message ConfirmOperationRequest {
+  string tx_id = 1;
+}
+
+message ConfirmOperationResponse {}
+
+message CancelOperationRequest {
+  string tx_id = 1;
+}
+
+message CancelOperationResponse {}
+
+message MakeBankDepositRequest {
+  string account_id = 1;
+  string bank_account_id = 2;
+  int64 amount = 3;
+  string idempotency_key = 4;
+}
+
+message MakeBankDepositResponse {
+  BankOperation bank_operation = 1;
+}
+
+message MakeBankWithdrawalRequest {
+  string account_id = 1;
+  string bank_account_id = 2;
+  int64 amount = 3;
+  string idempotency_key = 4;
+}
+
+message MakeBankWithdrawalResponse {
+  BankOperation bank_operation = 1;
+}
+
+message GetAccountsRequest {
+  string company_id = 1;
+}
+
+message GetAccountsResponse {
+  repeated Account accounts = 1;
+}
+
+message GetBankAccountsRequest {
+  string company_id = 1;
+}
+
+message GetBankAccountsResponse {
+  repeated BankAccount bank_accounts = 1;
+}
+
+message GetCompanyIdByAccountIdRequest {
+  string account_id = 1;
+}
+
+message GetCompanyIdByAccountIdResponse {
+  string company_id = 1;
+}

@@ -9,6 +9,7 @@ import (
 
 type TransactionModel struct {
 	TransactionId  uuid.UUID `db:"transaction_id"`
+	InitiatorId    uuid.UUID `db:"initiator_id"`
 	FromAccountId  uuid.UUID `db:"from_account_id"`
 	ToAccountId    uuid.UUID `db:"to_account_id"`
 	Amount         int64     `db:"amount"`
@@ -22,6 +23,7 @@ type TransactionModel struct {
 func (m *TransactionModel) ToDomain() *entities.Transaction {
 	return entities.ReconstructTransaction(
 		m.TransactionId,
+		m.InitiatorId,
 		m.FromAccountId,
 		m.ToAccountId,
 		m.Amount,
@@ -36,6 +38,7 @@ func (m *TransactionModel) ToDomain() *entities.Transaction {
 func ToTransactionModel(transaction *entities.Transaction) *TransactionModel {
 	return &TransactionModel{
 		TransactionId:  transaction.TransactionID(),
+		InitiatorId:    transaction.InitiatorId(),
 		FromAccountId:  transaction.FromAccountID(),
 		ToAccountId:    transaction.ToAccountID(),
 		Amount:         transaction.Amount(),
@@ -50,6 +53,7 @@ func ToTransactionModel(transaction *entities.Transaction) *TransactionModel {
 func TransactionColumns() []string {
 	return []string{
 		"transaction_id",
+		"initiator_id",
 		"from_account_id",
 		"to_account_id",
 		"amount",

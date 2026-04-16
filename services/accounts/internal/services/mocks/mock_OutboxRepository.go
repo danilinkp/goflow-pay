@@ -6,7 +6,7 @@ package services
 
 import (
 	"context"
-	"shared/outbox"
+	"shared/pkg/outbox"
 
 	mock "github.com/stretchr/testify/mock"
 )

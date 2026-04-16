@@ -3,7 +3,7 @@ package entities
 import (
 	"encoding/json"
 	"fmt"
-	"shared/outbox"
+	"shared/pkg/outbox"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +13,7 @@ type BankOperation struct {
 	bankOperationId uuid.UUID
 	accountId       uuid.UUID
 	bankAccountId   uuid.UUID
+	initiatorId     uuid.UUID
 	operationType   OperationType
 	operationStatus OperationStatus
 	amount          int64
@@ -22,13 +23,16 @@ type BankOperation struct {
 	updatedAt       time.Time
 }
 
-func NewBankOperation(accountId uuid.UUID, bankAccountId uuid.UUID, operationType OperationType,
+func NewBankOperation(accountId, bankAccountId, initiatorId uuid.UUID, operationType OperationType,
 	operationStatus OperationStatus, amount int64, idempotencyKey string, externalId string) (*BankOperation, error) {
 	if accountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create bank operation")
 	}
 	if bankAccountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: bankAccountId is required", "create bank operation")
+	}
+	if initiatorId == uuid.Nil {
+		return nil, fmt.Errorf("%s: initiatorId is required", "create bank operation")
 	}
 	if !operationType.IsValid() {
 		return nil, fmt.Errorf("%s: invalid operation type %v", "create bank operation", operationType)
@@ -58,12 +62,13 @@ func NewBankOperation(accountId uuid.UUID, bankAccountId uuid.UUID, operationTyp
 	}, nil
 }
 
-func ReconstructBankAccountOperation(bankOperationId, accountId, bankAccountId uuid.UUID, operationType OperationType,
+func ReconstructBankAccountOperation(bankOperationId, accountId, bankAccountId, initiatorId uuid.UUID, operationType OperationType,
 	status OperationStatus, amount int64, idempotencyKey, externalId string, createdAt, updatedAt time.Time) *BankOperation {
 	return &BankOperation{
 		bankOperationId: bankOperationId,
 		accountId:       accountId,
 		bankAccountId:   bankAccountId,
+		initiatorId:     initiatorId,
 		operationType:   operationType,
 		operationStatus: status,
 		amount:          amount,
@@ -77,6 +82,7 @@ func ReconstructBankAccountOperation(bankOperationId, accountId, bankAccountId u
 func (bo *BankOperation) BankOperationId() uuid.UUID       { return bo.bankOperationId }
 func (bo *BankOperation) AccountId() uuid.UUID             { return bo.accountId }
 func (bo *BankOperation) BankAccountId() uuid.UUID         { return bo.bankAccountId }
+func (bo *BankOperation) InitiatorId() uuid.UUID           { return bo.initiatorId }
 func (bo *BankOperation) OperationType() OperationType     { return bo.operationType }
 func (bo *BankOperation) OperationStatus() OperationStatus { return bo.operationStatus }
 func (bo *BankOperation) Amount() int64                    { return bo.amount }
@@ -125,6 +131,7 @@ func (bo *BankOperation) ToOutboxEvent() (*outbox.Event, error) {
 		OperationID   uuid.UUID `json:"operation_id"`
 		AccountID     uuid.UUID `json:"account_id"`
 		BankAccountID uuid.UUID `json:"bank_account_id"`
+		InitiatorId   uuid.UUID `json:"initiator_id"`
 		Type          string    `json:"type"`
 		Status        string    `json:"status"`
 		Amount        int64     `json:"amount"`
@@ -134,6 +141,7 @@ func (bo *BankOperation) ToOutboxEvent() (*outbox.Event, error) {
 		OperationID:   bo.bankOperationId,
 		AccountID:     bo.accountId,
 		BankAccountID: bo.bankAccountId,
+		InitiatorId:   bo.initiatorId,
 		Type:          string(bo.operationType),
 		Status:        string(bo.operationStatus),
 		Amount:        bo.amount,

@@ -2,8 +2,8 @@ package jwt
 
 import (
 	"crypto/rsa"
-	"crypto/x509"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,11 +22,17 @@ type jwtClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewJWTService(privateKeyPEM []byte, accessTokenTTL time.Duration) (*JWTService, error) {
-	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyPEM)
+func NewJWTService(keyPath string, accessTokenTTL time.Duration) (*JWTService, error) {
+	pemBytes, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("read key file: %w", err)
+	}
+
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemBytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse private key: %w", err)
 	}
+
 	return &JWTService{privateKey: privateKey, accessTokenTTL: accessTokenTTL}, nil
 }
 
@@ -46,6 +52,6 @@ func (s *JWTService) Generate(userId uuid.UUID, companyId uuid.UUID, role string
 	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(s.privateKey)
 }
 
-func (s *JWTService) PublicKeyPEM() ([]byte, error) {
-	return x509.MarshalPKIXPublicKey(&s.privateKey.PublicKey)
+func (s *JWTService) PublicKey() *rsa.PublicKey {
+	return &s.privateKey.PublicKey
 }

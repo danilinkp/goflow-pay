@@ -1,0 +1,14 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: shared/pkg/gen/go
+plugins:
+  - local: protoc-gen-go
+    out: ../pkg/gen/go
+    opt: paths=source_relative
+    
+  - local: protoc-gen-go-grpc
+    out: ../pkg/gen/go
+    opt: paths=source_relative

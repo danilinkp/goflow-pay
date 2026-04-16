@@ -3,12 +3,11 @@ package services
 import (
 	"auth/internal/domain"
 	"auth/internal/domain/entities"
-	"auth/internal/dto/request"
-	"auth/internal/dto/response"
 	"context"
 	"errors"
 	"fmt"
-	"shared/auth"
+	"log/slog"
+	"shared/pkg/auth"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,7 +61,7 @@ type AuthService struct {
 	validator           TokenValidator
 	tokenService        TokenService
 	hasher              PasswordHasher
-	tokenTTL            time.Duration
+	logger              *slog.Logger
 }
 
 func NewAuthService(
@@ -73,7 +72,7 @@ func NewAuthService(
 	tokenService TokenService,
 	validator TokenValidator,
 	hasher PasswordHasher,
-	tokenTTL time.Duration,
+	logger *slog.Logger,
 ) *AuthService {
 	return &AuthService{
 		userRepository:      userRepo,
@@ -83,24 +82,24 @@ func NewAuthService(
 		validator:           validator,
 		tokenService:        tokenService,
 		hasher:              hasher,
-		tokenTTL:            tokenTTL,
+		logger:              logger,
 	}
 }
 
-func (a *AuthService) RegisterWithNewCompany(ctx context.Context, userRequest request.RegisterEmployeeRequest, companyRequest request.RegisterCompanyRequest) (*response.AuthResponse, error) {
+func (a *AuthService) RegisterWithNewCompany(ctx context.Context, in RegisterCompanyInput) (*AuthOutput, error) {
 	op := "Auth.RegisterWithNewCompany"
 
-	passwordHash, err := a.hasher.Hash(userRequest.Password)
+	passwordHash, err := a.hasher.Hash(in.Password)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	company, err := entities.NewCompany(companyRequest.CompanyName)
+	company, err := entities.NewCompany(in.CompanyName)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	user, err := entities.NewUser(company.CompanyId(), userRequest.Login, userRequest.Email, passwordHash, entities.RoleCompanyAdmin)
+	user, err := entities.NewUser(company.CompanyId(), in.Login, in.Email, passwordHash, entities.RoleCompanyAdmin)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -120,7 +119,7 @@ func (a *AuthService) RegisterWithNewCompany(ctx context.Context, userRequest re
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &response.AuthResponse{
+	return &AuthOutput{
 		UserID:    user.UserId(),
 		CompanyID: user.CompanyId(),
 		Email:     user.Email(),
@@ -129,7 +128,7 @@ func (a *AuthService) RegisterWithNewCompany(ctx context.Context, userRequest re
 	}, nil
 }
 
-func (a *AuthService) RegisterWithExistingCompany(ctx context.Context, userRequest request.RegisterEmployeeRequest) (*response.AuthResponse, error) {
+func (a *AuthService) RegisterWithExistingCompany(ctx context.Context, userRequest RegisterEmployeeInput) (*AuthOutput, error) {
 	op := "Auth.RegisterWithExistingCompany"
 
 	company, err := a.companyRepository.GetByInviteCode(ctx, userRequest.CompanyInviteCode)
@@ -160,7 +159,7 @@ func (a *AuthService) RegisterWithExistingCompany(ctx context.Context, userReque
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &response.AuthResponse{
+	return &AuthOutput{
 		UserID:    user.UserId(),
 		CompanyID: user.CompanyId(),
 		Email:     user.Email(),
@@ -169,7 +168,7 @@ func (a *AuthService) RegisterWithExistingCompany(ctx context.Context, userReque
 	}, nil
 }
 
-func (a *AuthService) Login(ctx context.Context, request request.LoginRequest) (*response.AuthResponse, error) {
+func (a *AuthService) Login(ctx context.Context, request LoginInput) (*AuthOutput, error) {
 	op := "Auth.Login"
 	user, err := a.userRepository.GetByEmail(ctx, request.Email)
 	if err != nil {
@@ -188,7 +187,7 @@ func (a *AuthService) Login(ctx context.Context, request request.LoginRequest) (
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &response.AuthResponse{
+	return &AuthOutput{
 		UserID:    user.UserId(),
 		CompanyID: user.CompanyId(),
 		Email:     user.Email(),
@@ -237,7 +236,7 @@ func (a *AuthService) IsTokenValid(ctx context.Context, token string) (*auth.Acc
 	return claims, nil
 }
 
-func (a *AuthService) GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*response.UserResponse, error) {
+func (a *AuthService) GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error) {
 	op := "Auth.GetUsersByCompanyId"
 
 	users, err := a.userRepository.GetByCompanyId(ctx, companyId)
@@ -245,13 +244,16 @@ func (a *AuthService) GetUsersByCompanyId(ctx context.Context, companyId uuid.UU
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	result := make([]*response.UserResponse, 0, len(users))
-	for _, u := range users {
-		result = append(result, &response.UserResponse{
-			ID:    u.UserId(),
-			Email: u.Email(),
-		})
+	return users, nil
+}
+
+func (a *AuthService) GetUserById(ctx context.Context, userId uuid.UUID) (*entities.User, error) {
+	op := "Auth.GetUserById"
+
+	user, err := a.userRepository.GetById(ctx, userId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return result, nil
+	return user, nil
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"auth/internal/infrastructure/db"
 	"auth/internal/storage/redis"
+	db "shared/pkg/db/redis"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +26,7 @@ func TestBlackListRepository_Integration(t *testing.T) {
 	connStr, err := redisContainer.ConnectionString(ctx)
 	require.NoError(t, err)
 
-	client, err := db.NewRedisClient(ctx, connStr)
+	client, err := db.NewRedisClient(ctx, connStr, "", 0, 0, 0)
 	require.NoError(t, err)
 
 	repo := redis.NewBlackListRepository(client)

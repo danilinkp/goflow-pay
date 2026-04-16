@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package transactions.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "shared/pkg/gen/go/transactions/v1;transactionsv1";
+
+service TransactionService {
+  rpc Transfer(TransferRequest) returns (TransferResponse);
+  rpc GetAllTransactions(GetAllTransactionsRequest) returns (GetAllTransactionsResponse);
+  rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse);
+}
+
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  CURRENCY_EUR = 1;
+  CURRENCY_USD = 2;
+  CURRENCY_RUB = 3;
+  CURRENCY_CNY = 4;
+}
+
+enum TransactionStatus {
+  TRANSACTION_STATUS_UNSPECIFIED = 0;
+  TRANSACTION_STATUS_PENDING = 1;
+  TRANSACTION_STATUS_SUCCESS = 2;
+  TRANSACTION_STATUS_FAILED = 3;
+  TRANSACTION_STATUS_PROCESSING = 4;
+}
+
+message Transaction {
+  string transaction_id = 1;
+  string initiator_id = 2;
+  string from_account_id = 3;
+  string to_account_id = 4;
+  int64 amount = 5;
+  Currency currency = 6;
+  string idempotency_key = 7;
+  TransactionStatus transaction_status = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message TransferRequest {
+  string from_account_id = 1;
+  string to_account_id = 2;
+  int64 amount = 3;
+  Currency currency = 4;
+  string idempotency_key = 5;
+}
+
+message TransferResponse {
+  Transaction transaction = 1;
+}
+
+message GetAllTransactionsRequest {
+  string account_id = 1;
+}
+
+message GetAllTransactionsResponse {
+  repeated Transaction transactions = 1;
+}
+
+message GetTransactionRequest {
+  string tx_id = 1;
+}
+
+message GetTransactionResponse {
+  Transaction transaction = 1;
+}

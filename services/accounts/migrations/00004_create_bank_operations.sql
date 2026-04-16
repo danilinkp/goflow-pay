@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS bank_operations
     bank_operation_id UUID PRIMARY KEY,
     account_id        UUID             NOT NULL REFERENCES accounts (account_id),
     bank_account_id   UUID             NOT NULL REFERENCES bank_accounts (bank_account_id),
+    initiator_id      UUID             NOT NULL,
     operation_type    operation_type   NOT NULL,
     operation_status  operation_status NOT NULL DEFAULT 'pending',
     amount            BIGINT           NOT NULL,

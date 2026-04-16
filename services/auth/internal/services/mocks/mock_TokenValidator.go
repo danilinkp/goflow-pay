@@ -5,7 +5,7 @@
 package services
 
 import (
-	"shared/auth"
+	"shared/pkg/auth"
 
 	mock "github.com/stretchr/testify/mock"
 )

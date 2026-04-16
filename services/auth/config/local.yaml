@@ -1,0 +1,28 @@
+env: "local"
+db:
+  host: ${DATABASE_HOST}
+  port: ${DATABASE_PORT}
+  user: ${DATABASE_USER}
+  password: ${DATABASE_PASSWORD}
+  name: ${DATABASE_NAME}
+  ssl_mode: ${DATABASE_SSL_MODE}
+  connect_timeout: ${DATABASE_CONNECTION_TIMEOUT}
+  max_retries_time: ${DATABASE_MAX_RETRIES_TIME}
+
+redis:
+  host: ${REDIS_HOST}
+  port: ${REDIS_PORT}
+  password: ${REDIS_PASSWORD}
+  db: 0
+  read_timeout: 1s
+  write_timeout: 1s
+
+grpc:
+  port: 50051
+  timeout: 5s
+
+jwt:
+  private_key_path: ${JWT_PRIVATE_KEY_PATH}
+  ttl: ${JWT_TTL}
+
+hash_cost: 10

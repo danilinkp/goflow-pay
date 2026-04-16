@@ -3,7 +3,7 @@ package entities
 import (
 	"encoding/json"
 	"fmt"
-	"shared/outbox"
+	"shared/pkg/outbox"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,8 +18,8 @@ const (
 	ProcessingStatus TransactionStatus = "processing"
 )
 
-func (t TransactionStatus) String() string {
-	return string(t)
+func (s TransactionStatus) String() string {
+	return string(s)
 }
 
 func (s TransactionStatus) IsValid() bool {
@@ -28,6 +28,7 @@ func (s TransactionStatus) IsValid() bool {
 
 type Transaction struct {
 	transactionId  uuid.UUID
+	initiatorId    uuid.UUID
 	fromAccountId  uuid.UUID
 	toAccountId    uuid.UUID
 	amount         int64
@@ -38,7 +39,10 @@ type Transaction struct {
 	updatedAt      time.Time
 }
 
-func NewTransaction(fromAccountId uuid.UUID, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string) (*Transaction, error) {
+func NewTransaction(initiatorId, fromAccountId, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string) (*Transaction, error) {
+	if initiatorId == uuid.Nil {
+		return nil, fmt.Errorf("transaction initiatorId is required")
+	}
 	if fromAccountId == uuid.Nil || toAccountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create transaction")
 	}
@@ -72,9 +76,10 @@ func NewTransaction(fromAccountId uuid.UUID, toAccountId uuid.UUID, amount int64
 	}, nil
 }
 
-func ReconstructTransaction(transactionId, fromAccountId, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string, createdAt, updatedAt time.Time) *Transaction {
+func ReconstructTransaction(transactionId, initiatorId, fromAccountId, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string, createdAt, updatedAt time.Time) *Transaction {
 	return &Transaction{
 		transactionId:  transactionId,
+		initiatorId:    initiatorId,
 		fromAccountId:  fromAccountId,
 		toAccountId:    toAccountId,
 		amount:         amount,
@@ -87,6 +92,7 @@ func ReconstructTransaction(transactionId, fromAccountId, toAccountId uuid.UUID,
 }
 
 func (t *Transaction) TransactionID() uuid.UUID  { return t.transactionId }
+func (t *Transaction) InitiatorId() uuid.UUID    { return t.initiatorId }
 func (t *Transaction) FromAccountID() uuid.UUID  { return t.fromAccountId }
 func (t *Transaction) ToAccountID() uuid.UUID    { return t.toAccountId }
 func (t *Transaction) Amount() int64             { return t.amount }
@@ -124,6 +130,7 @@ func (t *Transaction) ToOutboxEvent() (*outbox.Event, error) {
 
 	payload, err := json.Marshal(struct {
 		TransactionID uuid.UUID `json:"transaction_id"`
+		InitiatorID   uuid.UUID `json:"initiator_id"`
 		FromAccountID uuid.UUID `json:"from_account_id"`
 		ToAccountID   uuid.UUID `json:"to_account_id"`
 		Amount        int64     `json:"amount"`
@@ -132,6 +139,7 @@ func (t *Transaction) ToOutboxEvent() (*outbox.Event, error) {
 		CreatedAt     time.Time `json:"created_at"`
 	}{
 		TransactionID: t.transactionId,
+		InitiatorID:   t.initiatorId,
 		FromAccountID: t.fromAccountId,
 		ToAccountID:   t.toAccountId,
 		Amount:        t.amount,
