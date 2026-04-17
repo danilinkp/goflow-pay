@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"shared/pkg/outbox"
 	"time"
 	"transactions/internal/domain/entities"
@@ -39,14 +40,16 @@ type TransactionService struct {
 	transactionRepository TransactionRepository
 	outboxRepository      OutboxRepository
 	transactor            Transactor
+	log                   *slog.Logger
 }
 
-func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor) *TransactionService {
+func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor, log *slog.Logger) *TransactionService {
 	return &TransactionService{
 		accountClient:         client,
 		transactionRepository: transactionRepository,
 		outboxRepository:      outboxRepository,
 		transactor:            transactor,
+		log:                   log,
 	}
 }
 

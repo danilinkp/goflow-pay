@@ -3,6 +3,8 @@ package notificationskafka
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"notifications/internal/services"
 	"shared/pkg/outbox"
@@ -35,87 +37,89 @@ func NewNotificationConsumer(brokers []string, topic string, service *services.N
 	}
 }
 
-func (c *NotificationConsumer) Read(ctx context.Context) error {
+func (c *NotificationConsumer) Run(ctx context.Context) error {
 	defer c.reader.Close()
 
 	for {
 		m, err := c.reader.FetchMessage(ctx)
 		if err != nil {
-			return err
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil
+			}
+			return fmt.Errorf("fetch message: %w", err)
 		}
 
-		var event outbox.Event
-		if err = json.Unmarshal(m.Value, &event); err != nil {
-			c.logger.Error("invalid event format", slog.Any("payload", m.Value))
-			c.reader.CommitMessages(ctx, m)
-			continue
-		}
+		eventType := extractEventType(m.Headers)
 
-		err = c.dispatch(ctx, event)
-		if err != nil {
+		if err = c.dispatch(ctx, eventType, m.Value); err != nil {
 			c.logger.Error("failed to dispatch event",
-				slog.String("event_id", event.ID.String()),
+				slog.String("event_type", string(eventType)),
 				slog.String("error", err.Error()),
 			)
-			time.Sleep(2 * time.Second)
 			continue
 		}
 
 		if err = c.reader.CommitMessages(ctx, m); err != nil {
-			return err
+			return fmt.Errorf("commit message: %w", err)
 		}
 	}
 }
 
-func (c *NotificationConsumer) dispatch(ctx context.Context, event outbox.Event) error {
-	switch event.EventType {
+func extractEventType(headers []kafka.Header) outbox.EventType {
+	for _, h := range headers {
+		if h.Key == "event_type" {
+			return outbox.EventType(h.Value)
+		}
+	}
+	return ""
+}
+
+func (c *NotificationConsumer) dispatch(ctx context.Context, eventType outbox.EventType, payload []byte) error {
+	switch eventType {
 	case outbox.EventTransferCompleted:
 		var p TransferPayload
-		err := json.Unmarshal(event.Payload, &p)
-		if err != nil {
-			return err
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fmt.Errorf("unmarshal TransferPayload: %w", err)
 		}
 		return c.service.NotifyTransferCompleted(ctx, p.InitiatorID, p.TransactionID, p.Amount, p.Currency)
 
 	case outbox.EventTransferFailed:
 		var p TransferPayload
-		err := json.Unmarshal(event.Payload, &p)
-		if err != nil {
-			return err
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fmt.Errorf("unmarshal TransferPayload: %w", err)
 		}
 		return c.service.NotifyTransferFailed(ctx, p.InitiatorID, p.TransactionID, p.Amount, p.Currency)
 
 	case outbox.EventBankDepositCompleted:
 		var p BankOpPayload
-		err := json.Unmarshal(event.Payload, &p)
-		if err != nil {
-			return err
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fmt.Errorf("unmarshal BankOpPayload: %w", err)
 		}
 		return c.service.NotifyBankDepositCompleted(ctx, p.InitiatorID, p.AccountID, p.Amount, p.Currency)
 
 	case outbox.EventBankDepositFailed:
 		var p BankOpPayload
-		err := json.Unmarshal(event.Payload, &p)
-		if err != nil {
-			return err
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fmt.Errorf("unmarshal BankOpPayload: %w", err)
 		}
 		return c.service.NotifyBankDepositFailed(ctx, p.InitiatorID, p.AccountID, p.Amount, p.Currency)
 
 	case outbox.EventBankWithdrawalCompleted:
 		var p BankOpPayload
-		err := json.Unmarshal(event.Payload, &p)
-		if err != nil {
-			return err
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fmt.Errorf("unmarshal BankOpPayload: %w", err)
 		}
 		return c.service.NotifyBankWithdrawalCompleted(ctx, p.InitiatorID, p.AccountID, p.Amount, p.Currency)
 
 	case outbox.EventBankWithdrawalFailed:
 		var p BankOpPayload
-		err := json.Unmarshal(event.Payload, &p)
-		if err != nil {
-			return err
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fmt.Errorf("unmarshal BankOpPayload: %w", err)
 		}
 		return c.service.NotifyBankWithdrawalFailed(ctx, p.InitiatorID, p.AccountID, p.Amount, p.Currency)
+
+	default:
+		c.logger.Warn("unknown event type, skipping", slog.String("event_type", string(eventType)))
+		return nil
 	}
-	return nil
 }

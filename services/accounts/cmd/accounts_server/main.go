@@ -1,23 +1,23 @@
 package main
 
 import (
-	grpcapp "auth/internal/app/grpc"
-	"auth/internal/config"
-	"auth/internal/infrastructure/jwt"
-	"auth/internal/infrastructure/security"
-	"auth/internal/services"
-	"auth/internal/storage/postgres"
-	"auth/internal/storage/redis"
-	"auth/migrations"
+	grpcapp "accounts/internal/app/grpc"
+	"accounts/internal/config"
+	"accounts/internal/infrastructure/bank"
+	"accounts/internal/services"
+	"accounts/internal/storage/postgres"
+	"accounts/migrations"
 	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	postgresPool "shared/pkg/db/postgres"
-	redisdb "shared/pkg/db/redis"
-	jwtValidator "shared/pkg/jwt"
 	"shared/pkg/logger/slogpretty"
+	"shared/pkg/outbox"
+	"shared/pkg/outbox/publisher/kafka"
+	outboxRepository "shared/pkg/outbox/repository/postgres"
 	postgresTrm "shared/pkg/transactor/postgres"
+	"sync"
 	"syscall"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
@@ -34,7 +34,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	log := setupLogger(cfg.Env)
-	log.Info("starting auth service", "env", cfg.Env)
+	log.Info("starting account service", "env", cfg.Env)
 
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stopApp()
@@ -52,35 +52,43 @@ func main() {
 	}
 	log.Info("migrations applied")
 
-	redisClient, err := redisdb.NewRedisClient(ctx, cfg.Redis.Addr(), cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.ReadTimeout, cfg.Redis.WriteTimeout)
-	if err != nil {
-		log.Error("failed to connect to redis", "err", err)
-		os.Exit(1)
-	}
-
-	jwtManager, err := jwt.NewJWTService(cfg.JWT.PrivateKeyPath, cfg.JWT.TTL)
-	if err != nil {
-		log.Error("failed to create JWT manager", "err", err)
-		os.Exit(1)
-	}
-	validator := jwtValidator.NewValidatorFromKey(jwtManager.PublicKey())
-
-	hasher := security.NewBcryptHasher(cfg.HashCost)
-
 	trManager := manager.Must(trmpgx.NewDefaultFactory(pool))
 	trmAdapter := postgresTrm.NewTransactionAdapter(trManager)
 
 	getter := trmpgx.DefaultCtxGetter
-	userRepo := postgres.NewUserRepo(pool, getter)
-	companyRepo := postgres.NewCompanyRepo(pool, getter)
-	blackListRepo := redis.NewBlackListRepository(redisClient)
+	accountRepo := postgres.NewAccountRepo(pool, getter)
+	bankAccountRepo := postgres.NewBankAccountRepo(pool, getter)
+	accountOperationRepo := postgres.NewAccountOperationRepo(pool, getter)
+	bankOperationRepo := postgres.NewBankOperationRepo(pool, getter)
+	outboxRepo := outboxRepository.NewOutboxRepo(pool, getter)
 
-	authService := services.NewAuthService(userRepo, companyRepo, trmAdapter, blackListRepo, jwtManager, validator, hasher, log)
+	bankGateway := bank.NewMockBankGateway(cfg.BankGateway.FailureRate)
 
-	gRPCServer := grpcapp.NewAuthApp(log, authService, cfg.GRPCServer.Port)
+	accountsService := services.NewAccountService(accountRepo, accountOperationRepo, bankAccountRepo, bankOperationRepo, bankGateway, outboxRepo, trmAdapter, log)
+
+	pub := kafka.NewPublisher(cfg.Kafka.Brokers())
+	defer func() {
+		if closeErr := pub.Close(); closeErr != nil {
+			log.Error("failed to close kafka publisher", "err", closeErr)
+		}
+	}()
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		worker := outbox.NewWorker(log, outboxRepo, pub, cfg.Outbox.Interval, cfg.Outbox.BatchSize)
+		worker.Run(ctx)
+		log.Info("outbox worker stopped")
+	}()
+
+	gRPCServer := grpcapp.NewAccountsApp(log, accountsService, cfg.GRPCServer.Port)
 
 	errChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err = gRPCServer.Run(); err != nil {
 			errChan <- err
 		}
@@ -91,9 +99,11 @@ func main() {
 		log.Info("stopping application...")
 	case err = <-errChan:
 		log.Error("grpc server failed", "err", err)
+		stopApp()
 	}
 
 	gRPCServer.Stop()
+	wg.Wait()
 	log.Info("gracefully stopped")
 }
 

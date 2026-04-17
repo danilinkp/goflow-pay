@@ -16,7 +16,7 @@ type Config struct {
 	DB         DB          `yaml:"db"`
 	Redis      RedisConfig `yaml:"redis"`
 	JWT        JWT         `yaml:"jwt"`
-	HashCost   int         `yaml:"hash_cost" env:"HASH_COST" env-default:"10"`
+	HashCost   int         `yaml:"hash_cost" env-default:"10"`
 }
 
 type GRPCServer struct {
@@ -25,14 +25,14 @@ type GRPCServer struct {
 }
 
 type DB struct {
-	Host           string        `env:"DATABASE_HOST" yaml:"host"`
-	Port           string        `env:"DATABASE_PORT" yaml:"port"`
-	User           string        `env:"DATABASE_USER" yaml:"user"`
-	Password       string        `env:"DATABASE_PASSWORD" yaml:"password"`
-	Name           string        `env:"DATABASE_NAME" yaml:"name"`
-	SSLMode        string        `env:"DATABASE_SSL_MODE" yaml:"ssl_mode"`
-	ConnectTimeout time.Duration `env:"DATABASE_CONNECTION_TIMEOUT" yaml:"connect_timeout" env-default:"5s"`
-	MaxRetriesTime time.Duration `env:"DATABASE_MAX_RETRIES_TIME" yaml:"max_retries_time" env-default:"30s"`
+	Host           string        `yaml:"host"`
+	Port           string        `yaml:"port"`
+	User           string        `env:"DATABASE_USER"`
+	Password       string        `env:"DATABASE_PASSWORD"`
+	Name           string        `yaml:"name"`
+	SSLMode        string        `yaml:"ssl_mode"`
+	ConnectTimeout time.Duration `yaml:"connect_timeout" env-default:"5s"`
+	MaxRetriesTime time.Duration `yaml:"max_retries_time" env-default:"30s"`
 }
 
 func (d DB) DSN() string {
@@ -43,9 +43,9 @@ func (d DB) DSN() string {
 }
 
 type RedisConfig struct {
-	Host         string        `yaml:"host" env:"REDIS_HOST"`
-	Port         int           `yaml:"port" env:"REDIS_PORT"`
-	Password     string        `yaml:"password" env:"REDIS_PASSWORD"`
+	Host         string        `yaml:"host"`
+	Port         int           `yaml:"port"`
+	Password     string        `env:"REDIS_PASSWORD"`
 	DB           int           `yaml:"db" env-default:"0"`
 	ReadTimeout  time.Duration `yaml:"read_timeout" env-default:"1s"`
 	WriteTimeout time.Duration `yaml:"write_timeout" env-default:"1s"`
@@ -56,7 +56,7 @@ func (r RedisConfig) Addr() string {
 }
 
 type JWT struct {
-	PrivateKeyPath string        `yaml:"private_key_path" env:"JWT_PRIVATE_KEY_PATH" env-required:"true"`
+	PrivateKeyPath string        `env:"JWT_PRIVATE_KEY_PATH" env-required:"true"`
 	TTL            time.Duration `yaml:"ttl" env:"JWT_TTL" env-default:"24h"`
 }
 

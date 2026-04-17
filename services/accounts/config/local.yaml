@@ -1,4 +1,5 @@
 env: "local"
+
 db:
   host: ${DATABASE_HOST}
   port: ${DATABASE_PORT}
@@ -9,20 +10,17 @@ db:
   connect_timeout: ${DATABASE_CONNECTION_TIMEOUT}
   max_retries_time: ${DATABASE_MAX_RETRIES_TIME}
 
-redis:
-  host: ${REDIS_HOST}
-  port: ${REDIS_PORT}
-  password: ${REDIS_PASSWORD}
-  db: 0
-  read_timeout: 1s
-  write_timeout: 1s
-
 grpc:
   port: 50051
   timeout: 5s
 
-jwt:
-  private_key_path: ${JWT_PRIVATE_KEY_PATH}
-  ttl: ${JWT_TTL}
+kafka:
+  brokers: ${KAFKA_BROKERS}
+  write_timeout: 5s
 
-hash_cost: 10
+outbox:
+  interval: ${OUTBOX_INTERVAL}
+  batch_size: 10
+
+bank_gateway:
+  failure_rate: 0.2

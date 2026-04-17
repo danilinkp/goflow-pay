@@ -1,0 +1,24 @@
+env: "local"
+
+db:
+  host: ${DATABASE_HOST}
+  port: ${DATABASE_PORT}
+  user: ${DATABASE_USER}
+  password: ${DATABASE_PASSWORD}
+  name: ${DATABASE_NAME}
+  ssl_mode: ${DATABASE_SSL_MODE}
+  connect_timeout: ${DATABASE_CONNECTION_TIMEOUT}
+  max_retries_time: ${DATABASE_MAX_RETRIES_TIME}
+
+auth_grpc:
+  addr: ${AUTH_GRPC_ADDR}
+
+kafka:
+  brokers: ${KAFKA_BROKERS}
+  topic: ${KAFKA_TOPIC}
+
+smtp:
+  host: ${SMTP_HOST}
+  port: 587
+  password: ${SMTP_PASSWORD}
+  from: ${SMTP_FROM}

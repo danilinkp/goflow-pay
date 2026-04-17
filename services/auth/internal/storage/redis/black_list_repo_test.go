@@ -2,6 +2,7 @@ package redis_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -23,10 +24,15 @@ func TestBlackListRepository_Integration(t *testing.T) {
 		_ = redisContainer.Terminate(ctx)
 	}()
 
-	connStr, err := redisContainer.ConnectionString(ctx)
+	host, err := redisContainer.Host(ctx)
 	require.NoError(t, err)
 
-	client, err := db.NewRedisClient(ctx, connStr, "", 0, 0, 0)
+	port, err := redisContainer.MappedPort(ctx, "6379")
+	require.NoError(t, err)
+
+	addr := fmt.Sprintf("%s:%s", host, port.Port())
+
+	client, err := db.NewRedisClient(ctx, addr, "", 0, time.Second, time.Second)
 	require.NoError(t, err)
 
 	repo := redis.NewBlackListRepository(client)

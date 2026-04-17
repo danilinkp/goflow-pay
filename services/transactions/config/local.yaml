@@ -1,0 +1,30 @@
+env: "local"
+
+db:
+  host: ${DATABASE_HOST}
+  port: ${DATABASE_PORT}
+  user: ${DATABASE_USER}
+  password: ${DATABASE_PASSWORD}
+  name: ${DATABASE_NAME}
+  ssl_mode: ${DATABASE_SSL_MODE}
+  connect_timeout: ${DATABASE_CONNECTION_TIMEOUT}
+  max_retries_time: ${DATABASE_MAX_RETRIES_TIME}
+
+grpc:
+  port: 50051
+  timeout: 5s
+
+grpc_client:
+  addr: ${ACCOUNT_GRPC_ADDR}
+
+kafka:
+  brokers: ${KAFKA_BROKERS}
+  write_timeout: 5s
+
+outbox:
+  interval: ${OUTBOX_INTERVAL}
+  batch_size: 10
+
+recover:
+  interval: ${RECOVER_INTERVAL}
+  stale_after: ${RECOVER_STALE_AFTER}

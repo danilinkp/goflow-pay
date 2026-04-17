@@ -1,9 +1,10 @@
 package postgres_test
 
 import (
-	"accounts/internal/infrastructure/db"
+	"accounts/migrations"
 	"context"
 	"os"
+	postgresPool "shared/pkg/db/postgres"
 	"testing"
 	"time"
 
@@ -44,12 +45,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	testPool, err = db.NewPool(ctx, connStr)
+	testPool, err = postgresPool.NewPool(ctx, connStr, time.Second, time.Second)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.RunMigrations(testPool)
+	err = migrations.RunMigrations(testPool)
 	if err != nil {
 		panic(err)
 	}

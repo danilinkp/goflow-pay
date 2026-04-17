@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"shared/pkg/outbox"
 
 	"github.com/google/uuid"
@@ -66,6 +67,7 @@ type AccountService struct {
 	bankGateway                BankGateway
 	outboxRepo                 OutboxRepository
 	transactor                 Transactor
+	log                        *slog.Logger
 }
 
 func NewAccountService(
@@ -76,6 +78,7 @@ func NewAccountService(
 	bankGateway BankGateway,
 	outboxRepo OutboxRepository,
 	transactor Transactor,
+	log *slog.Logger,
 ) *AccountService {
 	return &AccountService{
 		accountRepository:          accountRepo,
@@ -85,6 +88,7 @@ func NewAccountService(
 		bankGateway:                bankGateway,
 		outboxRepo:                 outboxRepo,
 		transactor:                 transactor,
+		log:                        log,
 	}
 }
 

@@ -14,6 +14,15 @@ type RecoverWorker struct {
 	staleAfter time.Duration
 }
 
+func NewRecoverWorker(txRepo services.TransactionRepository, txService *services.TransactionService, interval, staleAfter time.Duration) *RecoverWorker {
+	return &RecoverWorker{
+		txRepo:     txRepo,
+		txService:  txService,
+		interval:   interval,
+		staleAfter: staleAfter,
+	}
+}
+
 func (w *RecoverWorker) Run(ctx context.Context) {
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()

@@ -2,6 +2,7 @@ package appkafka
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	notificationskafka "notifications/internal/delivery/kafka"
 	"notifications/internal/services"
@@ -31,20 +32,8 @@ func (a *NotificationApp) Run(ctx context.Context) error {
 
 	a.log.Info("starting notification consumer", slog.String("op", op))
 
-	errChan := make(chan error, 1)
-
-	go func() {
-		if err := a.consumer.Read(ctx); err != nil {
-			a.log.Error("consumer stopped with error", slog.String("err", err.Error()))
-			errChan <- err
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		a.log.Info("stopping notification app by context")
-		return nil
-	case err := <-errChan:
-		return err
+	if err := a.consumer.Run(ctx); err != nil {
+		return fmt.Errorf("NotificationApp.Run: %w", err)
 	}
+	return nil
 }

@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,20 +19,20 @@ type Publisher interface {
 }
 
 type Worker struct {
-	repo       OutboxRepository
-	publisher  Publisher
-	interval   time.Duration
-	batchSize  int
-	maxRetries int
+	log       *slog.Logger
+	repo      OutboxRepository
+	publisher Publisher
+	interval  time.Duration
+	batchSize int
 }
 
-func NewWorker(repo OutboxRepository, publisher Publisher, interval time.Duration, batchSize int, maxRetries int) *Worker {
+func NewWorker(log *slog.Logger, repo OutboxRepository, publisher Publisher, interval time.Duration, batchSize int) *Worker {
 	return &Worker{
-		repo:       repo,
-		publisher:  publisher,
-		interval:   interval,
-		batchSize:  batchSize,
-		maxRetries: maxRetries,
+		repo:      repo,
+		publisher: publisher,
+		interval:  interval,
+		batchSize: batchSize,
+		log:       log,
 	}
 }
 
@@ -49,19 +50,49 @@ func (w *Worker) Run(ctx context.Context) {
 }
 
 func (w *Worker) processBatch(ctx context.Context) {
+	const op = "outbox.Worker.processBatch"
+
+	log := w.log.With("op", op)
+
 	events, err := w.repo.FetchPending(ctx, w.batchSize)
 	if err != nil {
+		log.Error("failed to fetch pending events", "error", err)
 		return
 	}
+
+	if len(events) == 0 {
+		return
+	}
+
+	log.Debug("fetched events for processing", "count", len(events))
+
 	for _, event := range events {
-		if event.Attempts >= w.maxRetries {
-			_ = w.repo.MarkFailed(ctx, event.ID, "max retries exceeded")
-			continue
+		select {
+		case <-ctx.Done():
+			log.Info("context cancelled, stopping batch processing")
+			return
+		default:
 		}
+
+		eventLog := log.With(
+			"event_id", event.ID,
+			"event_type", event.EventType,
+		)
+
 		if err = w.publisher.Publish(ctx, event); err != nil {
-			_ = w.repo.MarkFailed(ctx, event.ID, err.Error())
+			eventLog.Error("failed to publish event", "error", err)
+
+			if markErr := w.repo.MarkFailed(ctx, event.ID, err.Error()); markErr != nil {
+				eventLog.Error("failed to mark event as failed in db", "error", markErr)
+			}
 			continue
 		}
-		_ = w.repo.MarkPublished(ctx, event.ID)
+
+		if markErr := w.repo.MarkPublished(ctx, event.ID); markErr != nil {
+			eventLog.Error("failed to mark event as published in db", "error", markErr)
+			continue
+		}
+
+		eventLog.Info("event successfully published and marked")
 	}
 }

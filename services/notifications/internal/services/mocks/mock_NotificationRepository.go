@@ -108,8 +108,8 @@ func (_c *MockNotificationRepository_GetById_Call) RunAndReturn(run func(ctx con
 }
 
 // Save provides a mock function for the type MockNotificationRepository
-func (_mock *MockNotificationRepository) Save(ctx context.Context, operation *entities.Notification) error {
-	ret := _mock.Called(ctx, operation)
+func (_mock *MockNotificationRepository) Save(ctx context.Context, notification *entities.Notification) error {
+	ret := _mock.Called(ctx, notification)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Save")
@@ -117,7 +117,7 @@ func (_mock *MockNotificationRepository) Save(ctx context.Context, operation *en
 
 	var r0 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, *entities.Notification) error); ok {
-		r0 = returnFunc(ctx, operation)
+		r0 = returnFunc(ctx, notification)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -131,12 +131,12 @@ type MockNotificationRepository_Save_Call struct {
 
 // Save is a helper method to define mock.On call
 //   - ctx context.Context
-//   - operation *entities.Notification
-func (_e *MockNotificationRepository_Expecter) Save(ctx interface{}, operation interface{}) *MockNotificationRepository_Save_Call {
-	return &MockNotificationRepository_Save_Call{Call: _e.mock.On("Save", ctx, operation)}
+//   - notification *entities.Notification
+func (_e *MockNotificationRepository_Expecter) Save(ctx interface{}, notification interface{}) *MockNotificationRepository_Save_Call {
+	return &MockNotificationRepository_Save_Call{Call: _e.mock.On("Save", ctx, notification)}
 }
 
-func (_c *MockNotificationRepository_Save_Call) Run(run func(ctx context.Context, operation *entities.Notification)) *MockNotificationRepository_Save_Call {
+func (_c *MockNotificationRepository_Save_Call) Run(run func(ctx context.Context, notification *entities.Notification)) *MockNotificationRepository_Save_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -159,7 +159,7 @@ func (_c *MockNotificationRepository_Save_Call) Return(err error) *MockNotificat
 	return _c
 }
 
-func (_c *MockNotificationRepository_Save_Call) RunAndReturn(run func(ctx context.Context, operation *entities.Notification) error) *MockNotificationRepository_Save_Call {
+func (_c *MockNotificationRepository_Save_Call) RunAndReturn(run func(ctx context.Context, notification *entities.Notification) error) *MockNotificationRepository_Save_Call {
 	_c.Call.Return(run)
 	return _c
 }
