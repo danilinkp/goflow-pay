@@ -19,7 +19,6 @@ service AccountService {
   rpc MakeBankWithdrawal(MakeBankWithdrawalRequest) returns (MakeBankWithdrawalResponse);
   rpc GetAccounts(GetAccountsRequest) returns (GetAccountsResponse);
   rpc GetBankAccounts(GetBankAccountsRequest) returns (GetBankAccountsResponse);
-  rpc GetCompanyIdByAccountId(GetCompanyIdByAccountIdRequest) returns (GetCompanyIdByAccountIdResponse);
 }
 
 enum AccountStatus {
@@ -197,12 +196,4 @@ message GetBankAccountsRequest {
 
 message GetBankAccountsResponse {
   repeated BankAccount bank_accounts = 1;
-}
-
-message GetCompanyIdByAccountIdRequest {
-  string account_id = 1;
-}
-
-message GetCompanyIdByAccountIdResponse {
-  string company_id = 1;
 }

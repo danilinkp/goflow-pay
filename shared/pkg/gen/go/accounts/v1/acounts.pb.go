@@ -1779,94 +1779,6 @@ func (x *GetBankAccountsResponse) GetBankAccounts() []*BankAccount {
 	return nil
 }
 
-type GetCompanyIdByAccountIdRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetCompanyIdByAccountIdRequest) Reset() {
-	*x = GetCompanyIdByAccountIdRequest{}
-	mi := &file_accounts_v1_acounts_proto_msgTypes[28]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetCompanyIdByAccountIdRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetCompanyIdByAccountIdRequest) ProtoMessage() {}
-
-func (x *GetCompanyIdByAccountIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accounts_v1_acounts_proto_msgTypes[28]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetCompanyIdByAccountIdRequest.ProtoReflect.Descriptor instead.
-func (*GetCompanyIdByAccountIdRequest) Descriptor() ([]byte, []int) {
-	return file_accounts_v1_acounts_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *GetCompanyIdByAccountIdRequest) GetAccountId() string {
-	if x != nil {
-		return x.AccountId
-	}
-	return ""
-}
-
-type GetCompanyIdByAccountIdResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetCompanyIdByAccountIdResponse) Reset() {
-	*x = GetCompanyIdByAccountIdResponse{}
-	mi := &file_accounts_v1_acounts_proto_msgTypes[29]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetCompanyIdByAccountIdResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetCompanyIdByAccountIdResponse) ProtoMessage() {}
-
-func (x *GetCompanyIdByAccountIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accounts_v1_acounts_proto_msgTypes[29]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetCompanyIdByAccountIdResponse.ProtoReflect.Descriptor instead.
-func (*GetCompanyIdByAccountIdResponse) Descriptor() ([]byte, []int) {
-	return file_accounts_v1_acounts_proto_rawDescGZIP(), []int{29}
-}
-
-func (x *GetCompanyIdByAccountIdResponse) GetCompanyId() string {
-	if x != nil {
-		return x.CompanyId
-	}
-	return ""
-}
-
 var File_accounts_v1_acounts_proto protoreflect.FileDescriptor
 
 const file_accounts_v1_acounts_proto_rawDesc = "" +
@@ -1987,13 +1899,7 @@ const file_accounts_v1_acounts_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\"X\n" +
 	"\x17GetBankAccountsResponse\x12=\n" +
-	"\rbank_accounts\x18\x01 \x03(\v2\x18.accounts.v1.BankAccountR\fbankAccounts\"?\n" +
-	"\x1eGetCompanyIdByAccountIdRequest\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\"@\n" +
-	"\x1fGetCompanyIdByAccountIdResponse\x12\x1d\n" +
-	"\n" +
-	"company_id\x18\x01 \x01(\tR\tcompanyId*g\n" +
+	"\rbank_accounts\x18\x01 \x03(\v2\x18.accounts.v1.BankAccountR\fbankAccounts*g\n" +
 	"\rAccountStatus\x12\x1e\n" +
 	"\x1aACCOUNT_STATUS_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15ACCOUNT_STATUS_ACTIVE\x10\x01\x12\x1b\n" +
@@ -2012,7 +1918,7 @@ const file_accounts_v1_acounts_proto_rawDesc = "" +
 	"\fCURRENCY_EUR\x10\x01\x12\x10\n" +
 	"\fCURRENCY_USD\x10\x02\x12\x10\n" +
 	"\fCURRENCY_RUB\x10\x03\x12\x10\n" +
-	"\fCURRENCY_CNY\x10\x042\xdf\t\n" +
+	"\fCURRENCY_CNY\x10\x042\xe9\b\n" +
 	"\x0eAccountService\x12V\n" +
 	"\rCreateAccount\x12!.accounts.v1.CreateAccountRequest\x1a\".accounts.v1.CreateAccountResponse\x12e\n" +
 	"\x12SetAccountInActive\x12&.accounts.v1.SetAccountInActiveRequest\x1a'.accounts.v1.SetAccountInActiveResponse\x12M\n" +
@@ -2026,8 +1932,7 @@ const file_accounts_v1_acounts_proto_rawDesc = "" +
 	"\x0fMakeBankDeposit\x12#.accounts.v1.MakeBankDepositRequest\x1a$.accounts.v1.MakeBankDepositResponse\x12e\n" +
 	"\x12MakeBankWithdrawal\x12&.accounts.v1.MakeBankWithdrawalRequest\x1a'.accounts.v1.MakeBankWithdrawalResponse\x12P\n" +
 	"\vGetAccounts\x12\x1f.accounts.v1.GetAccountsRequest\x1a .accounts.v1.GetAccountsResponse\x12\\\n" +
-	"\x0fGetBankAccounts\x12#.accounts.v1.GetBankAccountsRequest\x1a$.accounts.v1.GetBankAccountsResponse\x12t\n" +
-	"\x17GetCompanyIdByAccountId\x12+.accounts.v1.GetCompanyIdByAccountIdRequest\x1a,.accounts.v1.GetCompanyIdByAccountIdResponseB\x96\x01\n" +
+	"\x0fGetBankAccounts\x12#.accounts.v1.GetBankAccountsRequest\x1a$.accounts.v1.GetBankAccountsResponseB\x96\x01\n" +
 	"\x0fcom.accounts.v1B\fAcountsProtoP\x01Z(shared/pkg/gen/go/accounts/v1;accountsv1\xa2\x02\x03AXX\xaa\x02\vAccounts.V1\xca\x02\vAccounts\\V1\xe2\x02\x17Accounts\\V1\\GPBMetadata\xea\x02\fAccounts::V1b\x06proto3"
 
 var (
@@ -2043,56 +1948,54 @@ func file_accounts_v1_acounts_proto_rawDescGZIP() []byte {
 }
 
 var file_accounts_v1_acounts_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_accounts_v1_acounts_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_accounts_v1_acounts_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_accounts_v1_acounts_proto_goTypes = []any{
-	(AccountStatus)(0),                      // 0: accounts.v1.AccountStatus
-	(OperationType)(0),                      // 1: accounts.v1.OperationType
-	(OperationStatus)(0),                    // 2: accounts.v1.OperationStatus
-	(Currency)(0),                           // 3: accounts.v1.Currency
-	(*Account)(nil),                         // 4: accounts.v1.Account
-	(*BankAccount)(nil),                     // 5: accounts.v1.BankAccount
-	(*AccountOperation)(nil),                // 6: accounts.v1.AccountOperation
-	(*BankOperation)(nil),                   // 7: accounts.v1.BankOperation
-	(*CreateAccountRequest)(nil),            // 8: accounts.v1.CreateAccountRequest
-	(*CreateAccountResponse)(nil),           // 9: accounts.v1.CreateAccountResponse
-	(*SetAccountInActiveRequest)(nil),       // 10: accounts.v1.SetAccountInActiveRequest
-	(*SetAccountInActiveResponse)(nil),      // 11: accounts.v1.SetAccountInActiveResponse
-	(*GetBalanceRequest)(nil),               // 12: accounts.v1.GetBalanceRequest
-	(*GetBalanceResponse)(nil),              // 13: accounts.v1.GetBalanceResponse
-	(*LinkBankAccountRequest)(nil),          // 14: accounts.v1.LinkBankAccountRequest
-	(*LinkBankAccountResponse)(nil),         // 15: accounts.v1.LinkBankAccountResponse
-	(*ReserveWithdrawRequest)(nil),          // 16: accounts.v1.ReserveWithdrawRequest
-	(*ReserveWithdrawResponse)(nil),         // 17: accounts.v1.ReserveWithdrawResponse
-	(*ReserveDepositRequest)(nil),           // 18: accounts.v1.ReserveDepositRequest
-	(*ReserveDepositResponse)(nil),          // 19: accounts.v1.ReserveDepositResponse
-	(*ConfirmOperationRequest)(nil),         // 20: accounts.v1.ConfirmOperationRequest
-	(*ConfirmOperationResponse)(nil),        // 21: accounts.v1.ConfirmOperationResponse
-	(*CancelOperationRequest)(nil),          // 22: accounts.v1.CancelOperationRequest
-	(*CancelOperationResponse)(nil),         // 23: accounts.v1.CancelOperationResponse
-	(*MakeBankDepositRequest)(nil),          // 24: accounts.v1.MakeBankDepositRequest
-	(*MakeBankDepositResponse)(nil),         // 25: accounts.v1.MakeBankDepositResponse
-	(*MakeBankWithdrawalRequest)(nil),       // 26: accounts.v1.MakeBankWithdrawalRequest
-	(*MakeBankWithdrawalResponse)(nil),      // 27: accounts.v1.MakeBankWithdrawalResponse
-	(*GetAccountsRequest)(nil),              // 28: accounts.v1.GetAccountsRequest
-	(*GetAccountsResponse)(nil),             // 29: accounts.v1.GetAccountsResponse
-	(*GetBankAccountsRequest)(nil),          // 30: accounts.v1.GetBankAccountsRequest
-	(*GetBankAccountsResponse)(nil),         // 31: accounts.v1.GetBankAccountsResponse
-	(*GetCompanyIdByAccountIdRequest)(nil),  // 32: accounts.v1.GetCompanyIdByAccountIdRequest
-	(*GetCompanyIdByAccountIdResponse)(nil), // 33: accounts.v1.GetCompanyIdByAccountIdResponse
-	(*timestamppb.Timestamp)(nil),           // 34: google.protobuf.Timestamp
+	(AccountStatus)(0),                 // 0: accounts.v1.AccountStatus
+	(OperationType)(0),                 // 1: accounts.v1.OperationType
+	(OperationStatus)(0),               // 2: accounts.v1.OperationStatus
+	(Currency)(0),                      // 3: accounts.v1.Currency
+	(*Account)(nil),                    // 4: accounts.v1.Account
+	(*BankAccount)(nil),                // 5: accounts.v1.BankAccount
+	(*AccountOperation)(nil),           // 6: accounts.v1.AccountOperation
+	(*BankOperation)(nil),              // 7: accounts.v1.BankOperation
+	(*CreateAccountRequest)(nil),       // 8: accounts.v1.CreateAccountRequest
+	(*CreateAccountResponse)(nil),      // 9: accounts.v1.CreateAccountResponse
+	(*SetAccountInActiveRequest)(nil),  // 10: accounts.v1.SetAccountInActiveRequest
+	(*SetAccountInActiveResponse)(nil), // 11: accounts.v1.SetAccountInActiveResponse
+	(*GetBalanceRequest)(nil),          // 12: accounts.v1.GetBalanceRequest
+	(*GetBalanceResponse)(nil),         // 13: accounts.v1.GetBalanceResponse
+	(*LinkBankAccountRequest)(nil),     // 14: accounts.v1.LinkBankAccountRequest
+	(*LinkBankAccountResponse)(nil),    // 15: accounts.v1.LinkBankAccountResponse
+	(*ReserveWithdrawRequest)(nil),     // 16: accounts.v1.ReserveWithdrawRequest
+	(*ReserveWithdrawResponse)(nil),    // 17: accounts.v1.ReserveWithdrawResponse
+	(*ReserveDepositRequest)(nil),      // 18: accounts.v1.ReserveDepositRequest
+	(*ReserveDepositResponse)(nil),     // 19: accounts.v1.ReserveDepositResponse
+	(*ConfirmOperationRequest)(nil),    // 20: accounts.v1.ConfirmOperationRequest
+	(*ConfirmOperationResponse)(nil),   // 21: accounts.v1.ConfirmOperationResponse
+	(*CancelOperationRequest)(nil),     // 22: accounts.v1.CancelOperationRequest
+	(*CancelOperationResponse)(nil),    // 23: accounts.v1.CancelOperationResponse
+	(*MakeBankDepositRequest)(nil),     // 24: accounts.v1.MakeBankDepositRequest
+	(*MakeBankDepositResponse)(nil),    // 25: accounts.v1.MakeBankDepositResponse
+	(*MakeBankWithdrawalRequest)(nil),  // 26: accounts.v1.MakeBankWithdrawalRequest
+	(*MakeBankWithdrawalResponse)(nil), // 27: accounts.v1.MakeBankWithdrawalResponse
+	(*GetAccountsRequest)(nil),         // 28: accounts.v1.GetAccountsRequest
+	(*GetAccountsResponse)(nil),        // 29: accounts.v1.GetAccountsResponse
+	(*GetBankAccountsRequest)(nil),     // 30: accounts.v1.GetBankAccountsRequest
+	(*GetBankAccountsResponse)(nil),    // 31: accounts.v1.GetBankAccountsResponse
+	(*timestamppb.Timestamp)(nil),      // 32: google.protobuf.Timestamp
 }
 var file_accounts_v1_acounts_proto_depIdxs = []int32{
 	3,  // 0: accounts.v1.Account.currency:type_name -> accounts.v1.Currency
 	0,  // 1: accounts.v1.Account.status:type_name -> accounts.v1.AccountStatus
-	34, // 2: accounts.v1.Account.created_at:type_name -> google.protobuf.Timestamp
+	32, // 2: accounts.v1.Account.created_at:type_name -> google.protobuf.Timestamp
 	3,  // 3: accounts.v1.BankAccount.currency:type_name -> accounts.v1.Currency
-	34, // 4: accounts.v1.BankAccount.created_at:type_name -> google.protobuf.Timestamp
+	32, // 4: accounts.v1.BankAccount.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 5: accounts.v1.AccountOperation.operation_type:type_name -> accounts.v1.OperationType
 	2,  // 6: accounts.v1.AccountOperation.operation_status:type_name -> accounts.v1.OperationStatus
-	34, // 7: accounts.v1.AccountOperation.created_at:type_name -> google.protobuf.Timestamp
+	32, // 7: accounts.v1.AccountOperation.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 8: accounts.v1.BankOperation.operation_type:type_name -> accounts.v1.OperationType
 	2,  // 9: accounts.v1.BankOperation.operation_status:type_name -> accounts.v1.OperationStatus
-	34, // 10: accounts.v1.BankOperation.created_at:type_name -> google.protobuf.Timestamp
+	32, // 10: accounts.v1.BankOperation.created_at:type_name -> google.protobuf.Timestamp
 	3,  // 11: accounts.v1.CreateAccountRequest.currency:type_name -> accounts.v1.Currency
 	4,  // 12: accounts.v1.CreateAccountResponse.account:type_name -> accounts.v1.Account
 	4,  // 13: accounts.v1.SetAccountInActiveResponse.account:type_name -> accounts.v1.Account
@@ -2116,22 +2019,20 @@ var file_accounts_v1_acounts_proto_depIdxs = []int32{
 	26, // 31: accounts.v1.AccountService.MakeBankWithdrawal:input_type -> accounts.v1.MakeBankWithdrawalRequest
 	28, // 32: accounts.v1.AccountService.GetAccounts:input_type -> accounts.v1.GetAccountsRequest
 	30, // 33: accounts.v1.AccountService.GetBankAccounts:input_type -> accounts.v1.GetBankAccountsRequest
-	32, // 34: accounts.v1.AccountService.GetCompanyIdByAccountId:input_type -> accounts.v1.GetCompanyIdByAccountIdRequest
-	9,  // 35: accounts.v1.AccountService.CreateAccount:output_type -> accounts.v1.CreateAccountResponse
-	11, // 36: accounts.v1.AccountService.SetAccountInActive:output_type -> accounts.v1.SetAccountInActiveResponse
-	13, // 37: accounts.v1.AccountService.GetBalance:output_type -> accounts.v1.GetBalanceResponse
-	15, // 38: accounts.v1.AccountService.LinkBankAccount:output_type -> accounts.v1.LinkBankAccountResponse
-	17, // 39: accounts.v1.AccountService.ReserveWithdraw:output_type -> accounts.v1.ReserveWithdrawResponse
-	19, // 40: accounts.v1.AccountService.ReserveDeposit:output_type -> accounts.v1.ReserveDepositResponse
-	21, // 41: accounts.v1.AccountService.ConfirmOperation:output_type -> accounts.v1.ConfirmOperationResponse
-	23, // 42: accounts.v1.AccountService.CancelOperation:output_type -> accounts.v1.CancelOperationResponse
-	25, // 43: accounts.v1.AccountService.MakeBankDeposit:output_type -> accounts.v1.MakeBankDepositResponse
-	27, // 44: accounts.v1.AccountService.MakeBankWithdrawal:output_type -> accounts.v1.MakeBankWithdrawalResponse
-	29, // 45: accounts.v1.AccountService.GetAccounts:output_type -> accounts.v1.GetAccountsResponse
-	31, // 46: accounts.v1.AccountService.GetBankAccounts:output_type -> accounts.v1.GetBankAccountsResponse
-	33, // 47: accounts.v1.AccountService.GetCompanyIdByAccountId:output_type -> accounts.v1.GetCompanyIdByAccountIdResponse
-	35, // [35:48] is the sub-list for method output_type
-	22, // [22:35] is the sub-list for method input_type
+	9,  // 34: accounts.v1.AccountService.CreateAccount:output_type -> accounts.v1.CreateAccountResponse
+	11, // 35: accounts.v1.AccountService.SetAccountInActive:output_type -> accounts.v1.SetAccountInActiveResponse
+	13, // 36: accounts.v1.AccountService.GetBalance:output_type -> accounts.v1.GetBalanceResponse
+	15, // 37: accounts.v1.AccountService.LinkBankAccount:output_type -> accounts.v1.LinkBankAccountResponse
+	17, // 38: accounts.v1.AccountService.ReserveWithdraw:output_type -> accounts.v1.ReserveWithdrawResponse
+	19, // 39: accounts.v1.AccountService.ReserveDeposit:output_type -> accounts.v1.ReserveDepositResponse
+	21, // 40: accounts.v1.AccountService.ConfirmOperation:output_type -> accounts.v1.ConfirmOperationResponse
+	23, // 41: accounts.v1.AccountService.CancelOperation:output_type -> accounts.v1.CancelOperationResponse
+	25, // 42: accounts.v1.AccountService.MakeBankDeposit:output_type -> accounts.v1.MakeBankDepositResponse
+	27, // 43: accounts.v1.AccountService.MakeBankWithdrawal:output_type -> accounts.v1.MakeBankWithdrawalResponse
+	29, // 44: accounts.v1.AccountService.GetAccounts:output_type -> accounts.v1.GetAccountsResponse
+	31, // 45: accounts.v1.AccountService.GetBankAccounts:output_type -> accounts.v1.GetBankAccountsResponse
+	34, // [34:46] is the sub-list for method output_type
+	22, // [22:34] is the sub-list for method input_type
 	22, // [22:22] is the sub-list for extension type_name
 	22, // [22:22] is the sub-list for extension extendee
 	0,  // [0:22] is the sub-list for field type_name
@@ -2148,7 +2049,7 @@ func file_accounts_v1_acounts_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_accounts_v1_acounts_proto_rawDesc), len(file_accounts_v1_acounts_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   30,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

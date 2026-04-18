@@ -478,17 +478,6 @@ func (a *AccountService) GetBankAccounts(ctx context.Context, companyId uuid.UUI
 	return accounts, nil
 }
 
-func (a *AccountService) GetCompanyIdByAccountId(ctx context.Context, accountId uuid.UUID) (uuid.UUID, error) {
-	op := "AccountService.GetCompanyIdByAccountId"
-
-	account, err := a.accountRepository.GetById(ctx, accountId)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return account.CompanyId(), nil
-}
-
 func (a *AccountService) compensateBankWithdrawal(ctx context.Context, acc *entities.Account, bo *entities.BankOperation, externalID string) error {
 	op := "AccountService.compensateWithdrawal"
 

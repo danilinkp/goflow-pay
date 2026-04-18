@@ -19,19 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountService_CreateAccount_FullMethodName           = "/accounts.v1.AccountService/CreateAccount"
-	AccountService_SetAccountInActive_FullMethodName      = "/accounts.v1.AccountService/SetAccountInActive"
-	AccountService_GetBalance_FullMethodName              = "/accounts.v1.AccountService/GetBalance"
-	AccountService_LinkBankAccount_FullMethodName         = "/accounts.v1.AccountService/LinkBankAccount"
-	AccountService_ReserveWithdraw_FullMethodName         = "/accounts.v1.AccountService/ReserveWithdraw"
-	AccountService_ReserveDeposit_FullMethodName          = "/accounts.v1.AccountService/ReserveDeposit"
-	AccountService_ConfirmOperation_FullMethodName        = "/accounts.v1.AccountService/ConfirmOperation"
-	AccountService_CancelOperation_FullMethodName         = "/accounts.v1.AccountService/CancelOperation"
-	AccountService_MakeBankDeposit_FullMethodName         = "/accounts.v1.AccountService/MakeBankDeposit"
-	AccountService_MakeBankWithdrawal_FullMethodName      = "/accounts.v1.AccountService/MakeBankWithdrawal"
-	AccountService_GetAccounts_FullMethodName             = "/accounts.v1.AccountService/GetAccounts"
-	AccountService_GetBankAccounts_FullMethodName         = "/accounts.v1.AccountService/GetBankAccounts"
-	AccountService_GetCompanyIdByAccountId_FullMethodName = "/accounts.v1.AccountService/GetCompanyIdByAccountId"
+	AccountService_CreateAccount_FullMethodName      = "/accounts.v1.AccountService/CreateAccount"
+	AccountService_SetAccountInActive_FullMethodName = "/accounts.v1.AccountService/SetAccountInActive"
+	AccountService_GetBalance_FullMethodName         = "/accounts.v1.AccountService/GetBalance"
+	AccountService_LinkBankAccount_FullMethodName    = "/accounts.v1.AccountService/LinkBankAccount"
+	AccountService_ReserveWithdraw_FullMethodName    = "/accounts.v1.AccountService/ReserveWithdraw"
+	AccountService_ReserveDeposit_FullMethodName     = "/accounts.v1.AccountService/ReserveDeposit"
+	AccountService_ConfirmOperation_FullMethodName   = "/accounts.v1.AccountService/ConfirmOperation"
+	AccountService_CancelOperation_FullMethodName    = "/accounts.v1.AccountService/CancelOperation"
+	AccountService_MakeBankDeposit_FullMethodName    = "/accounts.v1.AccountService/MakeBankDeposit"
+	AccountService_MakeBankWithdrawal_FullMethodName = "/accounts.v1.AccountService/MakeBankWithdrawal"
+	AccountService_GetAccounts_FullMethodName        = "/accounts.v1.AccountService/GetAccounts"
+	AccountService_GetBankAccounts_FullMethodName    = "/accounts.v1.AccountService/GetBankAccounts"
 )
 
 // AccountServiceClient is the client API for AccountService service.
@@ -50,7 +49,6 @@ type AccountServiceClient interface {
 	MakeBankWithdrawal(ctx context.Context, in *MakeBankWithdrawalRequest, opts ...grpc.CallOption) (*MakeBankWithdrawalResponse, error)
 	GetAccounts(ctx context.Context, in *GetAccountsRequest, opts ...grpc.CallOption) (*GetAccountsResponse, error)
 	GetBankAccounts(ctx context.Context, in *GetBankAccountsRequest, opts ...grpc.CallOption) (*GetBankAccountsResponse, error)
-	GetCompanyIdByAccountId(ctx context.Context, in *GetCompanyIdByAccountIdRequest, opts ...grpc.CallOption) (*GetCompanyIdByAccountIdResponse, error)
 }
 
 type accountServiceClient struct {
@@ -181,16 +179,6 @@ func (c *accountServiceClient) GetBankAccounts(ctx context.Context, in *GetBankA
 	return out, nil
 }
 
-func (c *accountServiceClient) GetCompanyIdByAccountId(ctx context.Context, in *GetCompanyIdByAccountIdRequest, opts ...grpc.CallOption) (*GetCompanyIdByAccountIdResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetCompanyIdByAccountIdResponse)
-	err := c.cc.Invoke(ctx, AccountService_GetCompanyIdByAccountId_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AccountServiceServer is the server API for AccountService service.
 // All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility.
@@ -207,7 +195,6 @@ type AccountServiceServer interface {
 	MakeBankWithdrawal(context.Context, *MakeBankWithdrawalRequest) (*MakeBankWithdrawalResponse, error)
 	GetAccounts(context.Context, *GetAccountsRequest) (*GetAccountsResponse, error)
 	GetBankAccounts(context.Context, *GetBankAccountsRequest) (*GetBankAccountsResponse, error)
-	GetCompanyIdByAccountId(context.Context, *GetCompanyIdByAccountIdRequest) (*GetCompanyIdByAccountIdResponse, error)
 	mustEmbedUnimplementedAccountServiceServer()
 }
 
@@ -253,9 +240,6 @@ func (UnimplementedAccountServiceServer) GetAccounts(context.Context, *GetAccoun
 }
 func (UnimplementedAccountServiceServer) GetBankAccounts(context.Context, *GetBankAccountsRequest) (*GetBankAccountsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBankAccounts not implemented")
-}
-func (UnimplementedAccountServiceServer) GetCompanyIdByAccountId(context.Context, *GetCompanyIdByAccountIdRequest) (*GetCompanyIdByAccountIdResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetCompanyIdByAccountId not implemented")
 }
 func (UnimplementedAccountServiceServer) mustEmbedUnimplementedAccountServiceServer() {}
 func (UnimplementedAccountServiceServer) testEmbeddedByValue()                        {}
@@ -494,24 +478,6 @@ func _AccountService_GetBankAccounts_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AccountService_GetCompanyIdByAccountId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetCompanyIdByAccountIdRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AccountServiceServer).GetCompanyIdByAccountId(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AccountService_GetCompanyIdByAccountId_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccountServiceServer).GetCompanyIdByAccountId(ctx, req.(*GetCompanyIdByAccountIdRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -566,10 +532,6 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetBankAccounts",
 			Handler:    _AccountService_GetBankAccounts_Handler,
-		},
-		{
-			MethodName: "GetCompanyIdByAccountId",
-			Handler:    _AccountService_GetCompanyIdByAccountId_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

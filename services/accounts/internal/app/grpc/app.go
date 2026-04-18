@@ -41,6 +41,7 @@ func NewAccountsApp(log *slog.Logger, accountsService accountsgrpc.AccountProvid
 	gRPCServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		recovery.UnaryServerInterceptor(recoveryOpts...),
 		logging.UnaryServerInterceptor(InterceptorLogger(log), loggingOpts...),
+		AuthInterceptor(),
 	))
 
 	accountsgrpc.Register(gRPCServer, accountsService)

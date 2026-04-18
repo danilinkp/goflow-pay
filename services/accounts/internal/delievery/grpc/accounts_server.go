@@ -32,7 +32,6 @@ type AccountProvider interface {
 	MakeBankWithdrawal(ctx context.Context, in *services.BankOperationInput) (*entities.BankOperation, error)
 	GetAccounts(ctx context.Context, companyID uuid.UUID) ([]*entities.Account, error)
 	GetBankAccounts(ctx context.Context, companyID uuid.UUID) ([]*entities.BankAccount, error)
-	GetCompanyIdByAccountId(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)
 }
 
 type AccountServer struct {
@@ -273,20 +272,6 @@ func (s *AccountServer) GetBankAccounts(ctx context.Context, req *accountsv1.Get
 	}
 
 	return &accountsv1.GetBankAccountsResponse{BankAccounts: pbBankAccounts}, nil
-}
-
-func (s *AccountServer) GetCompanyIdByAccountId(ctx context.Context, req *accountsv1.GetCompanyIdByAccountIdRequest) (*accountsv1.GetCompanyIdByAccountIdResponse, error) {
-	accID, err := uuid.Parse(req.GetAccountId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
-	}
-
-	compID, err := s.svc.GetCompanyIdByAccountId(ctx, accID)
-	if err != nil {
-		return nil, mapError(err)
-	}
-
-	return &accountsv1.GetCompanyIdByAccountIdResponse{CompanyId: compID.String()}, nil
 }
 
 func parseIDs(accStr, txStr string) (uuid.UUID, uuid.UUID, error) {
