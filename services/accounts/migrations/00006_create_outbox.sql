@@ -3,16 +3,18 @@ SELECT 'up SQL query';
 
 CREATE TABLE IF NOT EXISTS outbox
 (
-    id         UUID PRIMARY KEY,
-    event_type VARCHAR(100) NOT NULL,
-    payload    JSONB        NOT NULL,
-    status     VARCHAR(20)  NOT NULL DEFAULT 'pending',
-    error      TEXT,
-    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
-    sent_at    TIMESTAMP
-);
+    id             UUID PRIMARY KEY,
+    aggregate_id   UUID         NOT NULL,
+    aggregate_type VARCHAR      NOT NULL,
+    event_type     VARCHAR(100) NOT NULL,
+    topic          VARCHAR      NOT NULL,
+    payload        JSONB        NOT NULL,
+    failed_reason  TEXT,
+    attempts       INT                   DEFAULT 0,
+    published_at   TIMESTAMP,
+    created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
 
-CREATE INDEX idx_outbox_status ON outbox (status) WHERE status = 'pending';
+);
 
 -- +goose Down
 SELECT 'down SQL query';

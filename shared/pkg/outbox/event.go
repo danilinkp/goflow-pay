@@ -34,10 +34,10 @@ type Event struct {
 	EventType     EventType  `db:"event_type"`
 	Topic         string     `db:"topic"`
 	Payload       []byte     `db:"payload"`
-	CreatedAt     time.Time  `db:"created_at"`
 	PublishedAt   *time.Time `db:"published_at"`
 	FailedReason  *string    `db:"failed_reason"`
 	Attempts      int        `db:"attempts"`
+	CreatedAt     time.Time  `db:"created_at"`
 }
 
 type Outboxable interface {

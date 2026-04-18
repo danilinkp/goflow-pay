@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	postgresPool "shared/pkg/db/postgres"
+	"shared/pkg/logger/sl"
 	"shared/pkg/logger/slogpretty"
 	"shared/pkg/outbox"
 	"shared/pkg/outbox/publisher/kafka"
@@ -41,13 +42,13 @@ func main() {
 
 	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
 	if err != nil {
-		log.Error("failed to connect to db", "err", err)
+		log.Error("failed to connect to db", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	defer pool.Close()
 	err = migrations.RunMigrations(pool)
 	if err != nil {
-		log.Error("failed to run migrations", "err", err)
+		log.Error("failed to run migrations", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	log.Info("migrations applied")
@@ -69,7 +70,7 @@ func main() {
 	pub := kafka.NewPublisher(cfg.Kafka.Brokers())
 	defer func() {
 		if closeErr := pub.Close(); closeErr != nil {
-			log.Error("failed to close kafka publisher", "err", closeErr)
+			log.Error("failed to close kafka publisher", "err", sl.Err(closeErr))
 		}
 	}()
 
@@ -98,7 +99,7 @@ func main() {
 	case <-ctx.Done():
 		log.Info("stopping application...")
 	case err = <-errChan:
-		log.Error("grpc server failed", "err", err)
+		log.Error("grpc server failed", "err", sl.Err(err))
 		stopApp()
 	}
 

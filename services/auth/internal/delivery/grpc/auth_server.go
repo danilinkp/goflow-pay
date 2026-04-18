@@ -22,6 +22,7 @@ type AuthProvider interface {
 	Logout(ctx context.Context, token string) error
 	GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error)
 	GetUserById(ctx context.Context, userId uuid.UUID) (*entities.User, error)
+	GetInviteCode(ctx context.Context, companyId uuid.UUID) (string, error)
 }
 
 type AuthServer struct {
@@ -118,6 +119,20 @@ func (s *AuthServer) GetUserById(ctx context.Context, req *authv1.GetUserByIdReq
 
 	pbUser := mapUserToProto(user)
 	return &authv1.GetUserByIdResponse{User: pbUser}, nil
+}
+
+func (s *AuthServer) GetInviteCodeByCompanyId(ctx context.Context, req *authv1.GetInviteCodeByCompanyIdRequest) (*authv1.GetInviteCodeByCompanyIdResponse, error) {
+	companyId, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
+	}
+
+	inviteCode, err := s.svc.GetInviteCode(ctx, companyId)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &authv1.GetInviteCodeByCompanyIdResponse{InviteCode: inviteCode}, nil
 }
 
 func mapAuthOutputToResponse(out *services.AuthOutput) *authv1.AuthResponse {

@@ -13,6 +13,7 @@ service AuthService {
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc GetUsersByCompanyId(GetUsersByCompanyIdRequest) returns (GetUsersByCompanyIdResponse);
   rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
+  rpc GetInviteCodeByCompanyId(GetInviteCodeByCompanyIdRequest) returns (GetInviteCodeByCompanyIdResponse);
 }
 
 message RegisterWithNewCompanyRequest {
@@ -71,4 +72,12 @@ message GetUserByIdRequest {
 
 message GetUserByIdResponse {
   UserInfo user = 1;
+}
+
+message GetInviteCodeByCompanyIdRequest {
+  string company_id = 1;
+}
+
+message GetInviteCodeByCompanyIdResponse {
+  string invite_code = 1;
 }

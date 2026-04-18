@@ -29,6 +29,7 @@ type CompanyRepository interface {
 	Save(ctx context.Context, company *entities.Company) error
 	GetById(ctx context.Context, companyId uuid.UUID) (*entities.Company, error)
 	GetByInviteCode(ctx context.Context, inviteCode string) (*entities.Company, error)
+	GetInviteCodeById(ctx context.Context, companyId uuid.UUID) (string, error)
 }
 
 type Transactor interface {
@@ -256,4 +257,15 @@ func (a *AuthService) GetUserById(ctx context.Context, userId uuid.UUID) (*entit
 	}
 
 	return user, nil
+}
+
+func (a *AuthService) GetInviteCode(ctx context.Context, companyId uuid.UUID) (string, error) {
+	op := "Auth.GetInviteCode"
+
+	inviteCode, err := a.companyRepository.GetInviteCodeById(ctx, companyId)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return inviteCode, nil
 }

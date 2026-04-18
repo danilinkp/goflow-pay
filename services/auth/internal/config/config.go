@@ -57,7 +57,7 @@ func (r RedisConfig) Addr() string {
 
 type JWT struct {
 	PrivateKeyPath string        `env:"JWT_PRIVATE_KEY_PATH" env-required:"true"`
-	TTL            time.Duration `yaml:"ttl" env:"JWT_TTL" env-default:"24h"`
+	TTL            time.Duration `yaml:"ttl" env-default:"24h"`
 }
 
 func (j JWT) GetPrivateKeyPEM() ([]byte, error) {
@@ -69,7 +69,7 @@ func MustLoad() *Config {
 
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
-		configPath = "config/local.yaml"
+		configPath = "config/config.yaml"
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {

@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	postgresPool "shared/pkg/db/postgres"
+	"shared/pkg/logger/sl"
 	"shared/pkg/logger/slogpretty"
 	"syscall"
 
@@ -38,13 +39,13 @@ func main() {
 
 	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
 	if err != nil {
-		log.Error("failed to connect to db", "err", err)
+		log.Error("failed to connect to db", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	defer pool.Close()
 	err = migrations.RunMigrations(pool)
 	if err != nil {
-		log.Error("failed to run migrations", "err", err)
+		log.Error("failed to run migrations", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	log.Info("migrations applied")
@@ -62,7 +63,7 @@ func main() {
 
 	conn, err := grpc.NewClient(cfg.AuthGRPC.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Error("failed to create grpc client", "err", err)
+		log.Error("failed to create grpc client", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	defer conn.Close()
@@ -73,7 +74,7 @@ func main() {
 	kafkaApp := appkafka.NewNotificationApp(log, cfg.Kafka.Brokers(), cfg.Kafka.Topic, notificationService)
 
 	if err = kafkaApp.Run(ctx); err != nil {
-		log.Error("app stopped with error", slog.String("err", err.Error()))
+		log.Error("app stopped with error", sl.Err(err))
 		os.Exit(1)
 	}
 	log.Info("notification app stopped")

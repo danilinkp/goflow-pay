@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	postgresPool "shared/pkg/db/postgres"
+	"shared/pkg/logger/sl"
 	"shared/pkg/logger/slogpretty"
 	"shared/pkg/outbox"
 	"shared/pkg/outbox/publisher/kafka"
@@ -44,13 +45,13 @@ func main() {
 
 	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
 	if err != nil {
-		log.Error("failed to connect to db", "err", err)
+		log.Error("failed to connect to db", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	defer pool.Close()
 	err = migrations.RunMigrations(pool)
 	if err != nil {
-		log.Error("failed to run migrations", "err", err)
+		log.Error("failed to run migrations", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	log.Info("migrations applied")
@@ -63,7 +64,7 @@ func main() {
 	outboxRepo := outboxRepository.NewOutboxRepo(pool, getter)
 	conn, err := grpc.NewClient(cfg.GRPCClient.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Error("failed to create account grpc client", "err", err)
+		log.Error("failed to create account grpc client", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	defer conn.Close()
@@ -110,7 +111,7 @@ func main() {
 	case <-ctx.Done():
 		log.Info("stopping application...")
 	case err = <-errChan:
-		log.Error("grpc server failed", "err", err)
+		log.Error("grpc server failed", "err", sl.Err(err))
 		stopApp()
 	}
 

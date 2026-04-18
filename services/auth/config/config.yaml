@@ -1,14 +1,15 @@
 env: "local"
+
 db:
-  host: "localhost"
-  port: "5432"
-  name: "auth_service"
+  host: postgres-auth
+  port: 5432
+  name: auth_service
   ssl_mode: "disable"
   connect_timeout: 5s
   max_retries_time: 2s
 
 redis:
-  host: "localhost"
+  host: redis
   port: 6379
   password: ""
   db: 0

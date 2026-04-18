@@ -25,6 +25,7 @@ const (
 	AuthService_Logout_FullMethodName                      = "/auth.v1.AuthService/Logout"
 	AuthService_GetUsersByCompanyId_FullMethodName         = "/auth.v1.AuthService/GetUsersByCompanyId"
 	AuthService_GetUserById_FullMethodName                 = "/auth.v1.AuthService/GetUserById"
+	AuthService_GetInviteCodeByCompanyId_FullMethodName    = "/auth.v1.AuthService/GetInviteCodeByCompanyId"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -37,6 +38,7 @@ type AuthServiceClient interface {
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	GetUsersByCompanyId(ctx context.Context, in *GetUsersByCompanyIdRequest, opts ...grpc.CallOption) (*GetUsersByCompanyIdResponse, error)
 	GetUserById(ctx context.Context, in *GetUserByIdRequest, opts ...grpc.CallOption) (*GetUserByIdResponse, error)
+	GetInviteCodeByCompanyId(ctx context.Context, in *GetInviteCodeByCompanyIdRequest, opts ...grpc.CallOption) (*GetInviteCodeByCompanyIdResponse, error)
 }
 
 type authServiceClient struct {
@@ -107,6 +109,16 @@ func (c *authServiceClient) GetUserById(ctx context.Context, in *GetUserByIdRequ
 	return out, nil
 }
 
+func (c *authServiceClient) GetInviteCodeByCompanyId(ctx context.Context, in *GetInviteCodeByCompanyIdRequest, opts ...grpc.CallOption) (*GetInviteCodeByCompanyIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInviteCodeByCompanyIdResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetInviteCodeByCompanyId_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -117,6 +129,7 @@ type AuthServiceServer interface {
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	GetUsersByCompanyId(context.Context, *GetUsersByCompanyIdRequest) (*GetUsersByCompanyIdResponse, error)
 	GetUserById(context.Context, *GetUserByIdRequest) (*GetUserByIdResponse, error)
+	GetInviteCodeByCompanyId(context.Context, *GetInviteCodeByCompanyIdRequest) (*GetInviteCodeByCompanyIdResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -144,6 +157,9 @@ func (UnimplementedAuthServiceServer) GetUsersByCompanyId(context.Context, *GetU
 }
 func (UnimplementedAuthServiceServer) GetUserById(context.Context, *GetUserByIdRequest) (*GetUserByIdResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserById not implemented")
+}
+func (UnimplementedAuthServiceServer) GetInviteCodeByCompanyId(context.Context, *GetInviteCodeByCompanyIdRequest) (*GetInviteCodeByCompanyIdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetInviteCodeByCompanyId not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -274,6 +290,24 @@ func _AuthService_GetUserById_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_GetInviteCodeByCompanyId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInviteCodeByCompanyIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetInviteCodeByCompanyId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetInviteCodeByCompanyId_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetInviteCodeByCompanyId(ctx, req.(*GetInviteCodeByCompanyIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +338,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserById",
 			Handler:    _AuthService_GetUserById_Handler,
+		},
+		{
+			MethodName: "GetInviteCodeByCompanyId",
+			Handler:    _AuthService_GetInviteCodeByCompanyId_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

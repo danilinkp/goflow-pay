@@ -2,21 +2,20 @@ FROM golang:1.25.4-alpine AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY shared/ ./shared/
+COPY certs/ ./certs/
+COPY services/auth/ ./services/auth/
+
+WORKDIR /app/services/auth
 RUN go mod download
-
-COPY . .
-
 RUN CGO_ENABLED=0 GOOS=linux go build -o auth_service ./cmd/auth_server
 
 FROM alpine:3.19
-
 WORKDIR /app
 
-COPY --from=builder /app/auth_service .
+COPY --from=builder /app/services/auth/auth_service .
 COPY --from=builder /app/certs ./certs
-COPY --from=builder /app/config ./config
+COPY --from=builder /app/services/auth/config ./config
 
 EXPOSE 50051
-
 CMD ["./auth_service"]

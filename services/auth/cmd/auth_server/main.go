@@ -16,6 +16,7 @@ import (
 	postgresPool "shared/pkg/db/postgres"
 	redisdb "shared/pkg/db/redis"
 	jwtValidator "shared/pkg/jwt"
+	"shared/pkg/logger/sl"
 	"shared/pkg/logger/slogpretty"
 	postgresTrm "shared/pkg/transactor/postgres"
 	"syscall"
@@ -41,26 +42,26 @@ func main() {
 
 	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
 	if err != nil {
-		log.Error("failed to connect to db", "err", err)
+		log.Error("failed to connect to db", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	defer pool.Close()
 	err = migrations.RunMigrations(pool)
 	if err != nil {
-		log.Error("failed to run migrations", "err", err)
+		log.Error("failed to run migrations", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	log.Info("migrations applied")
 
 	redisClient, err := redisdb.NewRedisClient(ctx, cfg.Redis.Addr(), cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.ReadTimeout, cfg.Redis.WriteTimeout)
 	if err != nil {
-		log.Error("failed to connect to redis", "err", err)
+		log.Error("failed to connect to redis", "err", sl.Err(err))
 		os.Exit(1)
 	}
 
 	jwtManager, err := jwt.NewJWTService(cfg.JWT.PrivateKeyPath, cfg.JWT.TTL)
 	if err != nil {
-		log.Error("failed to create JWT manager", "err", err)
+		log.Error("failed to create JWT manager", "err", sl.Err(err))
 		os.Exit(1)
 	}
 	validator := jwtValidator.NewValidatorFromKey(jwtManager.PublicKey())
@@ -90,7 +91,7 @@ func main() {
 	case <-ctx.Done():
 		log.Info("stopping application...")
 	case err = <-errChan:
-		log.Error("grpc server failed", "err", err)
+		log.Error("grpc server failed", "err", sl.Err(err))
 	}
 
 	gRPCServer.Stop()

@@ -1,25 +1,23 @@
 env: "local"
 
 db:
-  host: ${DATABASE_HOST}
-  port: ${DATABASE_PORT}
-  user: ${DATABASE_USER}
-  password: ${DATABASE_PASSWORD}
-  name: ${DATABASE_NAME}
-  ssl_mode: ${DATABASE_SSL_MODE}
-  connect_timeout: ${DATABASE_CONNECTION_TIMEOUT}
-  max_retries_time: ${DATABASE_MAX_RETRIES_TIME}
+  host: postgres-accounts
+  port: 5432
+  name: account_service
+  ssl_mode: disable
+  connect_timeout: 3s
+  max_retries_time: 10s
 
 grpc:
   port: 50051
   timeout: 5s
 
 kafka:
-  brokers: ${KAFKA_BROKERS}
+  brokers: kafka:29092
   write_timeout: 5s
 
 outbox:
-  interval: ${OUTBOX_INTERVAL}
+  interval: 10s
   batch_size: 10
 
 bank_gateway:

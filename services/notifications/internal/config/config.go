@@ -20,19 +20,19 @@ type Config struct {
 }
 
 type DB struct {
-	Host           string        `env:"DATABASE_HOST" yaml:"host"`
-	Port           string        `env:"DATABASE_PORT" yaml:"port"`
-	User           string        `env:"DATABASE_USER" yaml:"user"`
-	Password       string        `env:"DATABASE_PASSWORD" yaml:"password"`
-	Name           string        `env:"DATABASE_NAME" yaml:"name"`
-	SSLMode        string        `env:"DATABASE_SSL_MODE" yaml:"ssl_mode"`
-	ConnectTimeout time.Duration `env:"DATABASE_CONNECTION_TIMEOUT" yaml:"connect_timeout" env-default:"5s"`
-	MaxRetriesTime time.Duration `env:"DATABASE_MAX_RETRIES_TIME" yaml:"max_retries_time" env-default:"30s"`
+	Host           string        `yaml:"host"`
+	Port           string        `yaml:"port"`
+	User           string        `env:"DATABASE_USER"`
+	Password       string        `env:"DATABASE_PASSWORD"`
+	Name           string        `yaml:"name"`
+	SSLMode        string        `yaml:"ssl_mode"`
+	ConnectTimeout time.Duration `yaml:"connect_timeout" env-default:"5s"`
+	MaxRetriesTime time.Duration `yaml:"max_retries_time" env-default:"30s"`
 }
 
 type Kafka struct {
-	BrokersRaw string `env:"KAFKA_BROKERS" yaml:"brokers" env-required:"true"`
-	Topic      string `env:"KAFKA_TOPIC" yaml:"topic" env-default:"5s"`
+	BrokersRaw string `yaml:"brokers" env-required:"true"`
+	Topic      string `yaml:"topic" env-default:"5s"`
 }
 
 func (k Kafka) Brokers() []string {
@@ -40,10 +40,10 @@ func (k Kafka) Brokers() []string {
 }
 
 type SMTPConfig struct {
-	Host     string `yaml:"host" env:"SMTP_HOST"`
-	Port     int    `yaml:"port" env-default:"587"`
-	Password string `yaml:"password" env:"SMTP_PASSWORD"`
-	From     string `yaml:"from" env:"SMTP_FROM"`
+	Host     string `env:"SMTP_HOST"`
+	Port     int    `env:"SMTP_PORT" env-default:"587"`
+	Password string `env:"SMTP_PASSWORD"`
+	From     string `env:"SMTP_FROM"`
 }
 
 type GRPCConfig struct {
