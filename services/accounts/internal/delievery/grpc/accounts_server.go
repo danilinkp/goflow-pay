@@ -21,7 +21,7 @@ const UserIDKey ctxKey = "userID"
 
 type AccountProvider interface {
 	CreateAccount(ctx context.Context, companyID uuid.UUID, currency entities.Currency) (*entities.Account, error)
-	SetAccountInActive(ctx context.Context, accountID uuid.UUID) (*entities.Account, error)
+	SetAccountInActive(ctx context.Context, accountId, companyId uuid.UUID) (*entities.Account, error)
 	GetBalance(ctx context.Context, accountID uuid.UUID) (int64, error)
 	LinkBankAccount(ctx context.Context, in services.LinkBankInput) (*entities.BankAccount, error)
 	ReserveWithdraw(ctx context.Context, accountID uuid.UUID, txID uuid.UUID, amount int64) (*entities.AccountOperation, error)
@@ -66,8 +66,12 @@ func (s *AccountServer) SetAccountInActive(ctx context.Context, req *accountsv1.
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
 	}
+	companyId, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
+	}
 
-	acc, err := s.svc.SetAccountInActive(ctx, accID)
+	acc, err := s.svc.SetAccountInActive(ctx, accID, companyId)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -176,6 +180,10 @@ func (s *AccountServer) CancelOperation(ctx context.Context, req *accountsv1.Can
 }
 
 func (s *AccountServer) MakeBankDeposit(ctx context.Context, req *accountsv1.MakeBankDepositRequest) (*accountsv1.MakeBankDepositResponse, error) {
+	companyID, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
+	}
 	accID, err := uuid.Parse(req.GetAccountId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
@@ -191,6 +199,7 @@ func (s *AccountServer) MakeBankDeposit(ctx context.Context, req *accountsv1.Mak
 	}
 
 	input := &services.BankOperationInput{
+		CompanyID:      companyID,
 		AccountID:      accID,
 		BankAccountID:  baID,
 		InitiatorID:    initiatorId,
@@ -207,6 +216,10 @@ func (s *AccountServer) MakeBankDeposit(ctx context.Context, req *accountsv1.Mak
 }
 
 func (s *AccountServer) MakeBankWithdrawal(ctx context.Context, req *accountsv1.MakeBankWithdrawalRequest) (*accountsv1.MakeBankWithdrawalResponse, error) {
+	companyID, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
+	}
 	accID, err := uuid.Parse(req.GetAccountId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
@@ -221,6 +234,7 @@ func (s *AccountServer) MakeBankWithdrawal(ctx context.Context, req *accountsv1.
 	}
 
 	input := &services.BankOperationInput{
+		CompanyID:      companyID,
 		AccountID:      accID,
 		BankAccountID:  baID,
 		InitiatorID:    initiatorId,

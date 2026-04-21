@@ -714,6 +714,126 @@ func (x *GetInviteCodeByCompanyIdResponse) GetInviteCode() string {
 	return ""
 }
 
+type InitSystemRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Login         string                 `protobuf:"bytes,1,opt,name=login,proto3" json:"login,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InitSystemRequest) Reset() {
+	*x = InitSystemRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InitSystemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InitSystemRequest) ProtoMessage() {}
+
+func (x *InitSystemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InitSystemRequest.ProtoReflect.Descriptor instead.
+func (*InitSystemRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *InitSystemRequest) GetLogin() string {
+	if x != nil {
+		return x.Login
+	}
+	return ""
+}
+
+func (x *InitSystemRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *InitSystemRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+type AddAdminRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Login         string                 `protobuf:"bytes,1,opt,name=login,proto3" json:"login,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddAdminRequest) Reset() {
+	*x = AddAdminRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddAdminRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAdminRequest) ProtoMessage() {}
+
+func (x *AddAdminRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddAdminRequest.ProtoReflect.Descriptor instead.
+func (*AddAdminRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AddAdminRequest) GetLogin() string {
+	if x != nil {
+		return x.Login
+	}
+	return ""
+}
+
+func (x *AddAdminRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *AddAdminRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
 var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
@@ -765,7 +885,15 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\"C\n" +
 	" GetInviteCodeByCompanyIdResponse\x12\x1f\n" +
 	"\vinvite_code\x18\x01 \x01(\tR\n" +
-	"inviteCode2\xd8\x04\n" +
+	"inviteCode\"[\n" +
+	"\x11InitSystemRequest\x12\x14\n" +
+	"\x05login\x18\x01 \x01(\tR\x05login\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\"Y\n" +
+	"\x0fAddAdminRequest\x12\x14\n" +
+	"\x05login\x18\x01 \x01(\tR\x05login\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword2\xd6\x05\n" +
 	"\vAuthService\x12W\n" +
 	"\x16RegisterWithNewCompany\x12&.auth.v1.RegisterWithNewCompanyRequest\x1a\x15.auth.v1.AuthResponse\x12a\n" +
 	"\x1bRegisterWithExistingCompany\x12+.auth.v1.RegisterWithExistingCompanyRequest\x1a\x15.auth.v1.AuthResponse\x125\n" +
@@ -773,7 +901,10 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x06Logout\x12\x16.auth.v1.LogoutRequest\x1a\x17.auth.v1.LogoutResponse\x12`\n" +
 	"\x13GetUsersByCompanyId\x12#.auth.v1.GetUsersByCompanyIdRequest\x1a$.auth.v1.GetUsersByCompanyIdResponse\x12H\n" +
 	"\vGetUserById\x12\x1b.auth.v1.GetUserByIdRequest\x1a\x1c.auth.v1.GetUserByIdResponse\x12o\n" +
-	"\x18GetInviteCodeByCompanyId\x12(.auth.v1.GetInviteCodeByCompanyIdRequest\x1a).auth.v1.GetInviteCodeByCompanyIdResponseBw\n" +
+	"\x18GetInviteCodeByCompanyId\x12(.auth.v1.GetInviteCodeByCompanyIdRequest\x1a).auth.v1.GetInviteCodeByCompanyIdResponse\x12?\n" +
+	"\n" +
+	"InitSystem\x12\x1a.auth.v1.InitSystemRequest\x1a\x15.auth.v1.AuthResponse\x12;\n" +
+	"\bAddAdmin\x12\x18.auth.v1.AddAdminRequest\x1a\x15.auth.v1.AuthResponseBw\n" +
 	"\vcom.auth.v1B\tAuthProtoP\x01Z shared/pkg/gen/go/auth/v1;authv1\xa2\x02\x03AXX\xaa\x02\aAuth.V1\xca\x02\aAuth\\V1\xe2\x02\x13Auth\\V1\\GPBMetadata\xea\x02\bAuth::V1b\x06proto3"
 
 var (
@@ -788,7 +919,7 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_auth_v1_auth_proto_rawDescData
 }
 
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_auth_v1_auth_proto_goTypes = []any{
 	(*RegisterWithNewCompanyRequest)(nil),      // 0: auth.v1.RegisterWithNewCompanyRequest
 	(*AuthResponse)(nil),                       // 1: auth.v1.AuthResponse
@@ -803,10 +934,12 @@ var file_auth_v1_auth_proto_goTypes = []any{
 	(*GetUserByIdResponse)(nil),                // 10: auth.v1.GetUserByIdResponse
 	(*GetInviteCodeByCompanyIdRequest)(nil),    // 11: auth.v1.GetInviteCodeByCompanyIdRequest
 	(*GetInviteCodeByCompanyIdResponse)(nil),   // 12: auth.v1.GetInviteCodeByCompanyIdResponse
-	(*timestamppb.Timestamp)(nil),              // 13: google.protobuf.Timestamp
+	(*InitSystemRequest)(nil),                  // 13: auth.v1.InitSystemRequest
+	(*AddAdminRequest)(nil),                    // 14: auth.v1.AddAdminRequest
+	(*timestamppb.Timestamp)(nil),              // 15: google.protobuf.Timestamp
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
-	13, // 0: auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
+	15, // 0: auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: auth.v1.GetUsersByCompanyIdResponse.users:type_name -> auth.v1.UserInfo
 	7,  // 2: auth.v1.GetUserByIdResponse.user:type_name -> auth.v1.UserInfo
 	0,  // 3: auth.v1.AuthService.RegisterWithNewCompany:input_type -> auth.v1.RegisterWithNewCompanyRequest
@@ -816,15 +949,19 @@ var file_auth_v1_auth_proto_depIdxs = []int32{
 	6,  // 7: auth.v1.AuthService.GetUsersByCompanyId:input_type -> auth.v1.GetUsersByCompanyIdRequest
 	9,  // 8: auth.v1.AuthService.GetUserById:input_type -> auth.v1.GetUserByIdRequest
 	11, // 9: auth.v1.AuthService.GetInviteCodeByCompanyId:input_type -> auth.v1.GetInviteCodeByCompanyIdRequest
-	1,  // 10: auth.v1.AuthService.RegisterWithNewCompany:output_type -> auth.v1.AuthResponse
-	1,  // 11: auth.v1.AuthService.RegisterWithExistingCompany:output_type -> auth.v1.AuthResponse
-	1,  // 12: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
-	5,  // 13: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
-	8,  // 14: auth.v1.AuthService.GetUsersByCompanyId:output_type -> auth.v1.GetUsersByCompanyIdResponse
-	10, // 15: auth.v1.AuthService.GetUserById:output_type -> auth.v1.GetUserByIdResponse
-	12, // 16: auth.v1.AuthService.GetInviteCodeByCompanyId:output_type -> auth.v1.GetInviteCodeByCompanyIdResponse
-	10, // [10:17] is the sub-list for method output_type
-	3,  // [3:10] is the sub-list for method input_type
+	13, // 10: auth.v1.AuthService.InitSystem:input_type -> auth.v1.InitSystemRequest
+	14, // 11: auth.v1.AuthService.AddAdmin:input_type -> auth.v1.AddAdminRequest
+	1,  // 12: auth.v1.AuthService.RegisterWithNewCompany:output_type -> auth.v1.AuthResponse
+	1,  // 13: auth.v1.AuthService.RegisterWithExistingCompany:output_type -> auth.v1.AuthResponse
+	1,  // 14: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
+	5,  // 15: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
+	8,  // 16: auth.v1.AuthService.GetUsersByCompanyId:output_type -> auth.v1.GetUsersByCompanyIdResponse
+	10, // 17: auth.v1.AuthService.GetUserById:output_type -> auth.v1.GetUserByIdResponse
+	12, // 18: auth.v1.AuthService.GetInviteCodeByCompanyId:output_type -> auth.v1.GetInviteCodeByCompanyIdResponse
+	1,  // 19: auth.v1.AuthService.InitSystem:output_type -> auth.v1.AuthResponse
+	1,  // 20: auth.v1.AuthService.AddAdmin:output_type -> auth.v1.AuthResponse
+	12, // [12:21] is the sub-list for method output_type
+	3,  // [3:12] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -841,7 +978,7 @@ func file_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

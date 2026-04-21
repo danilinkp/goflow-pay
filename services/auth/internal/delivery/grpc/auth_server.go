@@ -23,6 +23,8 @@ type AuthProvider interface {
 	GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error)
 	GetUserById(ctx context.Context, userId uuid.UUID) (*entities.User, error)
 	GetInviteCode(ctx context.Context, companyId uuid.UUID) (string, error)
+	InitSystem(ctx context.Context, req services.InitAdminInput) (*services.AuthOutput, error)
+	AddAdmin(ctx context.Context, req services.AddAdminInput) (*services.AuthOutput, error)
 }
 
 type AuthServer struct {
@@ -133,6 +135,33 @@ func (s *AuthServer) GetInviteCodeByCompanyId(ctx context.Context, req *authv1.G
 	}
 
 	return &authv1.GetInviteCodeByCompanyIdResponse{InviteCode: inviteCode}, nil
+}
+
+func (s *AuthServer) InitSystem(ctx context.Context, req *authv1.InitSystemRequest) (*authv1.AuthResponse, error) {
+	out, err := s.svc.InitSystem(ctx, services.InitAdminInput{
+		Login:    req.GetLogin(),
+		Email:    req.GetEmail(),
+		Password: req.GetPassword(),
+	})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return mapAuthOutputToResponse(out), nil
+}
+
+func (s *AuthServer) AddAdmin(ctx context.Context, req *authv1.AddAdminRequest) (*authv1.AuthResponse, error) {
+	out, err := s.svc.AddAdmin(ctx, services.AddAdminInput{
+		Login:    req.GetLogin(),
+		Email:    req.GetEmail(),
+		Password: req.GetPassword(),
+	})
+
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return mapAuthOutputToResponse(out), nil
 }
 
 func mapAuthOutputToResponse(out *services.AuthOutput) *authv1.AuthResponse {

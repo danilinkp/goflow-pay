@@ -14,6 +14,8 @@ service AuthService {
   rpc GetUsersByCompanyId(GetUsersByCompanyIdRequest) returns (GetUsersByCompanyIdResponse);
   rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
   rpc GetInviteCodeByCompanyId(GetInviteCodeByCompanyIdRequest) returns (GetInviteCodeByCompanyIdResponse);
+  rpc InitSystem(InitSystemRequest) returns (AuthResponse);
+  rpc AddAdmin(AddAdminRequest) returns (AuthResponse);
 }
 
 message RegisterWithNewCompanyRequest {
@@ -80,4 +82,16 @@ message GetInviteCodeByCompanyIdRequest {
 
 message GetInviteCodeByCompanyIdResponse {
   string invite_code = 1;
+}
+
+message InitSystemRequest {
+  string login = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message AddAdminRequest {
+  string login = 1;
+  string email = 2;
+  string password = 3;
 }

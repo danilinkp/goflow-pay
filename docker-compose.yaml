@@ -212,15 +212,17 @@ services:
       dockerfile: services/gateway/Dockerfile
     container_name: gateway
     restart: unless-stopped
+    ports:
+      - "8080:8080"
     depends_on:
       auth:
-        condition: service_healthy
+        condition: service_started
       accounts:
-        condition: service_healthy
+        condition: service_started
       transactions:
-        condition: service_healthy
+        condition: service_started
       notifications:
-        condition: service_healthy
+        condition: service_started
     env_file:
       - services/gateway/.env
     environment:

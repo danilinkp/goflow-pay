@@ -21,6 +21,18 @@ type RegisterEmployeeInput struct {
 	CompanyInviteCode string
 }
 
+type InitAdminInput struct {
+	Login    string
+	Email    string
+	Password string
+}
+
+type AddAdminInput struct {
+	Login    string
+	Email    string
+	Password string
+}
+
 type AuthOutput struct {
 	UserID    uuid.UUID
 	CompanyID uuid.UUID

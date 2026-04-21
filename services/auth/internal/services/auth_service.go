@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrInvalidInviteCode  = errors.New("invalid invite code")
+	ErrInvalidCredentials       = errors.New("invalid credentials")
+	ErrInvalidInviteCode        = errors.New("invalid invite code")
+	ErrSystemAlreadyInitialized = errors.New("system already initialized")
 )
 
 type UserRepository interface {
@@ -268,4 +269,86 @@ func (a *AuthService) GetInviteCode(ctx context.Context, companyId uuid.UUID) (s
 	}
 
 	return inviteCode, nil
+}
+
+func (a *AuthService) InitSystem(ctx context.Context, req InitAdminInput) (*AuthOutput, error) {
+	const op = "AuthService.InitSystem"
+
+	_, err := a.companyRepository.GetById(ctx, auth.SystemCompanyID)
+	if err != nil {
+		if errors.Is(err, domain.ErrCompanyAlreadyExists) {
+			return nil, fmt.Errorf("%s: %w", op, ErrSystemAlreadyInitialized)
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	company, err := entities.NewCompanyWithID(auth.SystemCompanyID, "GoFlow Pay System")
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	hash, err := a.hasher.Hash(req.Password)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	user, err := entities.NewUser(auth.SystemCompanyID, req.Login, req.Email, hash, entities.RoleAdmin)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = a.transactor.WithTx(ctx, func(ctx context.Context) error {
+		if err = a.companyRepository.Save(ctx, company); err != nil {
+			return err
+		}
+		return a.userRepository.Save(ctx, user)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &AuthOutput{
+		UserID:    user.UserId(),
+		CompanyID: user.CompanyId(),
+		Email:     user.Email(),
+		Role:      string(user.Role()),
+		Token:     token,
+	}, nil
+}
+
+func (a *AuthService) AddAdmin(ctx context.Context, req AddAdminInput) (*AuthOutput, error) {
+	const op = "AuthService.AddAdmin"
+
+	hash, err := a.hasher.Hash(req.Password)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	user, err := entities.NewUser(auth.SystemCompanyID, req.Login, req.Email, hash, entities.RoleAdmin)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = a.userRepository.Save(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &AuthOutput{
+		UserID:    user.UserId(),
+		CompanyID: user.CompanyId(),
+		Email:     user.Email(),
+		Role:      string(user.Role()),
+		Token:     token,
+	}, nil
+
 }

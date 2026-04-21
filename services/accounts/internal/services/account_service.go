@@ -107,12 +107,16 @@ func (a *AccountService) CreateAccount(ctx context.Context, companyId uuid.UUID,
 	return acc, nil
 }
 
-func (a *AccountService) SetAccountInActive(ctx context.Context, accountId uuid.UUID) (*entities.Account, error) {
+func (a *AccountService) SetAccountInActive(ctx context.Context, accountId, companyId uuid.UUID) (*entities.Account, error) {
 	op := "AccountService.SetAccountInactive"
 
 	acc, err := a.accountRepository.GetById(ctx, accountId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if acc.CompanyId() != companyId {
+		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	hasPending, err := a.accountOperationRepository.HasPendingByAccountId(ctx, accountId)
@@ -336,6 +340,10 @@ func (a *AccountService) MakeBankDeposit(ctx context.Context, request *BankOpera
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	if acc.CompanyId() != request.CompanyID {
+		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
+	}
+
 	bankAccount, err := a.bankAccountRepository.GetById(ctx, request.BankAccountID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -388,6 +396,10 @@ func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *BankOp
 	acc, err := a.accountRepository.GetById(ctx, request.AccountID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if acc.CompanyId() != request.CompanyID {
+		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	bankAccount, err := a.bankAccountRepository.GetById(ctx, request.BankAccountID)

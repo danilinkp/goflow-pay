@@ -8,6 +8,7 @@ import (
 
 type BankOperationInput struct {
 	AccountID      uuid.UUID
+	CompanyID      uuid.UUID
 	BankAccountID  uuid.UUID
 	InitiatorID    uuid.UUID
 	Amount         int64

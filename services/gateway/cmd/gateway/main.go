@@ -52,10 +52,11 @@ func main() {
 	defer clients.Close()
 
 	authHandler := handlers.NewAuthHandler(clients.Auth)
+	systemHandler := handlers.NewSystemHandler(clients.Auth, cfg.BootstrapToken)
 	accountHandler := handlers.NewAccountHandler(clients.Account)
 	transactionHandler := handlers.NewTransactionHandler(clients.Transaction)
 
-	engine := router.NewRouter(validator, authHandler, accountHandler, transactionHandler)
+	engine := router.NewRouter(validator, authHandler, systemHandler, accountHandler, transactionHandler)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPServer.Address,

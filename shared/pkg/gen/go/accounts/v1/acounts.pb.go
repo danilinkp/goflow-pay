@@ -702,6 +702,7 @@ func (x *CreateAccountResponse) GetAccount() *Account {
 type SetAccountInActiveRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	CompanyId     string                 `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -739,6 +740,13 @@ func (*SetAccountInActiveRequest) Descriptor() ([]byte, []int) {
 func (x *SetAccountInActiveRequest) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
+	}
+	return ""
+}
+
+func (x *SetAccountInActiveRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
 	}
 	return ""
 }
@@ -1381,10 +1389,11 @@ func (*CancelOperationResponse) Descriptor() ([]byte, []int) {
 
 type MakeBankDepositRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	AccountId      string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	BankAccountId  string                 `protobuf:"bytes,2,opt,name=bank_account_id,json=bankAccountId,proto3" json:"bank_account_id,omitempty"`
-	Amount         int64                  `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	CompanyId      string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	AccountId      string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	BankAccountId  string                 `protobuf:"bytes,3,opt,name=bank_account_id,json=bankAccountId,proto3" json:"bank_account_id,omitempty"`
+	Amount         int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1417,6 +1426,13 @@ func (x *MakeBankDepositRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MakeBankDepositRequest.ProtoReflect.Descriptor instead.
 func (*MakeBankDepositRequest) Descriptor() ([]byte, []int) {
 	return file_accounts_v1_acounts_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *MakeBankDepositRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
 }
 
 func (x *MakeBankDepositRequest) GetAccountId() string {
@@ -1493,10 +1509,11 @@ func (x *MakeBankDepositResponse) GetBankOperation() *BankOperation {
 
 type MakeBankWithdrawalRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	AccountId      string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	BankAccountId  string                 `protobuf:"bytes,2,opt,name=bank_account_id,json=bankAccountId,proto3" json:"bank_account_id,omitempty"`
-	Amount         int64                  `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	CompanyId      string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	AccountId      string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	BankAccountId  string                 `protobuf:"bytes,3,opt,name=bank_account_id,json=bankAccountId,proto3" json:"bank_account_id,omitempty"`
+	Amount         int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1529,6 +1546,13 @@ func (x *MakeBankWithdrawalRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MakeBankWithdrawalRequest.ProtoReflect.Descriptor instead.
 func (*MakeBankWithdrawalRequest) Descriptor() ([]byte, []int) {
 	return file_accounts_v1_acounts_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *MakeBankWithdrawalRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
 }
 
 func (x *MakeBankWithdrawalRequest) GetAccountId() string {
@@ -1831,10 +1855,12 @@ const file_accounts_v1_acounts_proto_rawDesc = "" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x121\n" +
 	"\bcurrency\x18\x02 \x01(\x0e2\x15.accounts.v1.CurrencyR\bcurrency\"G\n" +
 	"\x15CreateAccountResponse\x12.\n" +
-	"\aaccount\x18\x01 \x01(\v2\x14.accounts.v1.AccountR\aaccount\":\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.accounts.v1.AccountR\aaccount\"Y\n" +
 	"\x19SetAccountInActiveRequest\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\"L\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\"L\n" +
 	"\x1aSetAccountInActiveResponse\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.accounts.v1.AccountR\aaccount\"2\n" +
 	"\x11GetBalanceRequest\x12\x1d\n" +
@@ -1873,21 +1899,25 @@ const file_accounts_v1_acounts_proto_rawDesc = "" +
 	"\x18ConfirmOperationResponse\"-\n" +
 	"\x16CancelOperationRequest\x12\x13\n" +
 	"\x05tx_id\x18\x01 \x01(\tR\x04txId\"\x19\n" +
-	"\x17CancelOperationResponse\"\xa0\x01\n" +
+	"\x17CancelOperationResponse\"\xbf\x01\n" +
 	"\x16MakeBankDepositRequest\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12&\n" +
-	"\x0fbank_account_id\x18\x02 \x01(\tR\rbankAccountId\x12\x16\n" +
-	"\x06amount\x18\x03 \x01(\x03R\x06amount\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\\\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId\x12&\n" +
+	"\x0fbank_account_id\x18\x03 \x01(\tR\rbankAccountId\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"\\\n" +
 	"\x17MakeBankDepositResponse\x12A\n" +
-	"\x0ebank_operation\x18\x01 \x01(\v2\x1a.accounts.v1.BankOperationR\rbankOperation\"\xa3\x01\n" +
+	"\x0ebank_operation\x18\x01 \x01(\v2\x1a.accounts.v1.BankOperationR\rbankOperation\"\xc2\x01\n" +
 	"\x19MakeBankWithdrawalRequest\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12&\n" +
-	"\x0fbank_account_id\x18\x02 \x01(\tR\rbankAccountId\x12\x16\n" +
-	"\x06amount\x18\x03 \x01(\x03R\x06amount\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"_\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId\x12&\n" +
+	"\x0fbank_account_id\x18\x03 \x01(\tR\rbankAccountId\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"_\n" +
 	"\x1aMakeBankWithdrawalResponse\x12A\n" +
 	"\x0ebank_operation\x18\x01 \x01(\v2\x1a.accounts.v1.BankOperationR\rbankOperation\"3\n" +
 	"\x12GetAccountsRequest\x12\x1d\n" +

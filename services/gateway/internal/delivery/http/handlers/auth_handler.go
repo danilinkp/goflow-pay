@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"gateway/internal/clients/grpc"
+	"gateway/internal/delivery/http/middleware"
 	"gateway/internal/dto"
 	"net/http"
 	authv1 "shared/pkg/gen/go/auth/v1"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
@@ -115,17 +117,26 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func (h *AuthHandler) GetUsersByCompanyId(c *gin.Context) {
-	companyId := c.Param("company_id")
+	userRole, _ := c.Get(middleware.ContextRole)
+	userCompanyId, _ := c.Get(middleware.ContextCompanyID)
+
+	companyIdStr := userCompanyId.(uuid.UUID).String()
+
+	if userRole.(string) == "admin" {
+		if queryID := c.Query("company_id"); queryID != "" {
+			companyIdStr = queryID
+		}
+	}
 
 	resp, err := h.client.GetUsersByCompanyId(c.Request.Context(), &authv1.GetUsersByCompanyIdRequest{
-		CompanyId: companyId,
+		CompanyId: companyIdStr,
 	})
 	if err != nil {
 		handleGRPCError(c, err)
 		return
 	}
 
-	users := make([]dto.UserResponse, 0, len(resp.Users))
+	users := make([]dto.UserResponse, len(resp.Users))
 	for i, u := range resp.Users {
 		users[i] = dto.UserResponse{
 			UserId:    mustParseUUID(u.UserId),
@@ -140,10 +151,19 @@ func (h *AuthHandler) GetUsersByCompanyId(c *gin.Context) {
 }
 
 func (h *AuthHandler) GetInviteCode(c *gin.Context) {
-	companyId := c.Param("company_id")
+	userRole, _ := c.Get(middleware.ContextRole)
+	userCompanyId, _ := c.Get(middleware.ContextCompanyID)
+
+	companyIdStr := userCompanyId.(uuid.UUID).String()
+
+	if userRole.(string) == "admin" {
+		if queryID := c.Query("company_id"); queryID != "" {
+			companyIdStr = queryID
+		}
+	}
 
 	resp, err := h.client.GetInviteCodeByCompanyId(c.Request.Context(), &authv1.GetInviteCodeByCompanyIdRequest{
-		CompanyId: companyId,
+		CompanyId: companyIdStr,
 	})
 	if err != nil {
 		handleGRPCError(c, err)

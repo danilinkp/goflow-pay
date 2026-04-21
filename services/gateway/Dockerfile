@@ -6,7 +6,7 @@ COPY shared/ ./shared/
 COPY certs/ ./certs/
 COPY services/gateway/ ./services/gateway/
 
-WORKDIR /app/services/auth
+WORKDIR /app/services/gateway
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o gateway_server ./cmd/gateway
 

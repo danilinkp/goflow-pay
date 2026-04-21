@@ -100,6 +100,7 @@ message CreateAccountResponse {
 
 message SetAccountInActiveRequest {
   string account_id = 1;
+  string company_id = 2;
 }
 
 message SetAccountInActiveResponse {
@@ -161,10 +162,11 @@ message CancelOperationRequest {
 message CancelOperationResponse {}
 
 message MakeBankDepositRequest {
-  string account_id = 1;
-  string bank_account_id = 2;
-  int64 amount = 3;
-  string idempotency_key = 4;
+  string company_id = 1;
+  string account_id = 2;
+  string bank_account_id = 3;
+  int64 amount = 4;
+  string idempotency_key = 5;
 }
 
 message MakeBankDepositResponse {
@@ -172,10 +174,11 @@ message MakeBankDepositResponse {
 }
 
 message MakeBankWithdrawalRequest {
-  string account_id = 1;
-  string bank_account_id = 2;
-  int64 amount = 3;
-  string idempotency_key = 4;
+  string company_id = 1;
+  string account_id = 2;
+  string bank_account_id = 3;
+  int64 amount = 4;
+  string idempotency_key = 5;
 }
 
 message MakeBankWithdrawalResponse {

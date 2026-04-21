@@ -26,6 +26,8 @@ const (
 	AuthService_GetUsersByCompanyId_FullMethodName         = "/auth.v1.AuthService/GetUsersByCompanyId"
 	AuthService_GetUserById_FullMethodName                 = "/auth.v1.AuthService/GetUserById"
 	AuthService_GetInviteCodeByCompanyId_FullMethodName    = "/auth.v1.AuthService/GetInviteCodeByCompanyId"
+	AuthService_InitSystem_FullMethodName                  = "/auth.v1.AuthService/InitSystem"
+	AuthService_AddAdmin_FullMethodName                    = "/auth.v1.AuthService/AddAdmin"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -39,6 +41,8 @@ type AuthServiceClient interface {
 	GetUsersByCompanyId(ctx context.Context, in *GetUsersByCompanyIdRequest, opts ...grpc.CallOption) (*GetUsersByCompanyIdResponse, error)
 	GetUserById(ctx context.Context, in *GetUserByIdRequest, opts ...grpc.CallOption) (*GetUserByIdResponse, error)
 	GetInviteCodeByCompanyId(ctx context.Context, in *GetInviteCodeByCompanyIdRequest, opts ...grpc.CallOption) (*GetInviteCodeByCompanyIdResponse, error)
+	InitSystem(ctx context.Context, in *InitSystemRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	AddAdmin(ctx context.Context, in *AddAdminRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 }
 
 type authServiceClient struct {
@@ -119,6 +123,26 @@ func (c *authServiceClient) GetInviteCodeByCompanyId(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *authServiceClient) InitSystem(ctx context.Context, in *InitSystemRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthResponse)
+	err := c.cc.Invoke(ctx, AuthService_InitSystem_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) AddAdmin(ctx context.Context, in *AddAdminRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthResponse)
+	err := c.cc.Invoke(ctx, AuthService_AddAdmin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -130,6 +154,8 @@ type AuthServiceServer interface {
 	GetUsersByCompanyId(context.Context, *GetUsersByCompanyIdRequest) (*GetUsersByCompanyIdResponse, error)
 	GetUserById(context.Context, *GetUserByIdRequest) (*GetUserByIdResponse, error)
 	GetInviteCodeByCompanyId(context.Context, *GetInviteCodeByCompanyIdRequest) (*GetInviteCodeByCompanyIdResponse, error)
+	InitSystem(context.Context, *InitSystemRequest) (*AuthResponse, error)
+	AddAdmin(context.Context, *AddAdminRequest) (*AuthResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -160,6 +186,12 @@ func (UnimplementedAuthServiceServer) GetUserById(context.Context, *GetUserByIdR
 }
 func (UnimplementedAuthServiceServer) GetInviteCodeByCompanyId(context.Context, *GetInviteCodeByCompanyIdRequest) (*GetInviteCodeByCompanyIdResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetInviteCodeByCompanyId not implemented")
+}
+func (UnimplementedAuthServiceServer) InitSystem(context.Context, *InitSystemRequest) (*AuthResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method InitSystem not implemented")
+}
+func (UnimplementedAuthServiceServer) AddAdmin(context.Context, *AddAdminRequest) (*AuthResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddAdmin not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -308,6 +340,42 @@ func _AuthService_GetInviteCodeByCompanyId_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_InitSystem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitSystemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).InitSystem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_InitSystem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).InitSystem(ctx, req.(*InitSystemRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_AddAdmin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddAdminRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).AddAdmin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_AddAdmin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).AddAdmin(ctx, req.(*AddAdminRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -342,6 +410,14 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetInviteCodeByCompanyId",
 			Handler:    _AuthService_GetInviteCodeByCompanyId_Handler,
+		},
+		{
+			MethodName: "InitSystem",
+			Handler:    _AuthService_InitSystem_Handler,
+		},
+		{
+			MethodName: "AddAdmin",
+			Handler:    _AuthService_AddAdmin_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

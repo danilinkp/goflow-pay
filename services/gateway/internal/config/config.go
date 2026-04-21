@@ -14,6 +14,7 @@ type Config struct {
 	HTTPServer       HTTPServer  `yaml:"http_server"`
 	GRPCClients      GRPCClients `yaml:"grpc_clients"`
 	JWTPublicKeyPath string      `env:"JWT_PUBLIC_KEY_PATH"`
+	BootstrapToken   string      `env:"BOOTSTRAP_TOKEN"`
 }
 
 type HTTPServer struct {

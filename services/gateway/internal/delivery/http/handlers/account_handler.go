@@ -8,6 +8,7 @@ import (
 	accountsv1 "shared/pkg/gen/go/accounts/v1"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type AccountHandler struct {
@@ -19,7 +20,8 @@ func NewAccountHandler(client *grpc.AccountGRPCClient) *AccountHandler {
 }
 
 func (h *AccountHandler) CreateAccount(c *gin.Context) {
-	companyId := c.Param("company_id")
+	companyId, _ := c.Get(middleware.ContextCompanyID)
+	companyIdStr := companyId.(uuid.UUID).String()
 
 	var req struct {
 		Currency string `json:"currency"`
@@ -30,7 +32,7 @@ func (h *AccountHandler) CreateAccount(c *gin.Context) {
 	}
 
 	resp, err := h.client.CreateAccount(middleware.GRPCContext(c), &accountsv1.CreateAccountRequest{
-		CompanyId: companyId,
+		CompanyId: companyIdStr,
 		Currency:  parseCurrency(req.Currency),
 	})
 	if err != nil {
@@ -44,8 +46,20 @@ func (h *AccountHandler) CreateAccount(c *gin.Context) {
 func (h *AccountHandler) SetAccountInActive(c *gin.Context) {
 	accountId := c.Param("account_id")
 
+	userRole, _ := c.Get(middleware.ContextRole)
+	userCompanyId, _ := c.Get(middleware.ContextCompanyID)
+
+	companyIdStr := userCompanyId.(uuid.UUID).String()
+
+	if userRole.(string) == "admin" {
+		if queryID := c.Query("company_id"); queryID != "" {
+			companyIdStr = queryID
+		}
+	}
+
 	resp, err := h.client.SetAccountInActive(middleware.GRPCContext(c), &accountsv1.SetAccountInActiveRequest{
 		AccountId: accountId,
+		CompanyId: companyIdStr,
 	})
 	if err != nil {
 		handleGRPCError(c, err)
@@ -70,10 +84,19 @@ func (h *AccountHandler) GetBalance(c *gin.Context) {
 }
 
 func (h *AccountHandler) GetAccounts(c *gin.Context) {
-	companyId := c.Param("company_id")
+	userRole, _ := c.Get(middleware.ContextRole)
+	userCompanyId, _ := c.Get(middleware.ContextCompanyID)
+
+	companyIdStr := userCompanyId.(uuid.UUID).String()
+
+	if userRole.(string) == "admin" {
+		if queryID := c.Query("company_id"); queryID != "" {
+			companyIdStr = queryID
+		}
+	}
 
 	resp, err := h.client.GetAccounts(middleware.GRPCContext(c), &accountsv1.GetAccountsRequest{
-		CompanyId: companyId,
+		CompanyId: companyIdStr,
 	})
 	if err != nil {
 		handleGRPCError(c, err)
@@ -89,6 +112,8 @@ func (h *AccountHandler) GetAccounts(c *gin.Context) {
 }
 
 func (h *AccountHandler) LinkBankAccount(c *gin.Context) {
+	companyId, _ := c.Get(middleware.ContextCompanyID)
+
 	var req dto.LinkBankAccountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -98,7 +123,7 @@ func (h *AccountHandler) LinkBankAccount(c *gin.Context) {
 	resp, err := h.client.LinkBankAccount(middleware.GRPCContext(c), &accountsv1.LinkBankAccountRequest{
 		AccountId:         req.AccountId.String(),
 		BankId:            req.BankId.String(),
-		CompanyId:         req.CompanyId.String(),
+		CompanyId:         companyId.(uuid.UUID).String(),
 		Name:              req.Name,
 		Bic:               req.BIC,
 		SettlementAccount: req.SettlementAccount.String(),
@@ -113,10 +138,19 @@ func (h *AccountHandler) LinkBankAccount(c *gin.Context) {
 }
 
 func (h *AccountHandler) GetBankAccounts(c *gin.Context) {
-	companyId := c.Param("company_id")
+	userRole, _ := c.Get(middleware.ContextRole)
+	userCompanyId, _ := c.Get(middleware.ContextCompanyID)
+
+	companyIdStr := userCompanyId.(uuid.UUID).String()
+
+	if userRole.(string) == "admin" {
+		if queryID := c.Query("company_id"); queryID != "" {
+			companyIdStr = queryID
+		}
+	}
 
 	resp, err := h.client.GetBankAccounts(middleware.GRPCContext(c), &accountsv1.GetBankAccountsRequest{
-		CompanyId: companyId,
+		CompanyId: companyIdStr,
 	})
 	if err != nil {
 		handleGRPCError(c, err)
@@ -132,6 +166,8 @@ func (h *AccountHandler) GetBankAccounts(c *gin.Context) {
 }
 
 func (h *AccountHandler) MakeBankDeposit(c *gin.Context) {
+	companyId, _ := c.Get(middleware.ContextCompanyID)
+
 	var req dto.MakeBankOperationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -139,6 +175,7 @@ func (h *AccountHandler) MakeBankDeposit(c *gin.Context) {
 	}
 
 	resp, err := h.client.MakeBankDeposit(middleware.GRPCContext(c), &accountsv1.MakeBankDepositRequest{
+		CompanyId:      companyId.(uuid.UUID).String(),
 		AccountId:      req.AccountId.String(),
 		BankAccountId:  req.BankAccountId.String(),
 		Amount:         req.Amount,
@@ -153,6 +190,8 @@ func (h *AccountHandler) MakeBankDeposit(c *gin.Context) {
 }
 
 func (h *AccountHandler) MakeBankWithdrawal(c *gin.Context) {
+	companyId, _ := c.Get(middleware.ContextCompanyID)
+
 	var req dto.MakeBankOperationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -160,6 +199,7 @@ func (h *AccountHandler) MakeBankWithdrawal(c *gin.Context) {
 	}
 
 	resp, err := h.client.MakeBankWithdrawal(middleware.GRPCContext(c), &accountsv1.MakeBankWithdrawalRequest{
+		CompanyId:      companyId.(uuid.UUID).String(),
 		AccountId:      req.AccountId.String(),
 		BankAccountId:  req.BankAccountId.String(),
 		Amount:         req.Amount,

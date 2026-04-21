@@ -74,6 +74,20 @@ func (c *AuthGRPCClient) GetInviteCodeByCompanyId(ctx context.Context, req *auth
 	return resp, nil
 }
 
-//func (c *AuthGRPCClient) GetUserById(ctx context.Context, req *authv1.GetUserByIdRequest) (*authv1.GetUserByIdResponse, error) {
-//
-//}
+func (c *AuthGRPCClient) InitSystem(ctx context.Context, req *authv1.InitSystemRequest) (*authv1.AuthResponse, error) {
+	op := "auth.client.InitSystem"
+	resp, err := c.client.InitSystem(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}
+
+func (c *AuthGRPCClient) AddAdmin(ctx context.Context, req *authv1.AddAdminRequest) (*authv1.AuthResponse, error) {
+	op := "auth.client.AddAdmin"
+	resp, err := c.client.AddAdmin(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}

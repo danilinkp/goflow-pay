@@ -14,7 +14,6 @@ type CreateAccountResponse struct {
 type LinkBankAccountRequest struct {
 	AccountId         uuid.UUID `json:"account_id"`
 	BankId            uuid.UUID `json:"bank_id"`
-	CompanyId         uuid.UUID `json:"company_id"`
 	Name              string    `json:"name"`
 	BIC               string    `json:"bic"`
 	SettlementAccount uuid.UUID `json:"settlement_account"`
