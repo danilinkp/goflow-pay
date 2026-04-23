@@ -9,6 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type InviteCodeResponse struct {
+	InviteCode string `json:"invite_code"`
+}
+
 func NewGetInviteCodeCmd(httpClient *client.Client) *cobra.Command {
 	var companyIDFlag string
 
@@ -38,13 +42,13 @@ func NewGetInviteCodeCmd(httpClient *client.Client) *cobra.Command {
 				return fmt.Errorf("company_id is required")
 			}
 
-			var inviteCode string
-			if err = httpClient.Get(context.Background(), url, &inviteCode); err != nil {
+			var resp InviteCodeResponse
+			if err = httpClient.Get(context.Background(), url, &resp); err != nil {
 				return fmt.Errorf("failed to get invite code: %w", err)
 			}
 
 			fmt.Printf("Invite Code for company %s:\n", finalID)
-			fmt.Printf("Invite Code: %s\n", inviteCode)
+			fmt.Printf("Invite Code: %s\n", resp.InviteCode)
 			fmt.Println("\nShare this code with your teammates to register.")
 
 			return nil

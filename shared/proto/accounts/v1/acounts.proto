@@ -81,12 +81,13 @@ message BankOperation {
   string bank_operation_id = 1;
   string account_id = 2;
   string bank_account_id = 3;
-  OperationType operation_type = 4;
-  OperationStatus operation_status = 5;
-  int64 amount = 6;
-  string idempotency_key = 7;
-  string external_id = 8;
-  google.protobuf.Timestamp created_at = 9;
+  string initiator_id = 4;
+  OperationType operation_type = 5;
+  OperationStatus operation_status = 6;
+  int64 amount = 7;
+  string idempotency_key = 8;
+  string external_id = 9;
+  google.protobuf.Timestamp created_at = 10;
 }
 
 message CreateAccountRequest {
@@ -117,12 +118,11 @@ message GetBalanceResponse {
 
 message LinkBankAccountRequest {
   string account_id = 1;
-  string bank_id = 2;
-  string company_id = 3;
-  string name = 4;
-  string bic = 5;
-  string settlement_account = 6;
-  Currency currency = 7;
+  string company_id = 2;
+  string name = 3;
+  string bic = 4;
+  string settlement_account = 5;
+  Currency currency = 6;
 }
 
 message LinkBankAccountResponse {
@@ -165,8 +165,9 @@ message MakeBankDepositRequest {
   string company_id = 1;
   string account_id = 2;
   string bank_account_id = 3;
-  int64 amount = 4;
-  string idempotency_key = 5;
+  string initiator_id = 4;
+  int64 amount = 5;
+  string idempotency_key = 6;
 }
 
 message MakeBankDepositResponse {
@@ -177,8 +178,9 @@ message MakeBankWithdrawalRequest {
   string company_id = 1;
   string account_id = 2;
   string bank_account_id = 3;
-  int64 amount = 4;
-  string idempotency_key = 5;
+  string initiator_id = 4;
+  int64 amount = 5;
+  string idempotency_key = 6;
 }
 
 message MakeBankWithdrawalResponse {

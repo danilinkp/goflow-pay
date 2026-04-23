@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"shared/pkg/auth"
+	"shared/pkg/logger/sl"
 	"time"
 
 	"github.com/google/uuid"
@@ -89,20 +90,43 @@ func NewAuthService(
 }
 
 func (a *AuthService) RegisterWithNewCompany(ctx context.Context, in RegisterCompanyInput) (*AuthOutput, error) {
-	op := "Auth.RegisterWithNewCompany"
+	op := "AuthService.RegisterWithNewCompany"
+	start := time.Now()
+
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("registering new company",
+		slog.String("email", in.Email),
+		slog.String("company_name", in.CompanyName),
+	)
 
 	passwordHash, err := a.hasher.Hash(in.Password)
 	if err != nil {
+		log.Error("failed to hash password",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	company, err := entities.NewCompany(in.CompanyName)
 	if err != nil {
+		log.Error("failed to create company entity",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	user, err := entities.NewUser(company.CompanyId(), in.Login, in.Email, passwordHash, entities.RoleCompanyAdmin)
 	if err != nil {
+		log.Error("failed to create user entity",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -113,13 +137,28 @@ func (a *AuthService) RegisterWithNewCompany(ctx context.Context, in RegisterCom
 		return a.userRepository.Save(txCtx, user)
 	})
 	if err != nil {
+		log.Error("failed to save company and user",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
+		log.Error("failed to generate token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("company registered successfully",
+		slog.String("user_id", user.UserId().String()),
+		slog.String("company_id", user.CompanyId().String()),
+		slog.String("role", string(user.Role())),
+		sl.Duration(time.Since(start)),
+	)
 
 	return &AuthOutput{
 		UserID:    user.UserId(),
@@ -131,35 +170,71 @@ func (a *AuthService) RegisterWithNewCompany(ctx context.Context, in RegisterCom
 }
 
 func (a *AuthService) RegisterWithExistingCompany(ctx context.Context, userRequest RegisterEmployeeInput) (*AuthOutput, error) {
-	op := "Auth.RegisterWithExistingCompany"
+	op := "AuthService.RegisterWithExistingCompany"
+
+	start := time.Now()
+
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("registering new user",
+		slog.String("email", userRequest.Email),
+		slog.String("login", userRequest.Login),
+	)
 
 	company, err := a.companyRepository.GetByInviteCode(ctx, userRequest.CompanyInviteCode)
 	if err != nil {
+		log.Error("failed to get company by invite code",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if company.InviteCode() != userRequest.CompanyInviteCode {
+		log.Error("company invite code does not match",
+			sl.ErrWithStack(ErrInvalidInviteCode),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, ErrInvalidInviteCode)
 	}
 
 	passwordHash, err := a.hasher.Hash(userRequest.Password)
 	if err != nil {
+		log.Error("failed to hash password",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	user, err := entities.NewUser(company.CompanyId(), userRequest.Login, userRequest.Email, passwordHash, entities.RoleEmployee)
 	if err != nil {
+		log.Error("failed to create user entity",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	err = a.userRepository.Save(ctx, user)
 	if err != nil {
+		log.Error("failed to save user entity",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
+		log.Error("failed to generate token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("user registered successfully",
+		slog.String("user_id", user.UserId().String()),
+		slog.String("company_id", user.CompanyId().String()),
+		slog.String("role", string(user.Role())),
+		sl.Duration(time.Since(start)))
 
 	return &AuthOutput{
 		UserID:    user.UserId(),
@@ -171,23 +246,54 @@ func (a *AuthService) RegisterWithExistingCompany(ctx context.Context, userReque
 }
 
 func (a *AuthService) Login(ctx context.Context, request LoginInput) (*AuthOutput, error) {
-	op := "Auth.Login"
+	op := "AuthService.Login"
+	start := time.Now()
+
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+		slog.String("email", request.Email),
+	)
+
+	log.Info("user login attempt")
+
 	user, err := a.userRepository.GetByEmail(ctx, request.Email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
+			log.Warn("login failed: user not found",
+				sl.Duration(time.Since(start)),
+			)
 			return nil, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
+		log.Error("failed to get user",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err = a.hasher.Verify(request.Password, user.PasswordHash()); err != nil {
+		log.Warn("login failed: invalid password",
+			slog.String("user_id", user.UserId().String()),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
 	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
+		log.Error("failed to generate token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("user logged in successfully",
+		slog.String("user_id", user.UserId().String()),
+		slog.String("role", string(user.Role())),
+		sl.Duration(time.Since(start)),
+	)
 
 	return &AuthOutput{
 		UserID:    user.UserId(),
@@ -199,21 +305,45 @@ func (a *AuthService) Login(ctx context.Context, request LoginInput) (*AuthOutpu
 }
 
 func (a *AuthService) Logout(ctx context.Context, token string) error {
-	op := "Auth.Logout"
+	op := "AuthService.Logout"
+	start := time.Now()
+
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("user logout attempt")
 
 	claims, err := a.validator.Validate(token)
 	if err != nil {
+		log.Warn("logout failed: invalid token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	remainingTTL := time.Until(claims.ExpiresAt)
 	if remainingTTL <= 0 {
+		log.Info("token already expired, skipping blacklist",
+			slog.String("user_id", claims.UserID.String()),
+		)
 		return nil
 	}
 
 	if err = a.blackListRepository.Save(ctx, claims.TokenID, remainingTTL); err != nil {
+		log.Error("failed to blacklist token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("user logged out successfully",
+		slog.String("user_id", claims.UserID.String()),
+		sl.Duration(time.Since(start)),
+	)
 
 	return nil
 }
@@ -221,78 +351,170 @@ func (a *AuthService) Logout(ctx context.Context, token string) error {
 func (a *AuthService) IsTokenValid(ctx context.Context, token string) (*auth.AccessClaims, error) {
 	op := "Auth.IsTokenValid"
 
+	start := time.Now()
+
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("user check attempt")
+
 	claims, err := a.validator.Validate(token)
 	if err != nil {
+		log.Error("failed to validate token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	revoked, err := a.blackListRepository.Exists(ctx, claims.TokenID)
 	if err != nil {
+		log.Error("failed to check if token is revoked",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if revoked {
+		log.Warn("token is revoked, skipping blacklist",
+			slog.String("user_id", claims.UserID.String()),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, errors.New("token is revoked"))
 	}
+
+	log.Info("token is valid",
+		slog.String("user_id", claims.UserID.String()),
+		sl.Duration(time.Since(start)))
 
 	return claims, nil
 }
 
 func (a *AuthService) GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error) {
-	op := "Auth.GetUsersByCompanyId"
+	op := "AuthService.GetUsersByCompanyId"
+
+	start := time.Now()
+
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("user list attempt")
 
 	users, err := a.userRepository.GetByCompanyId(ctx, companyId)
 	if err != nil {
+		log.Error("failed to get user by company id",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("user list successfully",
+		sl.Duration(time.Since(start)))
 
 	return users, nil
 }
 
 func (a *AuthService) GetUserById(ctx context.Context, userId uuid.UUID) (*entities.User, error) {
-	op := "Auth.GetUserById"
+	op := "AuthService.GetUserById"
+
+	start := time.Now()
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("user get attempt")
 
 	user, err := a.userRepository.GetById(ctx, userId)
 	if err != nil {
+		log.Error("failed to get user by id",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("user get successfully",
+		slog.String("user_id", user.UserId().String()),
+		sl.Duration(time.Since(start)))
 
 	return user, nil
 }
 
 func (a *AuthService) GetInviteCode(ctx context.Context, companyId uuid.UUID) (string, error) {
-	op := "Auth.GetInviteCode"
+	op := "AuthService.GetInviteCode"
+
+	start := time.Now()
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("invite code get attempt")
 
 	inviteCode, err := a.companyRepository.GetInviteCodeById(ctx, companyId)
 	if err != nil {
+		log.Error("failed to get invite code by company id",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("invite code get successfully",
+		slog.String("company_id", companyId.String()),
+		sl.Duration(time.Since(start)))
 
 	return inviteCode, nil
 }
 
 func (a *AuthService) InitSystem(ctx context.Context, req InitAdminInput) (*AuthOutput, error) {
-	const op = "AuthService.InitSystem"
+	op := "AuthService.InitSystem"
+
+	start := time.Now()
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+	log.Info("user init system attempt")
 
 	_, err := a.companyRepository.GetById(ctx, auth.SystemCompanyID)
 	if err != nil {
 		if errors.Is(err, domain.ErrCompanyAlreadyExists) {
+			log.Warn("admin is already initialized, skipping",
+				sl.Duration(time.Since(start)),
+			)
 			return nil, fmt.Errorf("%s: %w", op, ErrSystemAlreadyInitialized)
 		}
+		log.Error("failed to get user by company id",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	company, err := entities.NewCompanyWithID(auth.SystemCompanyID, "GoFlow Pay System")
 	if err != nil {
+		log.Error("failed to create company",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	hash, err := a.hasher.Hash(req.Password)
 	if err != nil {
+		log.Error("failed to hash password",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	user, err := entities.NewUser(auth.SystemCompanyID, req.Login, req.Email, hash, entities.RoleAdmin)
 	if err != nil {
+		log.Error("failed to create user",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -303,13 +525,23 @@ func (a *AuthService) InitSystem(ctx context.Context, req InitAdminInput) (*Auth
 		return a.userRepository.Save(ctx, user)
 	})
 	if err != nil {
+		log.Error("failed to create user",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
+		log.Error("failed to generate token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("system successfully initialized",
+		sl.Duration(time.Since(start)))
 
 	return &AuthOutput{
 		UserID:    user.UserId(),
@@ -321,27 +553,54 @@ func (a *AuthService) InitSystem(ctx context.Context, req InitAdminInput) (*Auth
 }
 
 func (a *AuthService) AddAdmin(ctx context.Context, req AddAdminInput) (*AuthOutput, error) {
-	const op = "AuthService.AddAdmin"
+	op := "AuthService.AddAdmin"
+
+	start := time.Now()
+	log := a.logger.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+	log.Info("add admin attempt")
 
 	hash, err := a.hasher.Hash(req.Password)
 	if err != nil {
+		log.Error("failed to hash password",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	user, err := entities.NewUser(auth.SystemCompanyID, req.Login, req.Email, hash, entities.RoleAdmin)
 	if err != nil {
+		log.Error("failed to create user",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	err = a.userRepository.Save(ctx, user)
 	if err != nil {
+		log.Error("failed to save user",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token, err := a.tokenService.Generate(user.UserId(), user.CompanyId(), string(user.Role()))
 	if err != nil {
+		log.Error("failed to generate token",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("admin successfully created",
+		slog.String("user_id", user.UserId().String()),
+		sl.Duration(time.Since(start)),
+	)
 
 	return &AuthOutput{
 		UserID:    user.UserId(),

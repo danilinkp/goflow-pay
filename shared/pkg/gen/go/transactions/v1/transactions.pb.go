@@ -244,9 +244,10 @@ type TransferRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	FromAccountId  string                 `protobuf:"bytes,1,opt,name=from_account_id,json=fromAccountId,proto3" json:"from_account_id,omitempty"`
 	ToAccountId    string                 `protobuf:"bytes,2,opt,name=to_account_id,json=toAccountId,proto3" json:"to_account_id,omitempty"`
-	Amount         int64                  `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	Currency       Currency               `protobuf:"varint,4,opt,name=currency,proto3,enum=transactions.v1.Currency" json:"currency,omitempty"`
-	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	InitiatorId    string                 `protobuf:"bytes,3,opt,name=initiator_id,json=initiatorId,proto3" json:"initiator_id,omitempty"`
+	Amount         int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	Currency       Currency               `protobuf:"varint,5,opt,name=currency,proto3,enum=transactions.v1.Currency" json:"currency,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -291,6 +292,13 @@ func (x *TransferRequest) GetFromAccountId() string {
 func (x *TransferRequest) GetToAccountId() string {
 	if x != nil {
 		return x.ToAccountId
+	}
+	return ""
+}
+
+func (x *TransferRequest) GetInitiatorId() string {
+	if x != nil {
+		return x.InitiatorId
 	}
 	return ""
 }
@@ -551,13 +559,14 @@ const file_transactions_v1_transactions_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\x12Q\n" +
 	"\x12transaction_status\x18\b \x01(\x0e2\".transactions.v1.TransactionStatusR\x11transactionStatus\x129\n" +
 	"\n" +
-	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xd5\x01\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xf8\x01\n" +
 	"\x0fTransferRequest\x12&\n" +
 	"\x0ffrom_account_id\x18\x01 \x01(\tR\rfromAccountId\x12\"\n" +
-	"\rto_account_id\x18\x02 \x01(\tR\vtoAccountId\x12\x16\n" +
-	"\x06amount\x18\x03 \x01(\x03R\x06amount\x125\n" +
-	"\bcurrency\x18\x04 \x01(\x0e2\x19.transactions.v1.CurrencyR\bcurrency\x12'\n" +
-	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"R\n" +
+	"\rto_account_id\x18\x02 \x01(\tR\vtoAccountId\x12!\n" +
+	"\finitiator_id\x18\x03 \x01(\tR\vinitiatorId\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\x03R\x06amount\x125\n" +
+	"\bcurrency\x18\x05 \x01(\x0e2\x19.transactions.v1.CurrencyR\bcurrency\x12'\n" +
+	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\"R\n" +
 	"\x10TransferResponse\x12>\n" +
 	"\vtransaction\x18\x01 \x01(\v2\x1c.transactions.v1.TransactionR\vtransaction\":\n" +
 	"\x19GetAllTransactionsRequest\x12\x1d\n" +

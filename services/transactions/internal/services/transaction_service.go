@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"shared/pkg/logger/sl"
 	"shared/pkg/outbox"
 	"time"
 	"transactions/internal/domain/entities"
@@ -56,8 +57,17 @@ func NewTransactionService(client AccountClient, transactionRepository Transacti
 func (t *TransactionService) Transfer(ctx context.Context, request *TransferInput) (*entities.Transaction, error) {
 	op := "TransactionService.Transfer"
 
+	start := time.Now()
+	log := t.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("starting transaction")
+
 	existing, err := t.transactionRepository.GetByIdempotencyKey(ctx, request.IdempotencyKey)
 	if err == nil && existing != nil {
+		log.Info("transaction already exists", sl.Duration(time.Since(start)))
 		return existing, nil
 	}
 
@@ -71,17 +81,22 @@ func (t *TransactionService) Transfer(ctx context.Context, request *TransferInpu
 		request.IdempotencyKey,
 	)
 	if err != nil {
+		log.Error("failed to create new transaction", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err = t.transactionRepository.Save(ctx, tx); err != nil {
+		log.Error("failed to save transaction", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	err = t.executeSaga(ctx, tx)
 	if err != nil {
+		log.Error("failed to execute saga", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("transaction succeeded", sl.Duration(time.Since(start)))
 
 	return tx, nil
 }
@@ -113,8 +128,17 @@ func (t *TransactionService) executeSaga(ctx context.Context, transaction *entit
 func (t *TransactionService) Recover(ctx context.Context, txID uuid.UUID) error {
 	op := "TransactionService.Recover"
 
+	start := time.Now()
+	log := t.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("starting recover")
+
 	tx, err := t.transactionRepository.GetById(ctx, txID)
 	if err != nil {
+		log.Error("failed to get transaction", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		return err
 	}
 
@@ -123,10 +147,13 @@ func (t *TransactionService) Recover(ctx context.Context, txID uuid.UUID) error 
 	} else if tx.Status() == entities.ProcessingStatus {
 		err = t.accountClient.ConfirmOperation(ctx, tx.TransactionID())
 		if err != nil {
+			log.Error("failed to confirm operation", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 			return fmt.Errorf("%s: confirm failed (will retry): %w", op, err)
 		}
 		return t.successTransaction(ctx, tx)
 	}
+
+	log.Info("recovering succeeded", sl.Duration(time.Since(start)))
 
 	return nil
 }
@@ -134,10 +161,21 @@ func (t *TransactionService) Recover(ctx context.Context, txID uuid.UUID) error 
 func (t *TransactionService) GetAllTransactions(ctx context.Context, accountId uuid.UUID) ([]*entities.Transaction, error) {
 	op := "TransactionService.GetAllTransactions"
 
+	start := time.Now()
+	log := t.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("starting list transactions")
+
 	transactions, err := t.transactionRepository.GetByAccountId(ctx, accountId)
 	if err != nil {
+		log.Error("failed to get transactions", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("listing transactions succeeded", sl.Duration(time.Since(start)))
 
 	return transactions, nil
 }
@@ -145,10 +183,21 @@ func (t *TransactionService) GetAllTransactions(ctx context.Context, accountId u
 func (t *TransactionService) GetTransaction(ctx context.Context, txId uuid.UUID) (*entities.Transaction, error) {
 	op := "Transaction.GetTransaction"
 
+	start := time.Now()
+	log := t.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("starting get transaction")
+
 	transaction, err := t.transactionRepository.GetById(ctx, txId)
 	if err != nil {
+		log.Error("failed to get transaction", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("getting transaction succeeded", sl.Duration(time.Since(start)))
 
 	return transaction, nil
 }

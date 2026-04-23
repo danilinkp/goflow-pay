@@ -52,6 +52,7 @@ func NewBankOperation(accountId, bankAccountId, initiatorId uuid.UUID, operation
 		bankOperationId: uuid.New(),
 		accountId:       accountId,
 		bankAccountId:   bankAccountId,
+		initiatorId:     initiatorId,
 		operationType:   operationType,
 		operationStatus: operationStatus,
 		amount:          amount,

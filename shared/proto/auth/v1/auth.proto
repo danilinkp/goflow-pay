@@ -14,6 +14,7 @@ service AuthService {
   rpc GetUsersByCompanyId(GetUsersByCompanyIdRequest) returns (GetUsersByCompanyIdResponse);
   rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
   rpc GetInviteCodeByCompanyId(GetInviteCodeByCompanyIdRequest) returns (GetInviteCodeByCompanyIdResponse);
+  rpc IsTokenValid(IsTokenValidRequest) returns (IsTokenValidResponse);
   rpc InitSystem(InitSystemRequest) returns (AuthResponse);
   rpc AddAdmin(AddAdminRequest) returns (AuthResponse);
 }
@@ -94,4 +95,16 @@ message AddAdminRequest {
   string login = 1;
   string email = 2;
   string password = 3;
+}
+
+message IsTokenValidRequest {
+  string token = 1;
+}
+
+message IsTokenValidResponse {
+  string token_id = 1;
+  string user_id = 2;
+  string company_id = 3;
+  string role = 4;
+  google.protobuf.Timestamp expires_at = 5;
 }

@@ -143,6 +143,11 @@ services:
     environment:
       CONFIG_PATH: config/config.yaml
       JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     volumes:
       - ./certs:/app/certs:ro
     networks:
@@ -163,6 +168,11 @@ services:
       - services/accounts/.env
     environment:
       CONFIG_PATH: config/local.yaml
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - goflow_network
 
@@ -183,6 +193,11 @@ services:
       - services/transactions/.env
     environment:
       CONFIG_PATH: config/local.yaml
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - goflow_network
 
@@ -203,6 +218,11 @@ services:
       - services/notifications/.env
     environment:
       CONFIG_PATH: config/local.yaml
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - goflow_network
 
@@ -228,6 +248,11 @@ services:
     environment:
       CONFIG_PATH: config/local.yaml
       JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - goflow_network
 

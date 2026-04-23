@@ -13,10 +13,9 @@ type CreateAccountResponse struct {
 
 type LinkBankAccountRequest struct {
 	AccountId         uuid.UUID `json:"account_id"`
-	BankId            uuid.UUID `json:"bank_id"`
 	Name              string    `json:"name"`
 	BIC               string    `json:"bic"`
-	SettlementAccount uuid.UUID `json:"settlement_account"`
+	SettlementAccount string    `json:"settlement_account"`
 	Currency          string    `json:"currency"`
 }
 
@@ -67,6 +66,7 @@ type BankOperationResponse struct {
 	BankOperationId uuid.UUID `json:"bank_operation_id"`
 	AccountId       uuid.UUID `json:"account_id"`
 	BankAccountId   uuid.UUID `json:"bank_account_id"`
+	InitiatorId     uuid.UUID `json:"initiator_id"`
 	OperationType   string    `json:"operation_type"`
 	OperationStatus string    `json:"operation_status"`
 	Amount          int64     `json:"amount"`

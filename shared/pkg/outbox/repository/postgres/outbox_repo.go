@@ -38,8 +38,8 @@ func (r *OutboxRepo) Save(ctx context.Context, event *outbox.Event) error {
 		event.Payload,
 		event.FailedReason,
 		event.Attempts,
-		event.CreatedAt,
 		event.PublishedAt,
+		event.CreatedAt,
 	)
 
 	if err != nil {

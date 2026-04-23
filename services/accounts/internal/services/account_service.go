@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"shared/pkg/logger/sl"
 	"shared/pkg/outbox"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -94,36 +96,77 @@ func NewAccountService(
 
 func (a *AccountService) CreateAccount(ctx context.Context, companyId uuid.UUID, currency entities.Currency) (*entities.Account, error) {
 	op := "AccountService.CreateAccount"
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+	log.Info("create account attempt")
 
 	acc, err := entities.NewAccount(companyId, 0, currency, entities.ActiveStatus)
 	if err != nil {
+		log.Error("failed to create account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err = a.accountRepository.Save(ctx, acc); err != nil {
+		log.Error("failed to save account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("account created",
+		slog.String("account_id", acc.AccountId().String()),
+		sl.Duration(time.Since(start)))
 
 	return acc, nil
 }
 
 func (a *AccountService) SetAccountInActive(ctx context.Context, accountId, companyId uuid.UUID) (*entities.Account, error) {
 	op := "AccountService.SetAccountInactive"
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("set account inactive attempt")
 
 	acc, err := a.accountRepository.GetById(ctx, accountId)
 	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if acc.CompanyId() != companyId {
+		log.Warn("account does not belong to company",
+			sl.ErrWithStack(ErrDifferentCompanies),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	hasPending, err := a.accountOperationRepository.HasPendingByAccountId(ctx, accountId)
 	if err != nil {
+		log.Error("failed to check if account has pending operation",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if hasPending {
+		log.Warn("account has pending operation",
+			sl.ErrWithStack(ErrAccountHasPendingOperations),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, ErrAccountHasPendingOperations)
 	}
 	err = a.transactor.WithTx(ctx, func(txCtx context.Context) error {
@@ -139,18 +182,45 @@ func (a *AccountService) SetAccountInActive(ctx context.Context, accountId, comp
 	})
 
 	if err != nil {
+		log.Error("failed to update account status",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("account updated",
+		slog.String("account_id", acc.AccountId().String()),
+		slog.String("status", acc.Status().String()),
+		sl.Duration(time.Since(start)),
+	)
 
 	return acc, nil
 }
 
 func (a *AccountService) GetBalance(ctx context.Context, accountId uuid.UUID) (int64, error) {
 	op := "AccountService.GetBalance"
+
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("get account balance")
+
 	acc, err := a.accountRepository.GetById(ctx, accountId)
 	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return -1, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("get account balance successfully",
+		slog.String("account_id", acc.AccountId().String()),
+		sl.Duration(time.Since(start)),
+	)
 
 	return acc.Balance(), nil
 }
@@ -158,40 +228,89 @@ func (a *AccountService) GetBalance(ctx context.Context, accountId uuid.UUID) (i
 func (a *AccountService) LinkBankAccount(ctx context.Context, request LinkBankInput) (*entities.BankAccount, error) {
 	op := "AccountService.LinkBankAccount"
 
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("link bank account attempt")
+
 	acc, err := a.accountRepository.GetById(ctx, request.AccountID)
 	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if acc.CompanyId() != request.CompanyID {
+		log.Warn("account does not belong to company",
+			sl.ErrWithStack(ErrDifferentCompanies),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	bankAcc, err := entities.NewBankAccount(request.CompanyID, request.Name, request.Bic, request.SettlementAccount, request.Currency)
 	if err != nil {
+		log.Error("failed to create bank account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err = a.bankAccountRepository.Save(ctx, bankAcc); err != nil {
+		log.Error("failed to save bank account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("bank account created",
+		slog.String("account_id", acc.AccountId().String()),
+		slog.String("bank_account_id", bankAcc.BankAccountId().String()),
+		sl.Duration(time.Since(start)))
 
 	return bankAcc, nil
 }
 
 func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
 	op := "AccountService.ReserveWithdraw"
+
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("reserve withdraw attempt")
+
 	acc, err := a.accountRepository.GetById(ctx, accountId)
 	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	existing, _ := a.accountOperationRepository.GetByTransactionIdAndType(ctx, txId, string(entities.Withdrawal))
 	if existing != nil {
+		log.Info("account has already withdrawn amount",
+			slog.String("account_id", acc.AccountId().String()),
+			sl.Duration(time.Since(start)))
 		return existing, nil
 	}
 
 	if acc.Balance() < amount {
+		log.Warn("account has not enough balance",
+			slog.String("account_id", acc.AccountId().String()),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, ErrNotEnoughFunds)
 	}
 
@@ -218,21 +337,47 @@ func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId uuid.UUI
 	})
 
 	if err != nil {
+		log.Error("failed to update account operation",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("withdraw reserved",
+		slog.String("account_id", acc.AccountId().String()),
+		sl.Duration(time.Since(start)),
+	)
 
 	return accOp, nil
 }
 
 func (a *AccountService) ReserveDeposit(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
 	op := "AccountService.ReserveDeposit"
+
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("reserve deposit attempt")
+
 	acc, err := a.accountRepository.GetById(ctx, accountId)
 	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	existing, _ := a.accountOperationRepository.GetByTransactionIdAndType(ctx, txId, string(entities.Deposit))
 	if existing != nil {
+		log.Info("account has already withdrawn amount",
+			slog.String("account_id", acc.AccountId().String()),
+			sl.Duration(time.Since(start)),
+		)
 		return existing, nil
 	}
 
@@ -259,8 +404,17 @@ func (a *AccountService) ReserveDeposit(ctx context.Context, accountId uuid.UUID
 	})
 
 	if err != nil {
+		log.Error("failed to update account operation",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("deposit reserved",
+		slog.String("account_id", acc.AccountId().String()),
+		sl.Duration(time.Since(start)),
+	)
 
 	return accOp, nil
 }
@@ -268,16 +422,40 @@ func (a *AccountService) ReserveDeposit(ctx context.Context, accountId uuid.UUID
 func (a *AccountService) ConfirmOperation(ctx context.Context, txId uuid.UUID) error {
 	op := "AccountService.ConfirmOperation"
 
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("confirm operation attempt")
+
 	err := a.accountOperationRepository.ConfirmAllByTransactionId(ctx, txId)
 	if err != nil {
+		log.Error("failed to confirm operation",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("operation confirmed",
+		sl.Duration(time.Since(start)))
 
 	return nil
 }
 
 func (a *AccountService) CancelOperation(ctx context.Context, txId uuid.UUID) error {
 	op := "AccountService.CancelOperation"
+
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("cancel operation attempt", sl.Duration(time.Since(start)))
+
 	accOps, err := a.accountOperationRepository.GetByTransactionId(ctx, txId)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -321,8 +499,15 @@ func (a *AccountService) CancelOperation(ctx context.Context, txId uuid.UUID) er
 	})
 
 	if err != nil {
+		log.Error("failed to update account operation",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("operation canceled",
+		sl.Duration(time.Since(start)))
 
 	return nil
 }
@@ -330,27 +515,51 @@ func (a *AccountService) CancelOperation(ctx context.Context, txId uuid.UUID) er
 func (a *AccountService) MakeBankDeposit(ctx context.Context, request *BankOperationInput) (*entities.BankOperation, error) {
 	op := "AccountService.MakeBankDeposit"
 
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("make bank deposit attempt")
+
 	existing, _ := a.bankOperationRepository.GetByIdempotencyKey(ctx, request.IdempotencyKey)
 	if existing != nil {
+		log.Info("account has already withdrawn amount",
+			sl.Duration(time.Since(start)))
 		return existing, nil
 	}
 
 	acc, err := a.accountRepository.GetById(ctx, request.AccountID)
 	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if acc.CompanyId() != request.CompanyID {
+		log.Warn("account don't have the same company",
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	bankAccount, err := a.bankAccountRepository.GetById(ctx, request.BankAccountID)
 	if err != nil {
+		log.Error("failed to get bank account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	externalID, err := a.bankGateway.Deposit(ctx, bankAccount, request.Amount, request.IdempotencyKey)
 	if err != nil {
+		log.Error("failed to bank deposit",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -379,8 +588,16 @@ func (a *AccountService) MakeBankDeposit(ctx context.Context, request *BankOpera
 	})
 
 	if err != nil {
+		log.Error("failed to bank deposit",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("bank deposit succeeded",
+		sl.Duration(time.Since(start)),
+	)
 
 	return bo, nil
 }
@@ -388,26 +605,47 @@ func (a *AccountService) MakeBankDeposit(ctx context.Context, request *BankOpera
 func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *BankOperationInput) (*entities.BankOperation, error) {
 	op := "AccountService.MakeBankWithdrawal"
 
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("make bank withdrawal attempt")
+
 	existing, _ := a.bankOperationRepository.GetByIdempotencyKey(ctx, request.IdempotencyKey)
 	if existing != nil {
+		log.Info("account has already withdrawn amount",
+			sl.Duration(time.Since(start)))
 		return existing, nil
 	}
 
 	acc, err := a.accountRepository.GetById(ctx, request.AccountID)
 	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if acc.CompanyId() != request.CompanyID {
+		log.Warn("account don't have the same company",
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	bankAccount, err := a.bankAccountRepository.GetById(ctx, request.BankAccountID)
 	if err != nil {
+		log.Error("failed to get bank account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if acc.Balance() < request.Amount {
+		log.Warn("account has not enough balance",
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, ErrNotEnoughFunds)
 	}
 
@@ -436,14 +674,24 @@ func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *BankOp
 	})
 
 	if err != nil {
+		log.Error("failed to reserve bank withdrawal",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	externalID, err := a.bankGateway.Withdraw(ctx, bankAccount, request.Amount, request.IdempotencyKey)
 	if err != nil {
 		if err2 := a.compensateBankWithdrawal(ctx, acc, bo, externalID); err2 != nil {
+			log.Error("failed to compensate bank withdrawal",
+				sl.ErrWithStack(err2),
+				sl.Duration(time.Since(start)))
 			return nil, fmt.Errorf("%s: %w, %w", op, err, err2)
 		}
+		log.Error("failed to bank withdrawal",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -462,8 +710,15 @@ func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *BankOp
 	})
 
 	if err != nil {
+		log.Error("failed to success bank withdrawal",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("bank withdrawal succeeded",
+		sl.Duration(time.Since(start)),
+	)
 
 	return bo, nil
 }
@@ -471,10 +726,24 @@ func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *BankOp
 func (a *AccountService) GetAccounts(ctx context.Context, companyId uuid.UUID) ([]*entities.Account, error) {
 	op := "AccountService.GetAccounts"
 
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("get accounts")
+
 	accounts, err := a.accountRepository.GetByCompanyId(ctx, companyId)
 	if err != nil {
+		log.Error("failed to get accounts",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("get accounts succeeded",
+		sl.Duration(time.Since(start)))
 
 	return accounts, nil
 }
@@ -482,10 +751,24 @@ func (a *AccountService) GetAccounts(ctx context.Context, companyId uuid.UUID) (
 func (a *AccountService) GetBankAccounts(ctx context.Context, companyId uuid.UUID) ([]*entities.BankAccount, error) {
 	op := "AccountService.GetBankAccounts"
 
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("get bank accounts")
+
 	accounts, err := a.bankAccountRepository.GetByCompanyId(ctx, companyId)
 	if err != nil {
+		log.Error("failed to get bank accounts",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("get bank accounts succeeded",
+		sl.Duration(time.Since(start)))
 
 	return accounts, nil
 }
