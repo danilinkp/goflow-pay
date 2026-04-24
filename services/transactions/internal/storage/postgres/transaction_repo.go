@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	postgresLib "shared/db/postgres"
+	postgresLib "shared/pkg/db/postgres"
 	"time"
 	"transactions/internal/domain"
 	"transactions/internal/domain/entities"
@@ -34,11 +34,12 @@ func NewTransactionRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *TransactionRep
 func (r *TransactionRepo) Save(ctx context.Context, transaction *entities.Transaction) error {
 	op := "TransactionService.Save"
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	query := `INSERT INTO transactions (transaction_id, from_account_id, to_account_id, amount, currency, idempotency_key, status, updated_at, created_at)
-			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+	query := `INSERT INTO transactions (transaction_id, initiator_id, from_account_id, to_account_id, amount, currency, idempotency_key, status, updated_at, created_at)
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 	txModel := models.ToTransactionModel(transaction)
 	_, err := conn.Exec(ctx, query,
 		txModel.TransactionId,
+		txModel.InitiatorId,
 		txModel.FromAccountId,
 		txModel.ToAccountId,
 		txModel.Amount,

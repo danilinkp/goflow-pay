@@ -296,7 +296,7 @@ func (_c *MockAccountRepository_UpdateBalance_Call) RunAndReturn(run func(ctx co
 }
 
 // UpdateStatus provides a mock function for the type MockAccountRepository
-func (_mock *MockAccountRepository) UpdateStatus(ctx context.Context, accountId uuid.UUID, status string) error {
+func (_mock *MockAccountRepository) UpdateStatus(ctx context.Context, accountId uuid.UUID, status entities.AccountStatus) error {
 	ret := _mock.Called(ctx, accountId, status)
 
 	if len(ret) == 0 {
@@ -304,7 +304,7 @@ func (_mock *MockAccountRepository) UpdateStatus(ctx context.Context, accountId 
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, entities.AccountStatus) error); ok {
 		r0 = returnFunc(ctx, accountId, status)
 	} else {
 		r0 = ret.Error(0)

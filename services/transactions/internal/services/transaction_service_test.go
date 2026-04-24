@@ -3,10 +3,9 @@ package services_test
 import (
 	"context"
 	"errors"
-	"shared/outbox"
+	"shared/pkg/outbox"
 	"testing"
 	"transactions/internal/domain/entities"
-	"transactions/internal/dto/request"
 	"transactions/internal/services"
 	mocks "transactions/internal/services/mocks"
 
@@ -25,8 +24,8 @@ func setup(t *testing.T) (*services.TransactionService, *mocks.MockAccountClient
 	return svc, client, repo, outboxRepo, transactor
 }
 
-func validTransferRequest() *request.TransferRequest {
-	return &request.TransferRequest{
+func validTransferRequest() *services.TransferInput {
+	return &services.TransferInput{
 		FromAccountId:  uuid.New(),
 		ToAccountId:    uuid.New(),
 		Amount:         1000,

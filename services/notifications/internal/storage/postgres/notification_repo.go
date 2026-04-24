@@ -7,7 +7,7 @@ import (
 	"notifications/internal/domain"
 	"notifications/internal/domain/entities"
 	"notifications/internal/storage/postgres/models"
-	postgresLib "shared/db/postgres"
+	postgresLib "shared/pkg/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"

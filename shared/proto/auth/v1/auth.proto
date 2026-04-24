@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package auth.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "shared/pkg/gen/go/auth/v1;authv1";
+
+service AuthService {
+  rpc RegisterWithNewCompany(RegisterWithNewCompanyRequest) returns (AuthResponse);
+  rpc RegisterWithExistingCompany(RegisterWithExistingCompanyRequest) returns (AuthResponse);
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc GetUsersByCompanyId(GetUsersByCompanyIdRequest) returns (GetUsersByCompanyIdResponse);
+  rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
+  rpc GetInviteCodeByCompanyId(GetInviteCodeByCompanyIdRequest) returns (GetInviteCodeByCompanyIdResponse);
+  rpc InitSystem(InitSystemRequest) returns (AuthResponse);
+  rpc AddAdmin(AddAdminRequest) returns (AuthResponse);
+}
+
+message RegisterWithNewCompanyRequest {
+  string login = 1;
+  string email = 2;
+  string password = 3;
+  string company_name = 4;
+}
+
+message AuthResponse {
+  string user_id = 1;
+  string company_id = 2;
+  string email = 3;
+  string role = 4;
+  string token = 5;
+}
+
+message RegisterWithExistingCompanyRequest {
+  string login = 1;
+  string email = 2;
+  string password = 3;
+  string company_invite_code = 4;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LogoutRequest {
+  string token = 1;
+}
+
+message LogoutResponse {}
+
+message GetUsersByCompanyIdRequest {
+  string company_id = 1;
+}
+
+message UserInfo {
+  string user_id = 1;
+  string company_id = 2;
+  string login = 3;
+  string email = 4;
+  string role = 5;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message GetUsersByCompanyIdResponse {
+  repeated UserInfo users = 1;
+}
+
+message GetUserByIdRequest {
+  string user_id = 1;
+}
+
+message GetUserByIdResponse {
+  UserInfo user = 1;
+}
+
+message GetInviteCodeByCompanyIdRequest {
+  string company_id = 1;
+}
+
+message GetInviteCodeByCompanyIdResponse {
+  string invite_code = 1;
+}
+
+message InitSystemRequest {
+  string login = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message AddAdminRequest {
+  string login = 1;
+  string email = 2;
+  string password = 3;
+}

@@ -1,0 +1,24 @@
+env: "local"
+
+db:
+  host: postgres-accounts
+  port: 5432
+  name: account_service
+  ssl_mode: disable
+  connect_timeout: 3s
+  max_retries_time: 10s
+
+grpc:
+  port: 50051
+  timeout: 5s
+
+kafka:
+  brokers: kafka:29092
+  write_timeout: 5s
+
+outbox:
+  interval: 10s
+  batch_size: 10
+
+bank_gateway:
+  failure_rate: 0.2

@@ -1,0 +1,11 @@
+env: local
+
+http_server:
+  address: "0.0.0.0:8080"
+  timeout: 4s
+  idle_timeout: 60s
+
+grpc_clients:
+  auth_address: auth_service:50051
+  account_address: accounts_service:50051
+  transaction_address: transactions_service:50051

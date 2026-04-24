@@ -11,6 +11,7 @@ type BankOperationModel struct {
 	BankOperationId uuid.UUID `db:"bank_operation_id"`
 	AccountId       uuid.UUID `db:"account_id"`
 	BankAccountId   uuid.UUID `db:"bank_account_id"`
+	InitiatorId     uuid.UUID `db:"initiator_id"`
 	OperationType   string    `db:"operation_type"`
 	OperationStatus string    `db:"operation_status"`
 	Amount          int64     `db:"amount"`
@@ -25,6 +26,7 @@ func (m *BankOperationModel) ToDomain() *entities.BankOperation {
 		m.BankOperationId,
 		m.AccountId,
 		m.BankAccountId,
+		m.InitiatorId,
 		entities.OperationType(m.OperationType),
 		entities.OperationStatus(m.OperationStatus),
 		m.Amount,
@@ -40,6 +42,7 @@ func ToBankOperationModel(bankOperation *entities.BankOperation) *BankOperationM
 		BankOperationId: bankOperation.BankOperationId(),
 		AccountId:       bankOperation.AccountId(),
 		BankAccountId:   bankOperation.BankAccountId(),
+		InitiatorId:     bankOperation.InitiatorId(),
 		OperationType:   bankOperation.OperationType().String(),
 		OperationStatus: bankOperation.OperationStatus().String(),
 		Amount:          bankOperation.Amount(),
@@ -55,6 +58,7 @@ func BankOperationColumns() []string {
 		"bank_operation_id",
 		"account_id",
 		"bank_account_id",
+		"initiator_id",
 		"operation_type",
 		"operation_status",
 		"amount",

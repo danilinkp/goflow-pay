@@ -1,0 +1,243 @@
+version: '3.8'
+
+services:
+  postgres-auth:
+    container_name: postgres_auth_container
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_service
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d auth_service" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - auth_pgdata:/var/lib/postgresql/data
+    networks:
+      - goflow_network
+
+  postgres-accounts:
+    container_name: postgres_accounts_container
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: account_service
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d account_service" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - account_pgdata:/var/lib/postgresql/data
+    networks:
+      - goflow_network
+
+  postgres-transactions:
+    container_name: postgres_transactions_container
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: transaction_service
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d transaction_service" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - transaction_pgdata:/var/lib/postgresql/data
+    networks:
+      - goflow_network
+
+  postgres-notifications:
+    container_name: postgres_notifications_container
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_service
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d notification_service" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - notification_pgdata:/var/lib/postgresql/data
+    networks:
+      - goflow_network
+
+  redis:
+    image: redis:8-alpine
+    container_name: blacklist-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - blacklist_redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - goflow_network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - goflow_network
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: auth_service
+    restart: unless-stopped
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - services/auth/.env
+    environment:
+      CONFIG_PATH: config/config.yaml
+      JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    volumes:
+      - ./certs:/app/certs:ro
+    networks:
+      - goflow_network
+
+  accounts:
+    build:
+      context: .
+      dockerfile: services/accounts/Dockerfile
+    container_name: accounts_service
+    restart: unless-stopped
+    depends_on:
+      postgres-accounts:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file:
+      - services/accounts/.env
+    environment:
+      CONFIG_PATH: config/local.yaml
+    networks:
+      - goflow_network
+
+  transactions:
+    build:
+      context: .
+      dockerfile: services/transactions/Dockerfile
+    container_name: transactions_service
+    restart: unless-stopped
+    depends_on:
+      postgres-transactions:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      accounts:
+        condition: service_started
+    env_file:
+      - services/transactions/.env
+    environment:
+      CONFIG_PATH: config/local.yaml
+    networks:
+      - goflow_network
+
+  notifications:
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
+    container_name: notifications_service
+    restart: unless-stopped
+    depends_on:
+      postgres-notifications:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    env_file:
+      - services/notifications/.env
+    environment:
+      CONFIG_PATH: config/local.yaml
+    networks:
+      - goflow_network
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth:
+        condition: service_started
+      accounts:
+        condition: service_started
+      transactions:
+        condition: service_started
+      notifications:
+        condition: service_started
+    env_file:
+      - services/gateway/.env
+    environment:
+      CONFIG_PATH: config/local.yaml
+      JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+    networks:
+      - goflow_network
+
+volumes:
+  auth_pgdata:
+  account_pgdata:
+  transaction_pgdata:
+  notification_pgdata:
+  blacklist_redis_data:
+
+networks:
+  goflow_network:
+    driver: bridge

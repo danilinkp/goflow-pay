@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	postgresLib "shared/db/postgres"
+	postgresLib "shared/pkg/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -85,4 +85,21 @@ func (r *CompanyRepo) GetByInviteCode(ctx context.Context, inviteCode string) (*
 	}
 
 	return companyModel.ToDomain(), nil
+}
+
+func (r *CompanyRepo) GetInviteCodeById(ctx context.Context, companyId uuid.UUID) (string, error) {
+	op := "CompanyRepo.GetById"
+
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
+	var inviteCode string
+	err := conn.QueryRow(ctx, "SELECT invite_code FROM companies WHERE company_id = $1", companyId).Scan(&inviteCode)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", fmt.Errorf("%s: %w", op, domain.ErrCompanyNotFound)
+		}
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return inviteCode, nil
 }

@@ -10,10 +10,11 @@ import (
 )
 
 func TestNewTransaction_Success(t *testing.T) {
+	initiator := uuid.New()
 	from := uuid.New()
 	to := uuid.New()
 
-	tx, err := entities.NewTransaction(from, to, 1000, "USD", entities.PendingStatus, "key-123")
+	tx, err := entities.NewTransaction(initiator, from, to, 1000, "USD", entities.PendingStatus, "key-123")
 
 	require.NoError(t, err)
 	assert.Equal(t, from, tx.FromAccountID())
@@ -24,48 +25,49 @@ func TestNewTransaction_Success(t *testing.T) {
 }
 
 func TestNewTransaction_NilFromAccount(t *testing.T) {
-	_, err := entities.NewTransaction(uuid.Nil, uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+
+	_, err := entities.NewTransaction(uuid.New(), uuid.Nil, uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 	assert.Error(t, err)
 }
 
 func TestNewTransaction_NilToAccount(t *testing.T) {
-	_, err := entities.NewTransaction(uuid.New(), uuid.Nil, 1000, "USD", entities.PendingStatus, "key")
+	_, err := entities.NewTransaction(uuid.New(), uuid.New(), uuid.Nil, 1000, "USD", entities.PendingStatus, "key")
 	assert.Error(t, err)
 }
 
 func TestNewTransaction_SameAccounts(t *testing.T) {
 	id := uuid.New()
-	_, err := entities.NewTransaction(id, id, 1000, "USD", entities.PendingStatus, "key")
+	_, err := entities.NewTransaction(uuid.New(), id, id, 1000, "USD", entities.PendingStatus, "key")
 	assert.Error(t, err)
 }
 
 func TestNewTransaction_ZeroAmount(t *testing.T) {
-	_, err := entities.NewTransaction(uuid.New(), uuid.New(), 0, "USD", entities.PendingStatus, "key")
+	_, err := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 0, "USD", entities.PendingStatus, "key")
 	assert.Error(t, err)
 }
 
 func TestNewTransaction_NegativeAmount(t *testing.T) {
-	_, err := entities.NewTransaction(uuid.New(), uuid.New(), -100, "USD", entities.PendingStatus, "key")
+	_, err := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), -100, "USD", entities.PendingStatus, "key")
 	assert.Error(t, err)
 }
 
 func TestNewTransaction_EmptyCurrency(t *testing.T) {
-	_, err := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "", entities.PendingStatus, "key")
+	_, err := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "", entities.PendingStatus, "key")
 	assert.Error(t, err)
 }
 
 func TestNewTransaction_InvalidStatus(t *testing.T) {
-	_, err := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", "invalid", "key")
+	_, err := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", "invalid", "key")
 	assert.Error(t, err)
 }
 
 func TestNewTransaction_EmptyIdempotencyKey(t *testing.T) {
-	_, err := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "")
+	_, err := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "")
 	assert.Error(t, err)
 }
 
 func TestTransaction_UpdateStatus_Success(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 
 	err := tx.UpdateStatus(entities.ProcessingStatus)
 
@@ -74,7 +76,7 @@ func TestTransaction_UpdateStatus_Success(t *testing.T) {
 }
 
 func TestTransaction_UpdateStatus_InvalidStatus(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 
 	err := tx.UpdateStatus("invalid")
 
@@ -83,7 +85,7 @@ func TestTransaction_UpdateStatus_InvalidStatus(t *testing.T) {
 }
 
 func TestTransaction_UpdateStatus_AlreadySuccess(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 	_ = tx.UpdateStatus(entities.ProcessingStatus)
 	_ = tx.UpdateStatus(entities.SuccessStatus)
 
@@ -94,7 +96,7 @@ func TestTransaction_UpdateStatus_AlreadySuccess(t *testing.T) {
 }
 
 func TestTransaction_UpdateStatus_AlreadyFailed(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 	_ = tx.UpdateStatus(entities.FailedStatus)
 
 	err := tx.UpdateStatus(entities.SuccessStatus)
@@ -103,7 +105,7 @@ func TestTransaction_UpdateStatus_AlreadyFailed(t *testing.T) {
 }
 
 func TestTransaction_UpdateCurrency_Success(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 
 	err := tx.UpdateCurrency("EUR")
 
@@ -112,7 +114,7 @@ func TestTransaction_UpdateCurrency_Success(t *testing.T) {
 }
 
 func TestTransaction_UpdateCurrency_Empty(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 
 	err := tx.UpdateCurrency("")
 
@@ -121,7 +123,7 @@ func TestTransaction_UpdateCurrency_Empty(t *testing.T) {
 }
 
 func TestTransaction_ToOutboxEvent_Pending_ReturnsNil(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 
 	evt, err := tx.ToOutboxEvent()
 
@@ -130,7 +132,7 @@ func TestTransaction_ToOutboxEvent_Pending_ReturnsNil(t *testing.T) {
 }
 
 func TestTransaction_ToOutboxEvent_Processing_ReturnsNil(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 	_ = tx.UpdateStatus(entities.ProcessingStatus)
 
 	evt, err := tx.ToOutboxEvent()
@@ -140,7 +142,7 @@ func TestTransaction_ToOutboxEvent_Processing_ReturnsNil(t *testing.T) {
 }
 
 func TestTransaction_ToOutboxEvent_Success(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 	_ = tx.UpdateStatus(entities.ProcessingStatus)
 	_ = tx.UpdateStatus(entities.SuccessStatus)
 
@@ -153,7 +155,7 @@ func TestTransaction_ToOutboxEvent_Success(t *testing.T) {
 }
 
 func TestTransaction_ToOutboxEvent_Failed(t *testing.T) {
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 1000, "USD", entities.PendingStatus, "key")
 	_ = tx.UpdateStatus(entities.FailedStatus)
 
 	evt, err := tx.ToOutboxEvent()

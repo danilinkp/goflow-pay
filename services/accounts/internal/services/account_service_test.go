@@ -2,12 +2,11 @@ package services_test
 
 import (
 	"accounts/internal/domain/entities"
-	"accounts/internal/dto/request"
 	"accounts/internal/services"
 	mocks "accounts/internal/services/mocks"
 	"context"
 	"errors"
-	"shared/outbox"
+	"shared/pkg/outbox"
 	"testing"
 
 	"github.com/google/uuid"
@@ -63,10 +62,11 @@ func runWithTxOnce(transactor *mocks.MockTransactor) {
 
 func validCompanyID() uuid.UUID { return uuid.New() }
 
-func validBankOpRequest(accountID, bankAccountID uuid.UUID, amount int64) *request.BankOperationRequest {
-	return &request.BankOperationRequest{
+func validBankOpRequest(accountID, bankAccountID, initiatorId uuid.UUID, amount int64) *services.BankOperationInput {
+	return &services.BankOperationInput{
 		AccountID:      accountID,
 		BankAccountID:  bankAccountID,
+		InitiatorID:    initiatorId,
 		Amount:         amount,
 		IdempotencyKey: uuid.New().String(),
 	}
@@ -111,7 +111,7 @@ func TestAccountService_CreateAccount(t *testing.T) {
 
 	t.Run("Invalid currency", func(t *testing.T) {
 		svc, _, _, _, _, _, _, _ := setupAccountService(t)
-		acc, err := svc.CreateAccount(ctx, companyID, entities.Currency("INVALID"))
+		acc, err := svc.CreateAccount(ctx, companyID, "INVALID")
 		assert.Error(t, err)
 		assert.Nil(t, acc)
 		assert.Contains(t, err.Error(), "currency must be valid")
@@ -129,7 +129,7 @@ func TestAccountService_SetAccountInActive(t *testing.T) {
 		accountRepo.On("GetById", mock.Anything, accountID).Return(acc, nil)
 		accountOpRepo.On("HasPendingByAccountId", mock.Anything, accountID).Return(false, nil)
 		runWithTx(transactor)
-		accountRepo.On("UpdateStatus", mock.Anything, accountID, string(entities.InactiveStatus)).Return(nil)
+		accountRepo.On("UpdateStatus", mock.Anything, accountID, entities.InactiveStatus).Return(nil)
 
 		result, err := svc.SetAccountInActive(ctx, accountID)
 		assert.NoError(t, err)
@@ -210,7 +210,7 @@ func TestAccountService_LinkBankAccount(t *testing.T) {
 		svc, accountRepo, _, bankAccountRepo, _, _, _, _ := setupAccountService(t)
 		acc, _ := entities.NewAccount(companyID, 1000, entities.USD, entities.ActiveStatus)
 
-		req := request.LinkBankRequest{
+		req := services.LinkBankInput{
 			AccountID:         acc.AccountId(),
 			CompanyID:         companyID,
 			Name:              "Test Bank",
@@ -227,8 +227,8 @@ func TestAccountService_LinkBankAccount(t *testing.T) {
 		resp, err := svc.LinkBankAccount(ctx, req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
-		assert.Equal(t, acc.AccountId(), resp.AccountID)
-		assert.Equal(t, "Test Bank", resp.BankName)
+		assert.Equal(t, acc.CompanyId(), resp.CompanyId())
+		assert.Equal(t, "Test Bank", resp.Name())
 	})
 
 	t.Run("Account not found", func(t *testing.T) {
@@ -236,7 +236,7 @@ func TestAccountService_LinkBankAccount(t *testing.T) {
 		accountID := uuid.New()
 		accountRepo.On("GetById", mock.Anything, accountID).Return(nil, errors.New("not found"))
 
-		resp, err := svc.LinkBankAccount(ctx, request.LinkBankRequest{AccountID: accountID, CompanyID: companyID})
+		resp, err := svc.LinkBankAccount(ctx, services.LinkBankInput{AccountID: accountID, CompanyID: companyID})
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 	})
@@ -246,7 +246,7 @@ func TestAccountService_LinkBankAccount(t *testing.T) {
 		acc, _ := entities.NewAccount(validCompanyID(), 1000, entities.USD, entities.ActiveStatus)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
 
-		resp, err := svc.LinkBankAccount(ctx, request.LinkBankRequest{
+		resp, err := svc.LinkBankAccount(ctx, services.LinkBankInput{
 			AccountID: acc.AccountId(),
 			CompanyID: uuid.New(),
 		})
@@ -260,7 +260,7 @@ func TestAccountService_LinkBankAccount(t *testing.T) {
 		acc, _ := entities.NewAccount(companyID, 1000, entities.USD, entities.ActiveStatus)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
 
-		resp, err := svc.LinkBankAccount(ctx, request.LinkBankRequest{
+		resp, err := svc.LinkBankAccount(ctx, services.LinkBankInput{
 			AccountID:         acc.AccountId(),
 			CompanyID:         companyID,
 			Name:              "Bank",
@@ -278,7 +278,7 @@ func TestAccountService_LinkBankAccount(t *testing.T) {
 		acc, _ := entities.NewAccount(companyID, 1000, entities.USD, entities.ActiveStatus)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
 
-		resp, err := svc.LinkBankAccount(ctx, request.LinkBankRequest{
+		resp, err := svc.LinkBankAccount(ctx, services.LinkBankInput{
 			AccountID:         acc.AccountId(),
 			CompanyID:         companyID,
 			Name:              "Bank",
@@ -482,7 +482,8 @@ func TestAccountService_MakeBankDeposit(t *testing.T) {
 		svc, accountRepo, _, bankAccountRepo, bankOpRepo, bankGateway, outboxRepo, transactor := setupAccountService(t)
 		acc, _ := entities.NewAccount(validCompanyID(), 1000, entities.USD, entities.ActiveStatus)
 		bankAcc := makeBankAccount(t, entities.USD, testAccountUSD)
-		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), amount)
+		userId := uuid.New()
+		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), userId, amount)
 
 		bankOpRepo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(nil, nil)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
@@ -510,8 +511,8 @@ func TestAccountService_MakeBankDeposit(t *testing.T) {
 	t.Run("Idempotency", func(t *testing.T) {
 		svc, _, _, _, bankOpRepo, _, _, _ := setupAccountService(t)
 		acc, _ := entities.NewAccount(validCompanyID(), 1000, entities.USD, entities.ActiveStatus)
-		req := validBankOpRequest(acc.AccountId(), uuid.New(), amount)
-		existingBo, _ := entities.NewBankOperation(acc.AccountId(), uuid.New(), entities.Deposit, entities.SuccessStatus, amount, req.IdempotencyKey, "ext_123")
+		req := validBankOpRequest(acc.AccountId(), uuid.New(), uuid.New(), amount)
+		existingBo, _ := entities.NewBankOperation(acc.AccountId(), uuid.New(), uuid.New(), entities.Deposit, entities.SuccessStatus, amount, req.IdempotencyKey, "ext_123")
 
 		bankOpRepo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(existingBo, nil)
 
@@ -524,7 +525,7 @@ func TestAccountService_MakeBankDeposit(t *testing.T) {
 		svc, accountRepo, _, bankAccountRepo, bankOpRepo, bankGateway, _, _ := setupAccountService(t)
 		acc, _ := entities.NewAccount(validCompanyID(), 1000, entities.USD, entities.ActiveStatus)
 		bankAcc := makeBankAccount(t, entities.USD, testAccountUSD)
-		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), amount)
+		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), uuid.New(), amount)
 
 		bankOpRepo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(nil, nil)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
@@ -546,7 +547,7 @@ func TestAccountService_MakeBankWithdrawal(t *testing.T) {
 		svc, accountRepo, _, bankAccountRepo, bankOpRepo, bankGateway, outboxRepo, transactor := setupAccountService(t)
 		acc, _ := entities.NewAccount(validCompanyID(), 5000, entities.USD, entities.ActiveStatus)
 		bankAcc := makeBankAccount(t, entities.USD, testAccountUSD)
-		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), amount)
+		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), uuid.New(), amount)
 
 		bankOpRepo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(nil, nil)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
@@ -576,7 +577,7 @@ func TestAccountService_MakeBankWithdrawal(t *testing.T) {
 		svc, accountRepo, _, bankAccountRepo, bankOpRepo, _, _, _ := setupAccountService(t)
 		acc, _ := entities.NewAccount(validCompanyID(), 500, entities.USD, entities.ActiveStatus)
 		bankAcc := makeBankAccount(t, entities.USD, testAccountUSD)
-		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), amount)
+		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), uuid.New(), amount)
 
 		bankOpRepo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(nil, nil)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
@@ -592,7 +593,7 @@ func TestAccountService_MakeBankWithdrawal(t *testing.T) {
 		svc, accountRepo, _, bankAccountRepo, bankOpRepo, bankGateway, outboxRepo, transactor := setupAccountService(t)
 		acc, _ := entities.NewAccount(validCompanyID(), 5000, entities.USD, entities.ActiveStatus)
 		bankAcc := makeBankAccount(t, entities.USD, testAccountUSD)
-		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), amount)
+		req := validBankOpRequest(acc.AccountId(), bankAcc.BankAccountId(), uuid.New(), amount)
 
 		bankOpRepo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(nil, nil)
 		accountRepo.On("GetById", mock.Anything, acc.AccountId()).Return(acc, nil)
@@ -615,8 +616,8 @@ func TestAccountService_MakeBankWithdrawal(t *testing.T) {
 	t.Run("Idempotency", func(t *testing.T) {
 		svc, _, _, _, bankOpRepo, _, _, _ := setupAccountService(t)
 		acc, _ := entities.NewAccount(validCompanyID(), 5000, entities.USD, entities.ActiveStatus)
-		req := validBankOpRequest(acc.AccountId(), uuid.New(), amount)
-		existingBo, _ := entities.NewBankOperation(acc.AccountId(), uuid.New(), entities.Withdrawal, entities.SuccessStatus, amount, req.IdempotencyKey, "ext_456")
+		req := validBankOpRequest(acc.AccountId(), uuid.New(), uuid.New(), amount)
+		existingBo, _ := entities.NewBankOperation(acc.AccountId(), uuid.New(), uuid.New(), entities.Withdrawal, entities.SuccessStatus, amount, req.IdempotencyKey, "ext_456")
 
 		bankOpRepo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(existingBo, nil)
 

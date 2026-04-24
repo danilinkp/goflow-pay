@@ -4,6 +4,7 @@ SELECT 'up SQL query';
 CREATE TABLE IF NOT EXISTS transactions
 (
     transaction_id  uuid PRIMARY KEY,
+    initiator_id    uuid               NOT NULL,
     from_account_id uuid               NOT NULL,
     to_account_id   uuid               NOT NULL,
     amount          BIGINT             NOT NULL CHECK ( amount >= 0 ),

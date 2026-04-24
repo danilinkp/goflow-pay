@@ -3,7 +3,7 @@ package entities
 import (
 	"encoding/json"
 	"fmt"
-	"shared/outbox"
+	"shared/pkg/outbox"
 	"time"
 
 	"github.com/google/uuid"

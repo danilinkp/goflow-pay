@@ -2,12 +2,11 @@ package services
 
 import (
 	"accounts/internal/domain/entities"
-	"accounts/internal/dto/request"
-	"accounts/internal/dto/response"
 	"context"
 	"errors"
 	"fmt"
-	"shared/outbox"
+	"log/slog"
+	"shared/pkg/outbox"
 
 	"github.com/google/uuid"
 )
@@ -68,6 +67,7 @@ type AccountService struct {
 	bankGateway                BankGateway
 	outboxRepo                 OutboxRepository
 	transactor                 Transactor
+	log                        *slog.Logger
 }
 
 func NewAccountService(
@@ -78,6 +78,7 @@ func NewAccountService(
 	bankGateway BankGateway,
 	outboxRepo OutboxRepository,
 	transactor Transactor,
+	log *slog.Logger,
 ) *AccountService {
 	return &AccountService{
 		accountRepository:          accountRepo,
@@ -87,6 +88,7 @@ func NewAccountService(
 		bankGateway:                bankGateway,
 		outboxRepo:                 outboxRepo,
 		transactor:                 transactor,
+		log:                        log,
 	}
 }
 
@@ -105,12 +107,16 @@ func (a *AccountService) CreateAccount(ctx context.Context, companyId uuid.UUID,
 	return acc, nil
 }
 
-func (a *AccountService) SetAccountInActive(ctx context.Context, accountId uuid.UUID) (*entities.Account, error) {
+func (a *AccountService) SetAccountInActive(ctx context.Context, accountId, companyId uuid.UUID) (*entities.Account, error) {
 	op := "AccountService.SetAccountInactive"
 
 	acc, err := a.accountRepository.GetById(ctx, accountId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if acc.CompanyId() != companyId {
+		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	hasPending, err := a.accountOperationRepository.HasPendingByAccountId(ctx, accountId)
@@ -149,7 +155,7 @@ func (a *AccountService) GetBalance(ctx context.Context, accountId uuid.UUID) (i
 	return acc.Balance(), nil
 }
 
-func (a *AccountService) LinkBankAccount(ctx context.Context, request request.LinkBankRequest) (*response.LinkBankResponse, error) {
+func (a *AccountService) LinkBankAccount(ctx context.Context, request LinkBankInput) (*entities.BankAccount, error) {
 	op := "AccountService.LinkBankAccount"
 
 	acc, err := a.accountRepository.GetById(ctx, request.AccountID)
@@ -170,11 +176,7 @@ func (a *AccountService) LinkBankAccount(ctx context.Context, request request.Li
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &response.LinkBankResponse{
-		AccountID:     acc.AccountId(),
-		BankAccountID: bankAcc.BankAccountId(),
-		BankName:      bankAcc.Name(),
-	}, nil
+	return bankAcc, nil
 }
 
 func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
@@ -325,7 +327,7 @@ func (a *AccountService) CancelOperation(ctx context.Context, txId uuid.UUID) er
 	return nil
 }
 
-func (a *AccountService) MakeBankDeposit(ctx context.Context, request *request.BankOperationRequest) (*entities.BankOperation, error) {
+func (a *AccountService) MakeBankDeposit(ctx context.Context, request *BankOperationInput) (*entities.BankOperation, error) {
 	op := "AccountService.MakeBankDeposit"
 
 	existing, _ := a.bankOperationRepository.GetByIdempotencyKey(ctx, request.IdempotencyKey)
@@ -336,6 +338,10 @@ func (a *AccountService) MakeBankDeposit(ctx context.Context, request *request.B
 	acc, err := a.accountRepository.GetById(ctx, request.AccountID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if acc.CompanyId() != request.CompanyID {
+		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	bankAccount, err := a.bankAccountRepository.GetById(ctx, request.BankAccountID)
@@ -360,7 +366,7 @@ func (a *AccountService) MakeBankDeposit(ctx context.Context, request *request.B
 			return err
 		}
 
-		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, entities.Deposit, entities.SuccessStatus, request.Amount, request.IdempotencyKey, externalID)
+		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, request.InitiatorID, entities.Deposit, entities.SuccessStatus, request.Amount, request.IdempotencyKey, externalID)
 		if err != nil {
 			return err
 		}
@@ -379,7 +385,7 @@ func (a *AccountService) MakeBankDeposit(ctx context.Context, request *request.B
 	return bo, nil
 }
 
-func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *request.BankOperationRequest) (*entities.BankOperation, error) {
+func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *BankOperationInput) (*entities.BankOperation, error) {
 	op := "AccountService.MakeBankWithdrawal"
 
 	existing, _ := a.bankOperationRepository.GetByIdempotencyKey(ctx, request.IdempotencyKey)
@@ -390,6 +396,10 @@ func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *reques
 	acc, err := a.accountRepository.GetById(ctx, request.AccountID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if acc.CompanyId() != request.CompanyID {
+		return nil, fmt.Errorf("%s: %w", op, ErrDifferentCompanies)
 	}
 
 	bankAccount, err := a.bankAccountRepository.GetById(ctx, request.BankAccountID)
@@ -413,7 +423,7 @@ func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *reques
 			return err
 		}
 
-		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, entities.Withdrawal, entities.PendingStatus, request.Amount, request.IdempotencyKey, "")
+		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, request.InitiatorID, entities.Withdrawal, entities.PendingStatus, request.Amount, request.IdempotencyKey, "")
 		if err != nil {
 			return err
 		}
@@ -478,17 +488,6 @@ func (a *AccountService) GetBankAccounts(ctx context.Context, companyId uuid.UUI
 	}
 
 	return accounts, nil
-}
-
-func (a *AccountService) GetCompanyIdByAccountId(ctx context.Context, accountId uuid.UUID) (uuid.UUID, error) {
-	op := "AccountService.GetCompanyIdByAccountId"
-
-	account, err := a.accountRepository.GetById(ctx, accountId)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return account.CompanyId(), nil
 }
 
 func (a *AccountService) compensateBankWithdrawal(ctx context.Context, acc *entities.Account, bo *entities.BankOperation, externalID string) error {

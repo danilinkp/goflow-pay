@@ -1,0 +1,24 @@
+env: "local"
+
+db:
+  host: postgres-auth
+  port: 5432
+  name: auth_service
+  ssl_mode: "disable"
+  connect_timeout: 5s
+  max_retries_time: 2s
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+  db: 0
+
+grpc:
+  port: 50051
+  timeout: 5s
+
+jwt:
+  ttl: 24h
+
+hash_cost: 10

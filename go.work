@@ -5,5 +5,7 @@ use (
 	services/auth
 	services/notifications
 	services/transactions
+	services/gateway
 	shared
+	./tools/cli
 )

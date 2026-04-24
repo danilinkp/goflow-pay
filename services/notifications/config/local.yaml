@@ -1,0 +1,16 @@
+env: "local"
+
+db:
+  host: postgres-notifications
+  port: 5432
+  name: notification_service
+  ssl_mode: disable
+  connect_timeout: 3s
+  max_retries_time: 10s
+
+auth_grpc:
+  addr: auth_service:50051
+
+kafka:
+  brokers: kafka:29092
+  topic: notifications

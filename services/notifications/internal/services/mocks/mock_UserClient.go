@@ -6,7 +6,7 @@ package services
 
 import (
 	"context"
-	"notifications/internal/dto/response"
+	"notifications/internal/services"
 
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
@@ -39,47 +39,47 @@ func (_m *MockUserClient) EXPECT() *MockUserClient_Expecter {
 	return &MockUserClient_Expecter{mock: &_m.Mock}
 }
 
-// GetUsersByCompanyId provides a mock function for the type MockUserClient
-func (_mock *MockUserClient) GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*response.UserResponse, error) {
-	ret := _mock.Called(ctx, companyId)
+// GetUserById provides a mock function for the type MockUserClient
+func (_mock *MockUserClient) GetUserById(ctx context.Context, userId uuid.UUID) (*services.UserResponse, error) {
+	ret := _mock.Called(ctx, userId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetUsersByCompanyId")
+		panic("no return value specified for GetUserById")
 	}
 
-	var r0 []*response.UserResponse
+	var r0 *services.UserResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]*response.UserResponse, error)); ok {
-		return returnFunc(ctx, companyId)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*services.UserResponse, error)); ok {
+		return returnFunc(ctx, userId)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) []*response.UserResponse); ok {
-		r0 = returnFunc(ctx, companyId)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *services.UserResponse); ok {
+		r0 = returnFunc(ctx, userId)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*response.UserResponse)
+			r0 = ret.Get(0).(*services.UserResponse)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, companyId)
+		r1 = returnFunc(ctx, userId)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockUserClient_GetUsersByCompanyId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUsersByCompanyId'
-type MockUserClient_GetUsersByCompanyId_Call struct {
+// MockUserClient_GetUserById_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserById'
+type MockUserClient_GetUserById_Call struct {
 	*mock.Call
 }
 
-// GetUsersByCompanyId is a helper method to define mock.On call
+// GetUserById is a helper method to define mock.On call
 //   - ctx context.Context
-//   - companyId uuid.UUID
-func (_e *MockUserClient_Expecter) GetUsersByCompanyId(ctx interface{}, companyId interface{}) *MockUserClient_GetUsersByCompanyId_Call {
-	return &MockUserClient_GetUsersByCompanyId_Call{Call: _e.mock.On("GetUsersByCompanyId", ctx, companyId)}
+//   - userId uuid.UUID
+func (_e *MockUserClient_Expecter) GetUserById(ctx interface{}, userId interface{}) *MockUserClient_GetUserById_Call {
+	return &MockUserClient_GetUserById_Call{Call: _e.mock.On("GetUserById", ctx, userId)}
 }
 
-func (_c *MockUserClient_GetUsersByCompanyId_Call) Run(run func(ctx context.Context, companyId uuid.UUID)) *MockUserClient_GetUsersByCompanyId_Call {
+func (_c *MockUserClient_GetUserById_Call) Run(run func(ctx context.Context, userId uuid.UUID)) *MockUserClient_GetUserById_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -97,12 +97,12 @@ func (_c *MockUserClient_GetUsersByCompanyId_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockUserClient_GetUsersByCompanyId_Call) Return(userResponses []*response.UserResponse, err error) *MockUserClient_GetUsersByCompanyId_Call {
-	_c.Call.Return(userResponses, err)
+func (_c *MockUserClient_GetUserById_Call) Return(userResponse *services.UserResponse, err error) *MockUserClient_GetUserById_Call {
+	_c.Call.Return(userResponse, err)
 	return _c
 }
 
-func (_c *MockUserClient_GetUsersByCompanyId_Call) RunAndReturn(run func(ctx context.Context, companyId uuid.UUID) ([]*response.UserResponse, error)) *MockUserClient_GetUsersByCompanyId_Call {
+func (_c *MockUserClient_GetUserById_Call) RunAndReturn(run func(ctx context.Context, userId uuid.UUID) (*services.UserResponse, error)) *MockUserClient_GetUserById_Call {
 	_c.Call.Return(run)
 	return _c
 }

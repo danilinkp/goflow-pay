@@ -1,11 +1,13 @@
 package postgres_test
 
 import (
-	"auth/internal/infrastructure/db"
+	"auth/migrations"
 	"context"
 	"os"
 	"testing"
 	"time"
+
+	postgresPool "shared/pkg/db/postgres"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -44,12 +46,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	testPool, err = db.NewPool(ctx, connStr)
+	testPool, err = postgresPool.NewPool(ctx, connStr, time.Second, time.Second)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.RunMigrations(testPool)
+	err = migrations.RunMigrations(testPool)
 	if err != nil {
 		panic(err)
 	}

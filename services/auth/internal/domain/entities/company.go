@@ -31,6 +31,24 @@ func NewCompany(name string) (*Company, error) {
 	}, nil
 }
 
+func NewCompanyWithID(id uuid.UUID, name string) (*Company, error) {
+	if id == uuid.Nil {
+		return nil, fmt.Errorf("company id cannot be empty")
+	}
+	if name == "" {
+		return nil, fmt.Errorf("company name cannot be empty")
+	}
+
+	now := time.Now().UTC()
+	return &Company{
+		companyId:  id,
+		name:       name,
+		inviteCode: generateInviteCode(),
+		createdAt:  now,
+		updatedAt:  now,
+	}, nil
+}
+
 func ReconstructCompany(companyId uuid.UUID, name, inviteCode string, createdAt, updatedAt time.Time) *Company {
 	return &Company{
 		companyId:  companyId,

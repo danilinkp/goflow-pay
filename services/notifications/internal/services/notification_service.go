@@ -4,18 +4,13 @@ import (
 	"context"
 	"fmt"
 	"notifications/internal/domain/entities"
-	"notifications/internal/dto/response"
 
 	"github.com/google/uuid"
 	"golang.org/x/sync/singleflight"
 )
 
-type AccountClient interface {
-	GetCompanyIdByAccountId(ctx context.Context, accountId uuid.UUID) (uuid.UUID, error)
-}
-
 type UserClient interface {
-	GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*response.UserResponse, error)
+	GetUserById(ctx context.Context, userId uuid.UUID) (*UserResponse, error)
 }
 
 type NotificationRepository interface {
@@ -27,34 +22,25 @@ type EmailSender interface {
 	Send(ctx context.Context, email string, title string, message string) error
 }
 
-type CacheRepository interface {
-	GetCompanyId(ctx context.Context, accountId uuid.UUID) (uuid.UUID, error)
-	SetCompanyId(ctx context.Context, accountId uuid.UUID, companyId uuid.UUID) error
-}
-
 type NotificationService struct {
-	accountClient          AccountClient
 	userClient             UserClient
 	notificationRepository NotificationRepository
 	emailSender            EmailSender
-	cache                  CacheRepository
 	singleFlightGroup      *singleflight.Group
 }
 
-func NewNotificationService(accountClient AccountClient, userClient UserClient, notificationRepository NotificationRepository, emailSender EmailSender, cache CacheRepository) *NotificationService {
+func NewNotificationService(userClient UserClient, notificationRepository NotificationRepository, emailSender EmailSender) *NotificationService {
 	return &NotificationService{
-		accountClient:          accountClient,
 		userClient:             userClient,
 		notificationRepository: notificationRepository,
 		emailSender:            emailSender,
-		cache:                  cache,
 		singleFlightGroup:      &singleflight.Group{},
 	}
 }
 
-func (n *NotificationService) NotifyTransferCompleted(ctx context.Context, accountId uuid.UUID, amount int64, currency string) error {
+func (n *NotificationService) NotifyTransferCompleted(ctx context.Context, userId, accountId uuid.UUID, amount int64, currency string) error {
 	op := "NotificationService.NotifyTransferCompleted"
-	err := n.notify(ctx, accountId,
+	err := n.notify(ctx, userId, accountId,
 		fmt.Sprintf("Перевод на %d %s выполнен", amount, currency),
 		"Средства успешно переведены",
 	)
@@ -64,9 +50,9 @@ func (n *NotificationService) NotifyTransferCompleted(ctx context.Context, accou
 	return nil
 }
 
-func (n *NotificationService) NotifyTransferFailed(ctx context.Context, accountId uuid.UUID, amount int64, currency string) error {
+func (n *NotificationService) NotifyTransferFailed(ctx context.Context, userId, accountId uuid.UUID, amount int64, currency string) error {
 	op := "NotificationService.NotifyTransferFailed"
-	err := n.notify(ctx, accountId,
+	err := n.notify(ctx, userId, accountId,
 		fmt.Sprintf("Перевод на %d %s не выполнен", amount, currency),
 		"Произошла ошибка при переводе средств",
 	)
@@ -76,9 +62,9 @@ func (n *NotificationService) NotifyTransferFailed(ctx context.Context, accountI
 	return nil
 }
 
-func (n *NotificationService) NotifyBankDepositCompleted(ctx context.Context, accountId uuid.UUID, amount int64, currency string) error {
+func (n *NotificationService) NotifyBankDepositCompleted(ctx context.Context, userId, accountId uuid.UUID, amount int64, currency string) error {
 	op := "NotificationService.NotifyBankDepositCompleted"
-	err := n.notify(ctx, accountId,
+	err := n.notify(ctx, userId, accountId,
 		fmt.Sprintf("Пополнение с банковского счёта на сумму %d %s", amount, currency),
 		"Средства успешно пополнены",
 	)
@@ -88,9 +74,9 @@ func (n *NotificationService) NotifyBankDepositCompleted(ctx context.Context, ac
 	return nil
 }
 
-func (n *NotificationService) NotifyBankDepositFailed(ctx context.Context, accountId uuid.UUID, amount int64, currency string) error {
+func (n *NotificationService) NotifyBankDepositFailed(ctx context.Context, userId, accountId uuid.UUID, amount int64, currency string) error {
 	op := "NotificationService.NotifyBankDepositFailed"
-	err := n.notify(ctx, accountId,
+	err := n.notify(ctx, userId, accountId,
 		fmt.Sprintf("Пополнение с банковского счёта на сумму %d %s", amount, currency),
 		"Произошла ошибка при пополнении средств",
 	)
@@ -100,9 +86,9 @@ func (n *NotificationService) NotifyBankDepositFailed(ctx context.Context, accou
 	return nil
 }
 
-func (n *NotificationService) NotifyBankWithdrawalCompleted(ctx context.Context, accountId uuid.UUID, amount int64, currency string) error {
+func (n *NotificationService) NotifyBankWithdrawalCompleted(ctx context.Context, userId, accountId uuid.UUID, amount int64, currency string) error {
 	op := "NotificationService.NotifyBankWithdrawalCompleted"
-	err := n.notify(ctx, accountId,
+	err := n.notify(ctx, userId, accountId,
 		fmt.Sprintf("Вывод на банковский счёт на сумму %d %s", amount, currency),
 		"Средства успешно выведены",
 	)
@@ -112,9 +98,9 @@ func (n *NotificationService) NotifyBankWithdrawalCompleted(ctx context.Context,
 	return nil
 }
 
-func (n *NotificationService) NotifyBankWithdrawalFailed(ctx context.Context, accountId uuid.UUID, amount int64, currency string) error {
+func (n *NotificationService) NotifyBankWithdrawalFailed(ctx context.Context, userId, accountId uuid.UUID, amount int64, currency string) error {
 	op := "NotificationService.NotifyBankWithdrawalFailed"
-	err := n.notify(ctx, accountId,
+	err := n.notify(ctx, userId, accountId,
 		fmt.Sprintf("Вывод на банковский счёт на сумму %d %s", amount, currency),
 		"Произошла ошибка при выводе средств",
 	)
@@ -124,56 +110,24 @@ func (n *NotificationService) NotifyBankWithdrawalFailed(ctx context.Context, ac
 	return nil
 }
 
-func (n *NotificationService) notify(ctx context.Context, accountId uuid.UUID, title string, message string) error {
-	companyId, err := n.getCompanyId(ctx, accountId)
+func (n *NotificationService) notify(ctx context.Context, userId, sourceId uuid.UUID, title string, message string) error {
+	user, err := n.userClient.GetUserById(ctx, userId)
 	if err != nil {
 		return err
 	}
 
-	users, err := n.userClient.GetUsersByCompanyId(ctx, companyId)
+	notification, err := entities.NewNotification(userId, title, message, sourceId)
 	if err != nil {
 		return err
 	}
 
-	for _, user := range users {
-		notification, err := entities.NewNotification(user.ID, title, message, accountId)
-		if err != nil {
-			return err
-		}
+	if err = n.notificationRepository.Save(ctx, notification); err != nil {
+		return err
+	}
 
-		if err = n.notificationRepository.Save(ctx, notification); err != nil {
-			return err
-		}
-
-		if err = n.emailSender.Send(ctx, user.Email, notification.Title(), notification.Message()); err != nil {
-			return err
-		}
+	if err = n.emailSender.Send(ctx, user.Email, notification.Title(), notification.Message()); err != nil {
+		return err
 	}
 
 	return nil
-}
-
-func (n *NotificationService) getCompanyId(ctx context.Context, accountId uuid.UUID) (uuid.UUID, error) {
-	companyId, err := n.cache.GetCompanyId(ctx, accountId)
-	if err == nil {
-		return companyId, nil
-	}
-	key := accountId.String()
-
-	v, err, _ := n.singleFlightGroup.Do(key, func() (any, error) {
-		id, clientErr := n.accountClient.GetCompanyIdByAccountId(ctx, accountId)
-		if clientErr != nil {
-			return uuid.Nil, clientErr
-		}
-
-		_ = n.cache.SetCompanyId(ctx, accountId, id)
-
-		return id, nil
-	})
-
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	return v.(uuid.UUID), nil
 }

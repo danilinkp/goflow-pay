@@ -3,10 +3,10 @@ package services
 import (
 	"context"
 	"fmt"
-	"shared/outbox"
+	"log/slog"
+	"shared/pkg/outbox"
 	"time"
 	"transactions/internal/domain/entities"
-	"transactions/internal/dto/request"
 
 	"github.com/google/uuid"
 )
@@ -40,18 +40,20 @@ type TransactionService struct {
 	transactionRepository TransactionRepository
 	outboxRepository      OutboxRepository
 	transactor            Transactor
+	log                   *slog.Logger
 }
 
-func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor) *TransactionService {
+func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor, log *slog.Logger) *TransactionService {
 	return &TransactionService{
 		accountClient:         client,
 		transactionRepository: transactionRepository,
 		outboxRepository:      outboxRepository,
 		transactor:            transactor,
+		log:                   log,
 	}
 }
 
-func (t *TransactionService) Transfer(ctx context.Context, request *request.TransferRequest) (*entities.Transaction, error) {
+func (t *TransactionService) Transfer(ctx context.Context, request *TransferInput) (*entities.Transaction, error) {
 	op := "TransactionService.Transfer"
 
 	existing, err := t.transactionRepository.GetByIdempotencyKey(ctx, request.IdempotencyKey)
@@ -60,6 +62,7 @@ func (t *TransactionService) Transfer(ctx context.Context, request *request.Tran
 	}
 
 	tx, err := entities.NewTransaction(
+		request.InitiatorID,
 		request.FromAccountId,
 		request.ToAccountId,
 		request.Amount,
