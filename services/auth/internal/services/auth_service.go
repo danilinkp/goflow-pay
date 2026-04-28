@@ -479,7 +479,7 @@ func (a *AuthService) InitSystem(ctx context.Context, req InitAdminInput) (*Auth
 	log.Info("user init system attempt")
 
 	_, err := a.companyRepository.GetById(ctx, auth.SystemCompanyID)
-	if err != nil {
+	if err != nil && !errors.Is(err, domain.ErrCompanyNotFound) {
 		if errors.Is(err, domain.ErrCompanyAlreadyExists) {
 			log.Warn("admin is already initialized, skipping",
 				sl.Duration(time.Since(start)),

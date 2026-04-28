@@ -21,7 +21,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	start := time.Now()
-	log := logger.New(cfg.Env)
+	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
 
 	log.Info("starting gateway service", "env", cfg.Env)
 

@@ -18,7 +18,7 @@ import (
 	grpcclient "transactions/internal/clients/grpc"
 	"transactions/internal/config"
 	"transactions/internal/infrastructure/workers"
-	"transactions/internal/services"
+	"transactions/internal/service"
 	"transactions/internal/storage/postgres"
 	"transactions/migrations"
 
@@ -32,7 +32,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	start := time.Now()
-	log := logger.New(cfg.Env)
+	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
 
 	log.Info("starting transaction service", "env", cfg.Env)
 
@@ -66,7 +66,7 @@ func main() {
 	defer conn.Close()
 	accountClient := grpcclient.NewAccountGRPCClient(conn)
 
-	transactionService := services.NewTransactionService(accountClient, transactionRepo, outboxRepo, trmAdapter, log)
+	transactionService := service.NewTransactionService(accountClient, transactionRepo, outboxRepo, trmAdapter, log)
 
 	pub := kafka.NewPublisher(cfg.Kafka.Brokers())
 	defer func() {

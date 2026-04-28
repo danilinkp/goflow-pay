@@ -32,6 +32,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 				"login":            true,
 				"register":         true,
 				"register-company": true,
+				"init":             true,
 			}
 			if noAuth[cmd.Name()] {
 				return nil

@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"transactions/internal/domain/entities"

@@ -7,6 +7,8 @@ import (
 	mocks "auth/internal/services/mocks"
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"shared/pkg/auth"
 	"testing"
 	"time"
@@ -34,9 +36,11 @@ func setupAuthService(t *testing.T, tokenTTL time.Duration) (
 	tokenService := mocks.NewMockTokenService(t)
 	hasher := mocks.NewMockPasswordHasher(t)
 
+	discardLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+
 	svc := services.NewAuthService(
 		userRepo, companyRepo, transactor, blackListRepo,
-		tokenService, tokenValidator, hasher, tokenTTL,
+		tokenService, tokenValidator, hasher, discardLogger,
 	)
 	return svc, userRepo, companyRepo, transactor, blackListRepo, tokenValidator, tokenService, hasher
 }

@@ -6,7 +6,7 @@ import (
 	transactionsv1 "shared/pkg/gen/go/transactions/v1"
 	"transactions/internal/domain"
 	"transactions/internal/domain/entities"
-	"transactions/internal/services"
+	"transactions/internal/service"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -15,12 +15,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ctxKey string
-
-const UserIDKey ctxKey = "user_id"
-
 type TransactionProvider interface {
-	Transfer(ctx context.Context, request *services.TransferInput) (*entities.Transaction, error)
+	Transfer(ctx context.Context, request *service.TransferInput) (*entities.Transaction, error)
 	GetAllTransactions(ctx context.Context, accountId uuid.UUID) ([]*entities.Transaction, error)
 	GetTransaction(ctx context.Context, txId uuid.UUID) (*entities.Transaction, error)
 }
@@ -53,7 +49,7 @@ func (s *TransactionServer) Transfer(ctx context.Context, req *transactionsv1.Tr
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid to_account_id")
 	}
-	input := &services.TransferInput{
+	input := &service.TransferInput{
 		InitiatorID:    initiatorId,
 		FromAccountId:  fromAccId,
 		ToAccountId:    toAccId,

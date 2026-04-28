@@ -3,7 +3,7 @@ package grpcclient
 import (
 	"context"
 	"fmt"
-	"notifications/internal/services"
+	"notifications/internal/service"
 	authv1 "shared/pkg/gen/go/auth/v1"
 
 	"github.com/google/uuid"
@@ -20,7 +20,7 @@ func NewUserGrpcClient(conn *grpc.ClientConn) *UserGrpcClient {
 	}
 }
 
-func (c *UserGrpcClient) GetUserById(ctx context.Context, userId uuid.UUID) (*services.UserResponse, error) {
+func (c *UserGrpcClient) GetUserById(ctx context.Context, userId uuid.UUID) (*service.UserResponse, error) {
 	resp, err := c.client.GetUserById(ctx, &authv1.GetUserByIdRequest{
 		UserId: userId.String(),
 	})
@@ -28,7 +28,7 @@ func (c *UserGrpcClient) GetUserById(ctx context.Context, userId uuid.UUID) (*se
 		return nil, fmt.Errorf("UserGrpcClient.GetUserById: %w", err)
 	}
 
-	return &services.UserResponse{
+	return &service.UserResponse{
 		ID:    userId,
 		Email: resp.User.Email,
 	}, nil

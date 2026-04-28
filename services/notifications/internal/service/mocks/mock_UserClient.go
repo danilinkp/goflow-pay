@@ -6,7 +6,7 @@ package services
 
 import (
 	"context"
-	"notifications/internal/services"
+	"notifications/internal/service"
 
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
@@ -40,23 +40,23 @@ func (_m *MockUserClient) EXPECT() *MockUserClient_Expecter {
 }
 
 // GetUserById provides a mock function for the type MockUserClient
-func (_mock *MockUserClient) GetUserById(ctx context.Context, userId uuid.UUID) (*services.UserResponse, error) {
+func (_mock *MockUserClient) GetUserById(ctx context.Context, userId uuid.UUID) (*service.UserResponse, error) {
 	ret := _mock.Called(ctx, userId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetUserById")
 	}
 
-	var r0 *services.UserResponse
+	var r0 *service.UserResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*services.UserResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*service.UserResponse, error)); ok {
 		return returnFunc(ctx, userId)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *services.UserResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *service.UserResponse); ok {
 		r0 = returnFunc(ctx, userId)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*services.UserResponse)
+			r0 = ret.Get(0).(*service.UserResponse)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
@@ -97,12 +97,12 @@ func (_c *MockUserClient_GetUserById_Call) Run(run func(ctx context.Context, use
 	return _c
 }
 
-func (_c *MockUserClient_GetUserById_Call) Return(userResponse *services.UserResponse, err error) *MockUserClient_GetUserById_Call {
+func (_c *MockUserClient_GetUserById_Call) Return(userResponse *service.UserResponse, err error) *MockUserClient_GetUserById_Call {
 	_c.Call.Return(userResponse, err)
 	return _c
 }
 
-func (_c *MockUserClient_GetUserById_Call) RunAndReturn(run func(ctx context.Context, userId uuid.UUID) (*services.UserResponse, error)) *MockUserClient_GetUserById_Call {
+func (_c *MockUserClient_GetUserById_Call) RunAndReturn(run func(ctx context.Context, userId uuid.UUID) (*service.UserResponse, error)) *MockUserClient_GetUserById_Call {
 	_c.Call.Return(run)
 	return _c
 }

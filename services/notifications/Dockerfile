@@ -18,7 +18,6 @@ FROM alpine:3.19
 WORKDIR /app
 
 COPY --from=builder /app/services/notifications/notification_service .
-COPY --from=builder /app/services/notifications/config ./config
 
 EXPOSE 50051
 CMD ["./notification_service"]

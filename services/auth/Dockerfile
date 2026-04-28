@@ -20,7 +20,6 @@ WORKDIR /app
 
 COPY --from=builder /app/services/auth/auth_service .
 COPY --from=builder /app/certs ./certs
-COPY --from=builder /app/services/auth/config ./config
 
 EXPOSE 50051
 CMD ["./auth_service"]

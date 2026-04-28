@@ -20,7 +20,6 @@ WORKDIR /app
 
 COPY --from=builder /app/services/gateway/gateway_server .
 COPY --from=builder /app/certs ./certs
-COPY --from=builder /app/services/gateway/config ./config
 
 EXPOSE 8080
 

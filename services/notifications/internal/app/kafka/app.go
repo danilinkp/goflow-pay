@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	notificationskafka "notifications/internal/delivery/kafka"
-	"notifications/internal/services"
+	"notifications/internal/service"
 )
 
 type NotificationApp struct {
@@ -17,7 +17,7 @@ func NewNotificationApp(
 	log *slog.Logger,
 	brokers []string,
 	topic string,
-	service *services.NotificationService,
+	service *service.NotificationService,
 ) *NotificationApp {
 	consumer := notificationskafka.NewNotificationConsumer(brokers, topic, service, log)
 

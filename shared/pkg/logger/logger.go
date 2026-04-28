@@ -1,16 +1,30 @@
 package logger
 
 import (
+	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 
 	"shared/pkg/logger/slogpretty"
 )
 
-func New(env string) *slog.Logger {
+func New(env string, level string, output string, file string) *slog.Logger {
+	var logLevel slog.Level
+	switch level {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+
 	opts := &slog.HandlerOptions{
-		Level:     slog.LevelDebug,
+		Level:     logLevel,
 		AddSource: true,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.TimeKey {
@@ -23,27 +37,45 @@ func New(env string) *slog.Logger {
 		},
 	}
 
+	var writer io.Writer
+
+	switch output {
+	case "file":
+		if file == "" {
+			panic("log file path is required when output is file")
+		}
+		if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+			panic("failed to create log dir: " + err.Error())
+		}
+		f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			panic("failed to open log file: " + err.Error())
+		}
+		writer = f
+	default:
+		writer = os.Stdout
+	}
+
 	switch env {
 	case "local":
-		return newLocal(opts)
+		return newLocal(opts, writer)
 	case "dev":
-		return newDev(opts)
+		return newDev(opts, writer)
 	default:
-		opts.Level = slog.LevelInfo
-		return newProd(opts)
+		return newProd(opts, writer)
 	}
 }
 
-func newLocal(opts *slog.HandlerOptions) *slog.Logger {
+func newLocal(opts *slog.HandlerOptions, writer io.Writer) *slog.Logger {
 	prettyHandler := slogpretty.PrettyHandlerOptions{SlogOpts: opts}.
-		NewPrettyHandler(os.Stdout)
+		NewPrettyHandler(writer)
 	return slog.New(prettyHandler)
 }
 
-func newDev(opts *slog.HandlerOptions) *slog.Logger {
-	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
+func newDev(opts *slog.HandlerOptions, writer io.Writer) *slog.Logger {
+	return slog.New(slog.NewJSONHandler(writer, opts))
 }
 
-func newProd(opts *slog.HandlerOptions) *slog.Logger {
-	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
+func newProd(opts *slog.HandlerOptions, writer io.Writer) *slog.Logger {
+	return slog.New(slog.NewJSONHandler(writer, opts))
 }

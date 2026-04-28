@@ -18,7 +18,6 @@ FROM alpine:3.19
 WORKDIR /app
 
 COPY --from=builder /app/services/accounts/account_service .
-COPY --from=builder /app/services/accounts/config ./config
 
 EXPOSE 50051
 CMD ["./account_service"]

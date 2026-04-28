@@ -4,17 +4,17 @@ import (
 	"context"
 	"time"
 	"transactions/internal/domain/entities"
-	"transactions/internal/services"
+	"transactions/internal/service"
 )
 
 type RecoverWorker struct {
-	txRepo     services.TransactionRepository
-	txService  *services.TransactionService
+	txRepo     service.TransactionRepository
+	txService  *service.TransactionService
 	interval   time.Duration
 	staleAfter time.Duration
 }
 
-func NewRecoverWorker(txRepo services.TransactionRepository, txService *services.TransactionService, interval, staleAfter time.Duration) *RecoverWorker {
+func NewRecoverWorker(txRepo service.TransactionRepository, txService *service.TransactionService, interval, staleAfter time.Duration) *RecoverWorker {
 	return &RecoverWorker{
 		txRepo:     txRepo,
 		txService:  txService,

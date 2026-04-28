@@ -6,7 +6,7 @@ import (
 	grpcclient "notifications/internal/clients/grpc"
 	"notifications/internal/config"
 	"notifications/internal/infrastructure/email"
-	"notifications/internal/services"
+	"notifications/internal/service"
 	"notifications/internal/storage/postgres"
 	"notifications/migrations"
 	"os"
@@ -24,15 +24,13 @@ import (
 
 const (
 	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
 )
 
 func main() {
 	cfg := config.MustLoad()
 
 	start := time.Now()
-	log := logger.New(cfg.Env)
+	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
 
 	log.Info("starting notification service", "env", cfg.Env)
 
@@ -55,7 +53,7 @@ func main() {
 	getter := trmpgx.DefaultCtxGetter
 	notificationRepo := postgres.NewNotificationRepo(pool, getter)
 
-	var emailSender services.EmailSender
+	var emailSender service.EmailSender
 
 	if cfg.Env == envLocal {
 		emailSender = email.NewMockSender(log)
@@ -71,7 +69,7 @@ func main() {
 	defer conn.Close()
 	userClient := grpcclient.NewUserGrpcClient(conn)
 
-	notificationService := services.NewNotificationService(userClient, notificationRepo, emailSender, log)
+	notificationService := service.NewNotificationService(userClient, notificationRepo, emailSender, log)
 
 	kafkaApp := appkafka.NewNotificationApp(log, cfg.Kafka.Brokers(), cfg.Kafka.Topic, notificationService)
 

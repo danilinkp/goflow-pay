@@ -150,6 +150,8 @@ services:
         max-file: "5"
     volumes:
       - ./certs:/app/certs:ro
+      - ./services/auth/config/config.yaml:/app/config/config.yaml:ro
+      - ./logs/auth:/app/logs
     networks:
       - goflow_network
 
@@ -173,6 +175,9 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    volumes:
+      - ./services/accounts/config/local.yaml:/app/config/local.yaml:ro
+      - ./logs/accounts:/app/logs
     networks:
       - goflow_network
 
@@ -198,6 +203,9 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    volumes:
+      - ./services/transactions/config/local.yaml:/app/config/local.yaml:ro
+      - ./logs/transactions:/app/logs
     networks:
       - goflow_network
 
@@ -223,6 +231,9 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    volumes:
+      - ./services/notifications/config/local.yaml:/app/config/local.yaml:ro
+      - ./logs/notifications:/app/logs
     networks:
       - goflow_network
 
@@ -253,6 +264,9 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    volumes:
+      - ./services/gateway/config/local.yaml:/app/config/local.yaml:ro
+      - ./logs/gateway:/app/logs
     networks:
       - goflow_network
 

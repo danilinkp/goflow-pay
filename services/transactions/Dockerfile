@@ -18,7 +18,6 @@ FROM alpine:3.19
 WORKDIR /app
 
 COPY --from=builder /app/services/transactions/transaction_service .
-COPY --from=builder /app/services/transactions/config ./config
 
 EXPOSE 50051
 CMD ["./transaction_service"]
