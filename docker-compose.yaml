@@ -268,15 +268,21 @@ services:
     networks:
       - goflow_network
 
+  frontend:
+    build:
+      context: ./frontend
+    networks:
+      - goflow_network
+
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
+      - "0.0.0.0:80:80"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
       - gateway
-#      - frontend
+      - frontend
     networks:
       - goflow_network
 
