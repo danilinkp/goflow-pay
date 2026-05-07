@@ -18,7 +18,7 @@ grpc:
   timeout: 5s
 
 grpc_client:
-  addr: account_service:50051
+  addr: accounts_service:50051
 
 kafka:
   brokers: kafka:29092

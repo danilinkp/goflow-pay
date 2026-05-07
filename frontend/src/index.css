@@ -507,3 +507,36 @@ input, select {
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
+
+.nav-item,
+.table td,
+.form-input,
+.form-select,
+.btn,
+.alert,
+.login-tab,
+.empty-state,
+.page-subtitle {
+    font-size: 16px;
+}
+
+.table th,
+.stat-label,
+.form-label,
+.badge,
+.user-role {
+    font-size: 13px;
+}
+
+.page-title,
+.login-logo {
+    font-size: 26px;
+}
+
+.stat-value {
+    font-size: 28px;
+}
+
+.sidebar {
+    width: 280px;
+}

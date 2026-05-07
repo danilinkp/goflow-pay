@@ -16,8 +16,10 @@ export function useTransactionsViewModel() {
         setSuccess(null)
         try {
             await action()
+            return true
         } catch (e) {
             setError(mapTransactionsError(e, defaultError))
+            return false
         } finally {
             setLoading(false)
         }
@@ -37,7 +39,7 @@ export function useTransactionsViewModel() {
         currency: string,
         idempotencyKey: string
     ) => {
-        await handleAction(async () => {
+        return await handleAction(async () => {
             const tx = await transactionsApi.transfer({
                 from_account_id: fromAccountId,
                 to_account_id: toAccountId,

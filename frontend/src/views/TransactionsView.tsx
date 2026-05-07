@@ -15,7 +15,7 @@ export default function TransactionsView() {
     const {role} = useAuthStore()
     const {transactions, loading, error, success, fetchTransactions, transfer, clearMessages} =
         useTransactionsViewModel()
-    const {accounts} = useAccountsViewModel()
+    const {activeAccounts} = useAccountsViewModel()
 
     const [selectedAccountId, setSelectedAccountId] = useState('')
     const [modal, setModal] = useState(false)
@@ -30,9 +30,17 @@ export default function TransactionsView() {
     }
 
     const handleTransfer = async () => {
-        await transfer(fromId, toId, Number(amount), currency, uuidv4())
+        const success = await transfer(fromId, toId, Number(amount), currency, uuidv4())
+        if (success) {
+            setModal(false)
+            if (fromId)
+                fetchTransactions(fromId)
+        }
+    }
+
+    const closeModal = () => {
         setModal(false)
-        if (fromId) fetchTransactions(fromId)
+        clearMessages()
     }
 
     const isCompanyAdmin = role === 'company_admin'
@@ -44,7 +52,7 @@ export default function TransactionsView() {
                 <div className="page-subtitle">View and manage payment transactions</div>
             </div>
 
-            {error && <div className="alert alert-error">{error}</div>}
+            {!modal && error && <div className="alert alert-error">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
 
             <div className="card">
@@ -57,7 +65,7 @@ export default function TransactionsView() {
                             onChange={(e) => setSelectedAccountId(e.target.value)}
                         >
                             <option value="">Select account</option>
-                            {accounts.map((a) => (
+                            {activeAccounts.map((a) => (
                                 <option key={a.account_id} value={a.account_id}>
                                     {a.account_id.slice(0, 8)}... ({a.currency.replace('CURRENCY_', '')})
                                 </option>
@@ -117,14 +125,15 @@ export default function TransactionsView() {
             </div>
 
             {modal && (
-                <div className="modal-overlay" onClick={() => setModal(false)}>
+                <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-title">Transfer Funds</div>
+                        {error && <div className="alert alert-error mb-4">{error}</div>}
                         <div className="form-group">
                             <label className="form-label">From Account</label>
                             <select className="form-select" value={fromId} onChange={(e) => setFromId(e.target.value)}>
                                 <option value="">Select source account</option>
-                                {accounts.map((a) => (
+                                {activeAccounts.map((a) => (
                                     <option key={a.account_id} value={a.account_id}>
                                         {a.account_id.slice(0, 8)}... ({a.currency.replace('CURRENCY_', '')})
                                         — {a.balance}
@@ -162,11 +171,7 @@ export default function TransactionsView() {
                             </div>
                         </div>
                         <div className="modal-footer">
-                            <button className="btn btn-ghost" onClick={() => {
-                                setModal(false);
-                                clearMessages()
-                            }}>Cancel
-                            </button>
+                            <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
                             <button
                                 className="btn btn-primary"
                                 disabled={loading || !fromId || !toId || !amount}
