@@ -1,5 +1,10 @@
 env: local
 
+log:
+  level: debug
+  output: file
+  file: logs/app.log
+
 http_server:
   address: "0.0.0.0:8080"
   timeout: 4s

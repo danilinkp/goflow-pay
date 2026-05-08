@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Env              string      `yaml:"env" env-default:"local"`
 	HTTPServer       HTTPServer  `yaml:"http_server"`
+	Log              LogConfig   `yaml:"log"`
 	GRPCClients      GRPCClients `yaml:"grpc_clients"`
 	JWTPublicKeyPath string      `env:"JWT_PUBLIC_KEY_PATH"`
 	BootstrapToken   string      `env:"BOOTSTRAP_TOKEN"`
@@ -21,6 +22,12 @@ type HTTPServer struct {
 	Address     string        `yaml:"address" env-default:"0.0.0.0:8080"`
 	Timeout     time.Duration `yaml:"timeout" env-default:"4s"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
+}
+
+type LogConfig struct {
+	Level  string `yaml:"level"  env-default:"info"`
+	Output string `yaml:"output" env-default:"stdout"`
+	File   string `yaml:"file"`
 }
 
 type GRPCClients struct {

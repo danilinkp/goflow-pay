@@ -122,11 +122,10 @@ func (h *AccountHandler) LinkBankAccount(c *gin.Context) {
 
 	resp, err := h.client.LinkBankAccount(middleware.GRPCContext(c), &accountsv1.LinkBankAccountRequest{
 		AccountId:         req.AccountId.String(),
-		BankId:            req.BankId.String(),
 		CompanyId:         companyId.(uuid.UUID).String(),
 		Name:              req.Name,
 		Bic:               req.BIC,
-		SettlementAccount: req.SettlementAccount.String(),
+		SettlementAccount: req.SettlementAccount,
 		Currency:          parseCurrency(req.Currency),
 	})
 	if err != nil {
@@ -167,6 +166,7 @@ func (h *AccountHandler) GetBankAccounts(c *gin.Context) {
 
 func (h *AccountHandler) MakeBankDeposit(c *gin.Context) {
 	companyId, _ := c.Get(middleware.ContextCompanyID)
+	userId, _ := c.Get(middleware.ContextUserID)
 
 	var req dto.MakeBankOperationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -178,6 +178,7 @@ func (h *AccountHandler) MakeBankDeposit(c *gin.Context) {
 		CompanyId:      companyId.(uuid.UUID).String(),
 		AccountId:      req.AccountId.String(),
 		BankAccountId:  req.BankAccountId.String(),
+		InitiatorId:    userId.(uuid.UUID).String(),
 		Amount:         req.Amount,
 		IdempotencyKey: req.IdempotencyKey,
 	})
@@ -191,6 +192,7 @@ func (h *AccountHandler) MakeBankDeposit(c *gin.Context) {
 
 func (h *AccountHandler) MakeBankWithdrawal(c *gin.Context) {
 	companyId, _ := c.Get(middleware.ContextCompanyID)
+	userId, _ := c.Get(middleware.ContextUserID)
 
 	var req dto.MakeBankOperationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -202,6 +204,7 @@ func (h *AccountHandler) MakeBankWithdrawal(c *gin.Context) {
 		CompanyId:      companyId.(uuid.UUID).String(),
 		AccountId:      req.AccountId.String(),
 		BankAccountId:  req.BankAccountId.String(),
+		InitiatorId:    userId.(uuid.UUID).String(),
 		Amount:         req.Amount,
 		IdempotencyKey: req.IdempotencyKey,
 	})
@@ -239,9 +242,10 @@ func mapBankAccount(ba *accountsv1.BankAccount) dto.BankAccountResponse {
 
 func mapBankOperation(bo *accountsv1.BankOperation) dto.BankOperationResponse {
 	return dto.BankOperationResponse{
-		BankOperationId: mustParseUUID(bo.BankOperationId),
-		AccountId:       mustParseUUID(bo.AccountId),
-		BankAccountId:   mustParseUUID(bo.BankAccountId),
+		BankOperationId: mustParseUUID(bo.GetBankOperationId()),
+		AccountId:       mustParseUUID(bo.GetAccountId()),
+		BankAccountId:   mustParseUUID(bo.GetBankAccountId()),
+		InitiatorId:     mustParseUUID(bo.GetInitiatorId()),
 		OperationType:   bo.OperationType.String(),
 		OperationStatus: bo.OperationStatus.String(),
 		Amount:          bo.Amount,

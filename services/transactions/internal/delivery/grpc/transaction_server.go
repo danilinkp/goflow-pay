@@ -6,7 +6,7 @@ import (
 	transactionsv1 "shared/pkg/gen/go/transactions/v1"
 	"transactions/internal/domain"
 	"transactions/internal/domain/entities"
-	"transactions/internal/services"
+	"transactions/internal/service"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -15,12 +15,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ctxKey string
-
-const UserIDKey ctxKey = "userID"
-
 type TransactionProvider interface {
-	Transfer(ctx context.Context, request *services.TransferInput) (*entities.Transaction, error)
+	Transfer(ctx context.Context, request *service.TransferInput) (*entities.Transaction, error)
 	GetAllTransactions(ctx context.Context, accountId uuid.UUID) ([]*entities.Transaction, error)
 	GetTransaction(ctx context.Context, txId uuid.UUID) (*entities.Transaction, error)
 }
@@ -41,9 +37,9 @@ func Register(gRPCServer *grpc.Server, svc TransactionProvider) {
 }
 
 func (s *TransactionServer) Transfer(ctx context.Context, req *transactionsv1.TransferRequest) (*transactionsv1.TransferResponse, error) {
-	initiatorId, ok := ctx.Value(UserIDKey).(uuid.UUID)
-	if !ok {
-		return nil, status.Error(codes.Internal, "user id not found in context")
+	initiatorId, err := uuid.Parse(req.GetInitiatorId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid initiator_id")
 	}
 	fromAccId, err := uuid.Parse(req.GetFromAccountId())
 	if err != nil {
@@ -53,12 +49,12 @@ func (s *TransactionServer) Transfer(ctx context.Context, req *transactionsv1.Tr
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid to_account_id")
 	}
-	input := &services.TransferInput{
+	input := &service.TransferInput{
 		InitiatorID:    initiatorId,
 		FromAccountId:  fromAccId,
 		ToAccountId:    toAccId,
 		Amount:         req.GetAmount(),
-		Currency:       entities.Currency(req.GetCurrency()),
+		Currency:       currencyFromProto(req.GetCurrency()),
 		IdempotencyKey: req.GetIdempotencyKey(),
 	}
 
@@ -101,6 +97,51 @@ func (s *TransactionServer) GetTransaction(ctx context.Context, req *transaction
 	return &transactionsv1.GetTransactionResponse{Transaction: mapTransactionToProto(tx)}, nil
 }
 
+func currencyFromProto(c transactionsv1.Currency) entities.Currency {
+	switch c {
+	case transactionsv1.Currency_CURRENCY_EUR:
+		return entities.EUR
+	case transactionsv1.Currency_CURRENCY_USD:
+		return entities.USD
+	case transactionsv1.Currency_CURRENCY_RUB:
+		return entities.RUB
+	case transactionsv1.Currency_CURRENCY_CNY:
+		return entities.CNY
+	default:
+		return ""
+	}
+}
+
+func currencyToProto(c entities.Currency) transactionsv1.Currency {
+	switch c {
+	case entities.EUR:
+		return transactionsv1.Currency_CURRENCY_EUR
+	case entities.USD:
+		return transactionsv1.Currency_CURRENCY_USD
+	case entities.RUB:
+		return transactionsv1.Currency_CURRENCY_RUB
+	case entities.CNY:
+		return transactionsv1.Currency_CURRENCY_CNY
+	default:
+		return transactionsv1.Currency_CURRENCY_UNSPECIFIED
+	}
+}
+
+func transactionStatusToProto(s entities.TransactionStatus) transactionsv1.TransactionStatus {
+	switch s {
+	case entities.PendingStatus:
+		return transactionsv1.TransactionStatus_TRANSACTION_STATUS_PENDING
+	case entities.SuccessStatus:
+		return transactionsv1.TransactionStatus_TRANSACTION_STATUS_SUCCESS
+	case entities.FailedStatus:
+		return transactionsv1.TransactionStatus_TRANSACTION_STATUS_FAILED
+	case entities.ProcessingStatus:
+		return transactionsv1.TransactionStatus_TRANSACTION_STATUS_PROCESSING
+	default:
+		return transactionsv1.TransactionStatus_TRANSACTION_STATUS_UNSPECIFIED
+	}
+}
+
 func mapTransactionToProto(tx *entities.Transaction) *transactionsv1.Transaction {
 	return &transactionsv1.Transaction{
 		TransactionId:     tx.TransactionID().String(),
@@ -108,9 +149,9 @@ func mapTransactionToProto(tx *entities.Transaction) *transactionsv1.Transaction
 		FromAccountId:     tx.FromAccountID().String(),
 		ToAccountId:       tx.ToAccountID().String(),
 		Amount:            tx.Amount(),
-		Currency:          transactionsv1.Currency(transactionsv1.Currency_value[tx.Currency().String()]),
+		Currency:          currencyToProto(tx.Currency()),
 		IdempotencyKey:    tx.IdempotencyKey(),
-		TransactionStatus: transactionsv1.TransactionStatus(transactionsv1.TransactionStatus_value[tx.Status().String()]),
+		TransactionStatus: transactionStatusToProto(tx.Status()),
 		CreatedAt:         timestamppb.New(tx.CreatedAt()),
 	}
 }

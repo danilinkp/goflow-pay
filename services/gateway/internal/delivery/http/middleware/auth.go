@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"gateway/internal/clients/grpc"
 	"net/http"
+	authv1 "shared/pkg/gen/go/auth/v1"
 	"strings"
 
 	jwtValidator "shared/pkg/jwt"
@@ -15,7 +17,7 @@ const (
 	ContextRole      = "role"
 )
 
-func Auth(validator *jwtValidator.Validator) gin.HandlerFunc {
+func Auth(validator *jwtValidator.Validator, authClient *grpc.AuthGRPCClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := extractToken(c)
 		if token == "" {
@@ -26,6 +28,12 @@ func Auth(validator *jwtValidator.Validator) gin.HandlerFunc {
 		claims, err := validator.Validate(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
+
+		_, err = authClient.IsTokenValid(c.Request.Context(), &authv1.IsTokenValidRequest{Token: token})
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token revoked"})
 			return
 		}
 

@@ -6,6 +6,7 @@ import (
 	"auth/internal/services"
 	"context"
 	"errors"
+	"shared/pkg/auth"
 	authv1 "shared/pkg/gen/go/auth/v1"
 
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ type AuthProvider interface {
 	GetUsersByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error)
 	GetUserById(ctx context.Context, userId uuid.UUID) (*entities.User, error)
 	GetInviteCode(ctx context.Context, companyId uuid.UUID) (string, error)
+	IsTokenValid(ctx context.Context, token string) (*auth.AccessClaims, error)
 	InitSystem(ctx context.Context, req services.InitAdminInput) (*services.AuthOutput, error)
 	AddAdmin(ctx context.Context, req services.AddAdminInput) (*services.AuthOutput, error)
 }
@@ -87,6 +89,15 @@ func (s *AuthServer) Logout(ctx context.Context, req *authv1.LogoutRequest) (*au
 		return nil, mapError(err)
 	}
 	return &authv1.LogoutResponse{}, nil
+}
+
+func (s *AuthServer) IsTokenValid(ctx context.Context, req *authv1.IsTokenValidRequest) (*authv1.IsTokenValidResponse, error) {
+	out, err := s.svc.IsTokenValid(ctx, req.GetToken())
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return mapClaimsToProto(out), nil
 }
 
 func (s *AuthServer) GetUsersByCompanyId(ctx context.Context, req *authv1.GetUsersByCompanyIdRequest) (*authv1.GetUsersByCompanyIdResponse, error) {
@@ -182,6 +193,16 @@ func mapUserToProto(u *entities.User) *authv1.UserInfo {
 		Email:     u.Email(),
 		Role:      u.Role().String(),
 		CreatedAt: timestamppb.New(u.CreatedAt()),
+	}
+}
+
+func mapClaimsToProto(claims *auth.AccessClaims) *authv1.IsTokenValidResponse {
+	return &authv1.IsTokenValidResponse{
+		TokenId:   claims.TokenID,
+		UserId:    claims.UserID.String(),
+		CompanyId: claims.CompanyID.String(),
+		Role:      claims.Role,
+		ExpiresAt: timestamppb.New(claims.ExpiresAt),
 	}
 }
 

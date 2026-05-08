@@ -834,6 +834,126 @@ func (x *AddAdminRequest) GetPassword() string {
 	return ""
 }
 
+type IsTokenValidRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IsTokenValidRequest) Reset() {
+	*x = IsTokenValidRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IsTokenValidRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IsTokenValidRequest) ProtoMessage() {}
+
+func (x *IsTokenValidRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IsTokenValidRequest.ProtoReflect.Descriptor instead.
+func (*IsTokenValidRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *IsTokenValidRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type IsTokenValidResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TokenId       string                 `protobuf:"bytes,1,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	CompanyId     string                 `protobuf:"bytes,3,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	Role          string                 `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IsTokenValidResponse) Reset() {
+	*x = IsTokenValidResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IsTokenValidResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IsTokenValidResponse) ProtoMessage() {}
+
+func (x *IsTokenValidResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IsTokenValidResponse.ProtoReflect.Descriptor instead.
+func (*IsTokenValidResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *IsTokenValidResponse) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
+}
+
+func (x *IsTokenValidResponse) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *IsTokenValidResponse) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *IsTokenValidResponse) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *IsTokenValidResponse) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
 var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
@@ -893,7 +1013,17 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x0fAddAdminRequest\x12\x14\n" +
 	"\x05login\x18\x01 \x01(\tR\x05login\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword2\xd6\x05\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\"+\n" +
+	"\x13IsTokenValidRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xb8\x01\n" +
+	"\x14IsTokenValidResponse\x12\x19\n" +
+	"\btoken_id\x18\x01 \x01(\tR\atokenId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x03 \x01(\tR\tcompanyId\x12\x12\n" +
+	"\x04role\x18\x04 \x01(\tR\x04role\x129\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2\xa3\x06\n" +
 	"\vAuthService\x12W\n" +
 	"\x16RegisterWithNewCompany\x12&.auth.v1.RegisterWithNewCompanyRequest\x1a\x15.auth.v1.AuthResponse\x12a\n" +
 	"\x1bRegisterWithExistingCompany\x12+.auth.v1.RegisterWithExistingCompanyRequest\x1a\x15.auth.v1.AuthResponse\x125\n" +
@@ -901,7 +1031,8 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x06Logout\x12\x16.auth.v1.LogoutRequest\x1a\x17.auth.v1.LogoutResponse\x12`\n" +
 	"\x13GetUsersByCompanyId\x12#.auth.v1.GetUsersByCompanyIdRequest\x1a$.auth.v1.GetUsersByCompanyIdResponse\x12H\n" +
 	"\vGetUserById\x12\x1b.auth.v1.GetUserByIdRequest\x1a\x1c.auth.v1.GetUserByIdResponse\x12o\n" +
-	"\x18GetInviteCodeByCompanyId\x12(.auth.v1.GetInviteCodeByCompanyIdRequest\x1a).auth.v1.GetInviteCodeByCompanyIdResponse\x12?\n" +
+	"\x18GetInviteCodeByCompanyId\x12(.auth.v1.GetInviteCodeByCompanyIdRequest\x1a).auth.v1.GetInviteCodeByCompanyIdResponse\x12K\n" +
+	"\fIsTokenValid\x12\x1c.auth.v1.IsTokenValidRequest\x1a\x1d.auth.v1.IsTokenValidResponse\x12?\n" +
 	"\n" +
 	"InitSystem\x12\x1a.auth.v1.InitSystemRequest\x1a\x15.auth.v1.AuthResponse\x12;\n" +
 	"\bAddAdmin\x12\x18.auth.v1.AddAdminRequest\x1a\x15.auth.v1.AuthResponseBw\n" +
@@ -919,7 +1050,7 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_auth_v1_auth_proto_rawDescData
 }
 
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_auth_v1_auth_proto_goTypes = []any{
 	(*RegisterWithNewCompanyRequest)(nil),      // 0: auth.v1.RegisterWithNewCompanyRequest
 	(*AuthResponse)(nil),                       // 1: auth.v1.AuthResponse
@@ -936,35 +1067,40 @@ var file_auth_v1_auth_proto_goTypes = []any{
 	(*GetInviteCodeByCompanyIdResponse)(nil),   // 12: auth.v1.GetInviteCodeByCompanyIdResponse
 	(*InitSystemRequest)(nil),                  // 13: auth.v1.InitSystemRequest
 	(*AddAdminRequest)(nil),                    // 14: auth.v1.AddAdminRequest
-	(*timestamppb.Timestamp)(nil),              // 15: google.protobuf.Timestamp
+	(*IsTokenValidRequest)(nil),                // 15: auth.v1.IsTokenValidRequest
+	(*IsTokenValidResponse)(nil),               // 16: auth.v1.IsTokenValidResponse
+	(*timestamppb.Timestamp)(nil),              // 17: google.protobuf.Timestamp
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
-	15, // 0: auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
+	17, // 0: auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: auth.v1.GetUsersByCompanyIdResponse.users:type_name -> auth.v1.UserInfo
 	7,  // 2: auth.v1.GetUserByIdResponse.user:type_name -> auth.v1.UserInfo
-	0,  // 3: auth.v1.AuthService.RegisterWithNewCompany:input_type -> auth.v1.RegisterWithNewCompanyRequest
-	2,  // 4: auth.v1.AuthService.RegisterWithExistingCompany:input_type -> auth.v1.RegisterWithExistingCompanyRequest
-	3,  // 5: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
-	4,  // 6: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
-	6,  // 7: auth.v1.AuthService.GetUsersByCompanyId:input_type -> auth.v1.GetUsersByCompanyIdRequest
-	9,  // 8: auth.v1.AuthService.GetUserById:input_type -> auth.v1.GetUserByIdRequest
-	11, // 9: auth.v1.AuthService.GetInviteCodeByCompanyId:input_type -> auth.v1.GetInviteCodeByCompanyIdRequest
-	13, // 10: auth.v1.AuthService.InitSystem:input_type -> auth.v1.InitSystemRequest
-	14, // 11: auth.v1.AuthService.AddAdmin:input_type -> auth.v1.AddAdminRequest
-	1,  // 12: auth.v1.AuthService.RegisterWithNewCompany:output_type -> auth.v1.AuthResponse
-	1,  // 13: auth.v1.AuthService.RegisterWithExistingCompany:output_type -> auth.v1.AuthResponse
-	1,  // 14: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
-	5,  // 15: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
-	8,  // 16: auth.v1.AuthService.GetUsersByCompanyId:output_type -> auth.v1.GetUsersByCompanyIdResponse
-	10, // 17: auth.v1.AuthService.GetUserById:output_type -> auth.v1.GetUserByIdResponse
-	12, // 18: auth.v1.AuthService.GetInviteCodeByCompanyId:output_type -> auth.v1.GetInviteCodeByCompanyIdResponse
-	1,  // 19: auth.v1.AuthService.InitSystem:output_type -> auth.v1.AuthResponse
-	1,  // 20: auth.v1.AuthService.AddAdmin:output_type -> auth.v1.AuthResponse
-	12, // [12:21] is the sub-list for method output_type
-	3,  // [3:12] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	17, // 3: auth.v1.IsTokenValidResponse.expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 4: auth.v1.AuthService.RegisterWithNewCompany:input_type -> auth.v1.RegisterWithNewCompanyRequest
+	2,  // 5: auth.v1.AuthService.RegisterWithExistingCompany:input_type -> auth.v1.RegisterWithExistingCompanyRequest
+	3,  // 6: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
+	4,  // 7: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
+	6,  // 8: auth.v1.AuthService.GetUsersByCompanyId:input_type -> auth.v1.GetUsersByCompanyIdRequest
+	9,  // 9: auth.v1.AuthService.GetUserById:input_type -> auth.v1.GetUserByIdRequest
+	11, // 10: auth.v1.AuthService.GetInviteCodeByCompanyId:input_type -> auth.v1.GetInviteCodeByCompanyIdRequest
+	15, // 11: auth.v1.AuthService.IsTokenValid:input_type -> auth.v1.IsTokenValidRequest
+	13, // 12: auth.v1.AuthService.InitSystem:input_type -> auth.v1.InitSystemRequest
+	14, // 13: auth.v1.AuthService.AddAdmin:input_type -> auth.v1.AddAdminRequest
+	1,  // 14: auth.v1.AuthService.RegisterWithNewCompany:output_type -> auth.v1.AuthResponse
+	1,  // 15: auth.v1.AuthService.RegisterWithExistingCompany:output_type -> auth.v1.AuthResponse
+	1,  // 16: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
+	5,  // 17: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
+	8,  // 18: auth.v1.AuthService.GetUsersByCompanyId:output_type -> auth.v1.GetUsersByCompanyIdResponse
+	10, // 19: auth.v1.AuthService.GetUserById:output_type -> auth.v1.GetUserByIdResponse
+	12, // 20: auth.v1.AuthService.GetInviteCodeByCompanyId:output_type -> auth.v1.GetInviteCodeByCompanyIdResponse
+	16, // 21: auth.v1.AuthService.IsTokenValid:output_type -> auth.v1.IsTokenValidResponse
+	1,  // 22: auth.v1.AuthService.InitSystem:output_type -> auth.v1.AuthResponse
+	1,  // 23: auth.v1.AuthService.AddAdmin:output_type -> auth.v1.AuthResponse
+	14, // [14:24] is the sub-list for method output_type
+	4,  // [4:14] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_auth_v1_auth_proto_init() }
@@ -978,7 +1114,7 @@ func file_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

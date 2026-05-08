@@ -56,6 +56,7 @@ func (c *AccountGRPCClient) LinkBankAccount(ctx context.Context, req *accountsv1
 
 func (c *AccountGRPCClient) MakeBankDeposit(ctx context.Context, req *accountsv1.MakeBankDepositRequest) (*accountsv1.MakeBankDepositResponse, error) {
 	op := "accountGRPCClient.MakeBankDeposit"
+
 	resp, err := c.client.MakeBankDeposit(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

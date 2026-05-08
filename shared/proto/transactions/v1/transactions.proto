@@ -43,9 +43,10 @@ message Transaction {
 message TransferRequest {
   string from_account_id = 1;
   string to_account_id = 2;
-  int64 amount = 3;
-  Currency currency = 4;
-  string idempotency_key = 5;
+  string initiator_id = 3;
+  int64 amount = 4;
+  Currency currency = 5;
+  string idempotency_key = 6;
 }
 
 message TransferResponse {

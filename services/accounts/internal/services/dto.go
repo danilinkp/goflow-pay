@@ -17,7 +17,6 @@ type BankOperationInput struct {
 
 type LinkBankInput struct {
 	AccountID         uuid.UUID
-	BankID            uuid.UUID
 	CompanyID         uuid.UUID
 	Name              string
 	Bic               string

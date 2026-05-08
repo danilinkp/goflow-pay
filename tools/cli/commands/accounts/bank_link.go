@@ -12,10 +12,9 @@ import (
 
 type linkBankAccountRequest struct {
 	AccountId         uuid.UUID `json:"account_id"`
-	BankId            uuid.UUID `json:"bank_id"`
 	Name              string    `json:"name"`
 	BIC               string    `json:"bic"`
-	SettlementAccount uuid.UUID `json:"settlement_account"`
+	SettlementAccount string    `json:"settlement_account"`
 	Currency          string    `json:"currency"`
 }
 
@@ -24,7 +23,7 @@ type bankAccountResponse struct {
 	CompanyId         uuid.UUID `json:"company_id"`
 	Name              string    `json:"name"`
 	BIC               string    `json:"bic"`
-	SettlementAccount uuid.UUID `json:"settlement_account"`
+	SettlementAccount string    `json:"settlement_account"`
 	Currency          string    `json:"currency"`
 	CreatedAt         time.Time `json:"created_at"`
 }
@@ -32,7 +31,6 @@ type bankAccountResponse struct {
 func NewLinkBankAccountCmd(httpClient *client.Client) *cobra.Command {
 	var (
 		accountID         string
-		bankID            string
 		name              string
 		bic               string
 		settlementAccount string
@@ -47,10 +45,9 @@ func NewLinkBankAccountCmd(httpClient *client.Client) *cobra.Command {
 			if err := httpClient.Post(context.Background(), "/api/v1/accounts/bank",
 				linkBankAccountRequest{
 					AccountId:         uuid.MustParse(accountID),
-					BankId:            uuid.MustParse(bankID),
 					Name:              name,
 					BIC:               bic,
-					SettlementAccount: uuid.MustParse(settlementAccount),
+					SettlementAccount: settlementAccount,
 					Currency:          currency,
 				}, &resp,
 			); err != nil {
@@ -68,7 +65,6 @@ func NewLinkBankAccountCmd(httpClient *client.Client) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&accountID, "account-id", "", "Account ID")
-	cmd.Flags().StringVar(&bankID, "bank-id", "", "Bank ID")
 	cmd.Flags().StringVar(&name, "name", "", "Bank account name")
 	cmd.Flags().StringVar(&bic, "bic", "", "BIC code")
 	cmd.Flags().StringVar(&settlementAccount, "settlement-account", "", "Settlement account")

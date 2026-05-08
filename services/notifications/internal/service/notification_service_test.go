@@ -1,11 +1,13 @@
-package services_test
+package service_test
 
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"notifications/internal/domain/entities"
-	"notifications/internal/services"
-	mocks "notifications/internal/services/mocks"
+	"notifications/internal/service"
+	mocks "notifications/internal/service/mocks"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,7 +16,7 @@ import (
 )
 
 func setupNotificationService(t *testing.T) (
-	*services.NotificationService,
+	*service.NotificationService,
 	*mocks.MockUserClient,
 	*mocks.MockNotificationRepository,
 	*mocks.MockEmailSender,
@@ -22,9 +24,10 @@ func setupNotificationService(t *testing.T) (
 	userClient := mocks.NewMockUserClient(t)
 	notificationRepo := mocks.NewMockNotificationRepository(t)
 	emailSender := mocks.NewMockEmailSender(t)
+	discardLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 
-	svc := services.NewNotificationService(
-		userClient, notificationRepo, emailSender,
+	svc := service.NewNotificationService(
+		userClient, notificationRepo, emailSender, discardLogger,
 	)
 	return svc, userClient, notificationRepo, emailSender
 }
@@ -32,8 +35,8 @@ func setupNotificationService(t *testing.T) (
 func validUserID() uuid.UUID    { return uuid.New() }
 func validAccountID() uuid.UUID { return uuid.New() }
 
-func mockUser(id uuid.UUID, email string) *services.UserResponse {
-	return &services.UserResponse{ID: id, Email: email}
+func mockUser(id uuid.UUID, email string) *service.UserResponse {
+	return &service.UserResponse{ID: id, Email: email}
 }
 
 func TestNotificationService_NotifyTransferCompleted(t *testing.T) {
@@ -136,7 +139,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 		name            string
 		amount          int64
 		currency        string
-		notifyFn        func(*services.NotificationService) error
+		notifyFn        func(*service.NotificationService) error
 		expectedTitle   string
 		expectedMessage string
 	}{
@@ -145,7 +148,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 			amount: 5000, currency: "RUB",
 			expectedTitle:   "Пополнение с банковского счёта на сумму 5000 RUB",
 			expectedMessage: "Средства успешно пополнены",
-			notifyFn: func(s *services.NotificationService) error {
+			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankDepositCompleted(ctx, userID, accountID, 5000, "RUB")
 			},
 		},
@@ -154,7 +157,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 			amount: 5000, currency: "RUB",
 			expectedTitle:   "Пополнение с банковского счёта на сумму 5000 RUB",
 			expectedMessage: "Произошла ошибка при пополнении средств",
-			notifyFn: func(s *services.NotificationService) error {
+			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankDepositFailed(ctx, userID, accountID, 5000, "RUB")
 			},
 		},
@@ -163,7 +166,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 			amount: 5000, currency: "RUB",
 			expectedTitle:   "Вывод на банковский счёт на сумму 5000 RUB",
 			expectedMessage: "Средства успешно выведены",
-			notifyFn: func(s *services.NotificationService) error {
+			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankWithdrawalCompleted(ctx, userID, accountID, 5000, "RUB")
 			},
 		},
@@ -172,7 +175,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 			amount: 5000, currency: "RUB",
 			expectedTitle:   "Вывод на банковский счёт на сумму 5000 RUB",
 			expectedMessage: "Произошла ошибка при выводе средств",
-			notifyFn: func(s *services.NotificationService) error {
+			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankWithdrawalFailed(ctx, userID, accountID, 5000, "RUB")
 			},
 		},

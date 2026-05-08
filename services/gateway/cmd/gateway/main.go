@@ -7,27 +7,22 @@ import (
 	"gateway/internal/config"
 	"gateway/internal/delivery/http/handlers"
 	"gateway/internal/delivery/http/router"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	jwtValidator "shared/pkg/jwt"
+	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
-	"shared/pkg/logger/slogpretty"
 	"syscall"
 	"time"
-)
-
-const (
-	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
 )
 
 func main() {
 	cfg := config.MustLoad()
 
-	log := setupLogger(cfg.Env)
+	start := time.Now()
+	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
+
 	log.Info("starting gateway service", "env", cfg.Env)
 
 	publicKeyBytes, err := os.ReadFile(cfg.JWTPublicKeyPath)
@@ -36,7 +31,7 @@ func main() {
 	}
 	validator, err := jwtValidator.NewValidator(publicKeyBytes)
 	if err != nil {
-		log.Error("failed to create validator", "err", sl.Err(err))
+		log.Error("failed to create validator", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 
@@ -46,7 +41,7 @@ func main() {
 		cfg.GRPCClients.TransactionAddress,
 	)
 	if err != nil {
-		log.Error("failed to init grpc clients", "err", sl.Err(err))
+		log.Error("failed to init grpc clients", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	defer clients.Close()
@@ -56,7 +51,7 @@ func main() {
 	accountHandler := handlers.NewAccountHandler(clients.Account)
 	transactionHandler := handlers.NewTransactionHandler(clients.Transaction)
 
-	engine := router.NewRouter(validator, authHandler, systemHandler, accountHandler, transactionHandler)
+	engine := router.NewRouter(validator, authHandler, clients.Auth, systemHandler, accountHandler, transactionHandler)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPServer.Address,
@@ -72,7 +67,7 @@ func main() {
 	go func() {
 		log.Info("server starting", "address", cfg.HTTPServer.Address)
 		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("server error", "err", err)
+			log.Error("server error", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 			os.Exit(1)
 		}
 	}()
@@ -83,39 +78,8 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	if err = srv.Shutdown(shutdownCtx); err != nil {
-		log.Error("shutdown error", "err", err)
+		log.Error("shutdown error", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 	}
 
 	log.Info("server stopped")
-}
-
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-
-	switch env {
-	case envLocal:
-		log = setupPrettySlog()
-	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
-	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-	}
-
-	return log
-}
-
-func setupPrettySlog() *slog.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
-	}
-
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
 }
