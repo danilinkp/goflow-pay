@@ -3,3 +3,5 @@
 /certs/*.pem
 /bin/
 /logs/
+/frontend/node_modules/
+/frontend/package-lock.json
