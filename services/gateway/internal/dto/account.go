@@ -47,7 +47,7 @@ type BankAccountResponse struct {
 	CompanyId         uuid.UUID `json:"company_id"`
 	Name              string    `json:"name"`
 	BIC               string    `json:"bic"`
-	SettlementAccount uuid.UUID `json:"settlement_account"`
+	SettlementAccount string    `json:"settlement_account"`
 	Currency          string    `json:"currency"`
 	CreatedAt         time.Time `json:"created_at"`
 }

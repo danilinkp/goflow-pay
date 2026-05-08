@@ -124,7 +124,7 @@ func (r *AccountOperationRepo) HasPendingByAccountId(ctx context.Context, accoun
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 	st := entities.PendingStatus
 	query := `SELECT EXISTS(
-			  SELECT 1 FROM account_operations WHERE account_id = $1 and operation_type = $2);
+			  SELECT 1 FROM account_operations WHERE account_id = $1 and operation_status = $2);
 `
 	var exists bool
 	err := conn.QueryRow(ctx, query, accountId, st).Scan(&exists)

@@ -234,7 +234,7 @@ func mapBankAccount(ba *accountsv1.BankAccount) dto.BankAccountResponse {
 		CompanyId:         mustParseUUID(ba.CompanyId),
 		Name:              ba.Name,
 		BIC:               ba.Bic,
-		SettlementAccount: mustParseUUID(ba.SettlementAccount),
+		SettlementAccount: ba.SettlementAccount,
 		Currency:          ba.Currency.String(),
 		CreatedAt:         ba.CreatedAt.AsTime(),
 	}
