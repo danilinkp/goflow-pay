@@ -26,6 +26,7 @@ const (
 	AuthService_GetUsersByCompanyId_FullMethodName         = "/auth.v1.AuthService/GetUsersByCompanyId"
 	AuthService_GetUserById_FullMethodName                 = "/auth.v1.AuthService/GetUserById"
 	AuthService_GetInviteCodeByCompanyId_FullMethodName    = "/auth.v1.AuthService/GetInviteCodeByCompanyId"
+	AuthService_IsTokenValid_FullMethodName                = "/auth.v1.AuthService/IsTokenValid"
 	AuthService_InitSystem_FullMethodName                  = "/auth.v1.AuthService/InitSystem"
 	AuthService_AddAdmin_FullMethodName                    = "/auth.v1.AuthService/AddAdmin"
 )
@@ -41,6 +42,7 @@ type AuthServiceClient interface {
 	GetUsersByCompanyId(ctx context.Context, in *GetUsersByCompanyIdRequest, opts ...grpc.CallOption) (*GetUsersByCompanyIdResponse, error)
 	GetUserById(ctx context.Context, in *GetUserByIdRequest, opts ...grpc.CallOption) (*GetUserByIdResponse, error)
 	GetInviteCodeByCompanyId(ctx context.Context, in *GetInviteCodeByCompanyIdRequest, opts ...grpc.CallOption) (*GetInviteCodeByCompanyIdResponse, error)
+	IsTokenValid(ctx context.Context, in *IsTokenValidRequest, opts ...grpc.CallOption) (*IsTokenValidResponse, error)
 	InitSystem(ctx context.Context, in *InitSystemRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	AddAdmin(ctx context.Context, in *AddAdminRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 }
@@ -123,6 +125,16 @@ func (c *authServiceClient) GetInviteCodeByCompanyId(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *authServiceClient) IsTokenValid(ctx context.Context, in *IsTokenValidRequest, opts ...grpc.CallOption) (*IsTokenValidResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IsTokenValidResponse)
+	err := c.cc.Invoke(ctx, AuthService_IsTokenValid_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authServiceClient) InitSystem(ctx context.Context, in *InitSystemRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AuthResponse)
@@ -154,6 +166,7 @@ type AuthServiceServer interface {
 	GetUsersByCompanyId(context.Context, *GetUsersByCompanyIdRequest) (*GetUsersByCompanyIdResponse, error)
 	GetUserById(context.Context, *GetUserByIdRequest) (*GetUserByIdResponse, error)
 	GetInviteCodeByCompanyId(context.Context, *GetInviteCodeByCompanyIdRequest) (*GetInviteCodeByCompanyIdResponse, error)
+	IsTokenValid(context.Context, *IsTokenValidRequest) (*IsTokenValidResponse, error)
 	InitSystem(context.Context, *InitSystemRequest) (*AuthResponse, error)
 	AddAdmin(context.Context, *AddAdminRequest) (*AuthResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
@@ -186,6 +199,9 @@ func (UnimplementedAuthServiceServer) GetUserById(context.Context, *GetUserByIdR
 }
 func (UnimplementedAuthServiceServer) GetInviteCodeByCompanyId(context.Context, *GetInviteCodeByCompanyIdRequest) (*GetInviteCodeByCompanyIdResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetInviteCodeByCompanyId not implemented")
+}
+func (UnimplementedAuthServiceServer) IsTokenValid(context.Context, *IsTokenValidRequest) (*IsTokenValidResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method IsTokenValid not implemented")
 }
 func (UnimplementedAuthServiceServer) InitSystem(context.Context, *InitSystemRequest) (*AuthResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method InitSystem not implemented")
@@ -340,6 +356,24 @@ func _AuthService_GetInviteCodeByCompanyId_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_IsTokenValid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IsTokenValidRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).IsTokenValid(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_IsTokenValid_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).IsTokenValid(ctx, req.(*IsTokenValidRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuthService_InitSystem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InitSystemRequest)
 	if err := dec(in); err != nil {
@@ -410,6 +444,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetInviteCodeByCompanyId",
 			Handler:    _AuthService_GetInviteCodeByCompanyId_Handler,
+		},
+		{
+			MethodName: "IsTokenValid",
+			Handler:    _AuthService_IsTokenValid_Handler,
 		},
 		{
 			MethodName: "InitSystem",

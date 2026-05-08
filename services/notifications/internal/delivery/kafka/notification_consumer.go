@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"notifications/internal/services"
+	"notifications/internal/service"
 	"shared/pkg/outbox"
 	"time"
 
@@ -14,12 +14,12 @@ import (
 )
 
 type NotificationConsumer struct {
-	service *services.NotificationService
+	service *service.NotificationService
 	reader  *kafka.Reader
 	logger  *slog.Logger
 }
 
-func NewNotificationConsumer(brokers []string, topic string, service *services.NotificationService, logger *slog.Logger) *NotificationConsumer {
+func NewNotificationConsumer(brokers []string, topic string, service *service.NotificationService, logger *slog.Logger) *NotificationConsumer {
 	c := kafka.ReaderConfig{
 		Brokers:         brokers,
 		Topic:           topic,

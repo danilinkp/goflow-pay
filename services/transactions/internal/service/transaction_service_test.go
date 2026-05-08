@@ -1,33 +1,38 @@
-package services_test
+package service_test
 
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"shared/pkg/outbox"
 	"testing"
 	"transactions/internal/domain/entities"
-	"transactions/internal/services"
-	mocks "transactions/internal/services/mocks"
+	"transactions/internal/service"
+	mocks "transactions/internal/service/mocks"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func setup(t *testing.T) (*services.TransactionService, *mocks.MockAccountClient, *mocks.MockTransactionRepository, *mocks.MockOutboxRepository, *mocks.MockTransactor) {
+func setup(t *testing.T) (*service.TransactionService, *mocks.MockAccountClient, *mocks.MockTransactionRepository, *mocks.MockOutboxRepository, *mocks.MockTransactor) {
 	client := mocks.NewMockAccountClient(t)
 	repo := mocks.NewMockTransactionRepository(t)
 	outboxRepo := mocks.NewMockOutboxRepository(t)
 	transactor := mocks.NewMockTransactor(t)
 
-	svc := services.NewTransactionService(client, repo, outboxRepo, transactor)
+	discardLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+
+	svc := service.NewTransactionService(client, repo, outboxRepo, transactor, discardLogger)
 	return svc, client, repo, outboxRepo, transactor
 }
 
-func validTransferRequest() *services.TransferInput {
-	return &services.TransferInput{
+func validTransferRequest() *service.TransferInput {
+	return &service.TransferInput{
 		FromAccountId:  uuid.New(),
 		ToAccountId:    uuid.New(),
+		InitiatorID:    uuid.New(),
 		Amount:         1000,
 		Currency:       "USD",
 		IdempotencyKey: uuid.New().String(),
@@ -70,7 +75,8 @@ func TestTransactionService_Transfer(t *testing.T) {
 
 	t.Run("Idempotency - return existing transaction", func(t *testing.T) {
 		svc, client, repo, _, _ := setup(t)
-		existingTx, _ := entities.NewTransaction(req.FromAccountId, req.ToAccountId, req.Amount, req.Currency, entities.SuccessStatus, req.IdempotencyKey)
+		initiatorId := uuid.New()
+		existingTx, _ := entities.NewTransaction(initiatorId, req.FromAccountId, req.ToAccountId, req.Amount, req.Currency, entities.SuccessStatus, req.IdempotencyKey)
 
 		repo.On("GetByIdempotencyKey", mock.Anything, req.IdempotencyKey).Return(existingTx, nil)
 
@@ -148,7 +154,8 @@ func TestTransactionService_Recover(t *testing.T) {
 
 	t.Run("Recover Pending Transaction", func(t *testing.T) {
 		svc, client, repo, outboxRepo, transactor := setup(t)
-		tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 100, "USD", entities.PendingStatus, "k")
+		initiatorId := uuid.New()
+		tx, _ := entities.NewTransaction(initiatorId, uuid.New(), uuid.New(), 100, "USD", entities.PendingStatus, "k")
 
 		repo.On("GetById", mock.Anything, txID).Return(tx, nil)
 
@@ -172,7 +179,7 @@ func TestTransactionService_Recover(t *testing.T) {
 
 	t.Run("Recover Processing Transaction", func(t *testing.T) {
 		svc, client, repo, outboxRepo, transactor := setup(t)
-		tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 100, "USD", entities.ProcessingStatus, "k")
+		tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 100, "USD", entities.ProcessingStatus, "k")
 
 		repo.On("GetById", mock.Anything, txID).Return(tx, nil)
 		client.On("ConfirmOperation", mock.Anything, mock.Anything).Return(nil)
@@ -192,7 +199,7 @@ func TestTransactionService_Recover(t *testing.T) {
 
 	t.Run("Recover already completed - no-op", func(t *testing.T) {
 		svc, _, repo, _, _ := setup(t)
-		tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 100, "USD", entities.SuccessStatus, "k")
+		tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 100, "USD", entities.SuccessStatus, "k")
 
 		repo.On("GetById", mock.Anything, txID).Return(tx, nil)
 
@@ -207,7 +214,7 @@ func TestTransactionService_GetTransaction(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		svc, _, repo, _, _ := setup(t)
-		expectedTx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 100, "USD", entities.SuccessStatus, "key")
+		expectedTx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 100, "USD", entities.SuccessStatus, "key")
 
 		repo.On("GetById", mock.Anything, txID).Return(expectedTx, nil)
 
@@ -233,8 +240,8 @@ func TestTransactionService_GetAllTransactions(t *testing.T) {
 
 	t.Run("Success with multiple transactions", func(t *testing.T) {
 		svc, _, repo, _, _ := setup(t)
-		tx1, _ := entities.NewTransaction(accountID, uuid.New(), 100, "USD", entities.SuccessStatus, "key1")
-		tx2, _ := entities.NewTransaction(accountID, uuid.New(), 200, "EUR", entities.PendingStatus, "key2")
+		tx1, _ := entities.NewTransaction(uuid.New(), accountID, uuid.New(), 100, "USD", entities.SuccessStatus, "key1")
+		tx2, _ := entities.NewTransaction(uuid.New(), accountID, uuid.New(), 200, "EUR", entities.PendingStatus, "key2")
 		expected := []*entities.Transaction{tx1, tx2}
 
 		repo.On("GetByAccountId", mock.Anything, accountID).Return(expected, nil)

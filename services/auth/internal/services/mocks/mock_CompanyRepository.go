@@ -175,6 +175,72 @@ func (_c *MockCompanyRepository_GetByInviteCode_Call) RunAndReturn(run func(ctx 
 	return _c
 }
 
+// GetInviteCodeById provides a mock function for the type MockCompanyRepository
+func (_mock *MockCompanyRepository) GetInviteCodeById(ctx context.Context, companyId uuid.UUID) (string, error) {
+	ret := _mock.Called(ctx, companyId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetInviteCodeById")
+	}
+
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (string, error)); ok {
+		return returnFunc(ctx, companyId)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) string); ok {
+		r0 = returnFunc(ctx, companyId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, companyId)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockCompanyRepository_GetInviteCodeById_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInviteCodeById'
+type MockCompanyRepository_GetInviteCodeById_Call struct {
+	*mock.Call
+}
+
+// GetInviteCodeById is a helper method to define mock.On call
+//   - ctx context.Context
+//   - companyId uuid.UUID
+func (_e *MockCompanyRepository_Expecter) GetInviteCodeById(ctx interface{}, companyId interface{}) *MockCompanyRepository_GetInviteCodeById_Call {
+	return &MockCompanyRepository_GetInviteCodeById_Call{Call: _e.mock.On("GetInviteCodeById", ctx, companyId)}
+}
+
+func (_c *MockCompanyRepository_GetInviteCodeById_Call) Run(run func(ctx context.Context, companyId uuid.UUID)) *MockCompanyRepository_GetInviteCodeById_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCompanyRepository_GetInviteCodeById_Call) Return(s string, err error) *MockCompanyRepository_GetInviteCodeById_Call {
+	_c.Call.Return(s, err)
+	return _c
+}
+
+func (_c *MockCompanyRepository_GetInviteCodeById_Call) RunAndReturn(run func(ctx context.Context, companyId uuid.UUID) (string, error)) *MockCompanyRepository_GetInviteCodeById_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Save provides a mock function for the type MockCompanyRepository
 func (_mock *MockCompanyRepository) Save(ctx context.Context, company *entities.Company) error {
 	ret := _mock.Called(ctx, company)

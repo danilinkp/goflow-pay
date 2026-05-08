@@ -24,6 +24,7 @@ func TestTransactionRepo_Save_And_Get(t *testing.T) {
 	tx, err := entities.NewTransaction(
 		uuid.New(),
 		uuid.New(),
+		uuid.New(),
 		1000,
 		entities.RUB,
 		entities.PendingStatus,
@@ -51,8 +52,8 @@ func TestTransactionRepo_GetByAccountId(t *testing.T) {
 	myAcc := uuid.New()
 	otherAcc := uuid.New()
 
-	tx1, _ := entities.NewTransaction(myAcc, otherAcc, 100, entities.RUB, "pending", "key-1")
-	tx2, _ := entities.NewTransaction(otherAcc, myAcc, 200, entities.RUB, "pending", "key-2")
+	tx1, _ := entities.NewTransaction(uuid.New(), myAcc, otherAcc, 100, entities.RUB, "pending", "key-1")
+	tx2, _ := entities.NewTransaction(uuid.New(), otherAcc, myAcc, 200, entities.RUB, "pending", "key-2")
 
 	_ = repo.Save(ctx, tx1)
 	_ = repo.Save(ctx, tx2)
@@ -67,7 +68,7 @@ func TestTransactionRepo_UpdateStatus(t *testing.T) {
 	ctx := context.Background()
 	repo := newTransactionRepo()
 
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 500, entities.RUB, "pending", "key-update")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 500, entities.RUB, "pending", "key-update")
 	_ = repo.Save(ctx, tx)
 
 	err := repo.UpdateStatus(ctx, tx.TransactionID(), "success")
@@ -82,7 +83,7 @@ func TestTransactionRepo_GetStale(t *testing.T) {
 	ctx := context.Background()
 	repo := newTransactionRepo()
 
-	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), 100, entities.RUB, "pending", "stale-key")
+	tx, _ := entities.NewTransaction(uuid.New(), uuid.New(), uuid.New(), 100, entities.RUB, "pending", "stale-key")
 	_ = repo.Save(ctx, tx)
 
 	_, _ = testPool.Exec(ctx, "UPDATE transactions SET updated_at = $1 WHERE idempotency_key = $2",

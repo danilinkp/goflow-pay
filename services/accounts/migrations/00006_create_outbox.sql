@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS outbox
     attempts       INT                   DEFAULT 0,
     published_at   TIMESTAMP,
     created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
-
 );
 
 -- +goose Down

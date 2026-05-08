@@ -2,20 +2,20 @@ package main
 
 import (
 	"context"
-	"log/slog"
 	appkafka "notifications/internal/app/kafka"
 	grpcclient "notifications/internal/clients/grpc"
 	"notifications/internal/config"
 	"notifications/internal/infrastructure/email"
-	"notifications/internal/services"
+	"notifications/internal/service"
 	"notifications/internal/storage/postgres"
 	"notifications/migrations"
 	"os"
 	"os/signal"
 	postgresPool "shared/pkg/db/postgres"
+	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
-	"shared/pkg/logger/slogpretty"
 	"syscall"
+	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"google.golang.org/grpc"
@@ -24,14 +24,14 @@ import (
 
 const (
 	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
 )
 
 func main() {
 	cfg := config.MustLoad()
 
-	log := setupLogger(cfg.Env)
+	start := time.Now()
+	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
+
 	log.Info("starting notification service", "env", cfg.Env)
 
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -39,13 +39,13 @@ func main() {
 
 	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
 	if err != nil {
-		log.Error("failed to connect to db", "err", sl.Err(err))
+		log.Error("failed to connect to db", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	defer pool.Close()
 	err = migrations.RunMigrations(pool)
 	if err != nil {
-		log.Error("failed to run migrations", "err", sl.Err(err))
+		log.Error("failed to run migrations", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	log.Info("migrations applied")
@@ -53,7 +53,7 @@ func main() {
 	getter := trmpgx.DefaultCtxGetter
 	notificationRepo := postgres.NewNotificationRepo(pool, getter)
 
-	var emailSender services.EmailSender
+	var emailSender service.EmailSender
 
 	if cfg.Env == envLocal {
 		emailSender = email.NewMockSender(log)
@@ -63,50 +63,19 @@ func main() {
 
 	conn, err := grpc.NewClient(cfg.AuthGRPC.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Error("failed to create grpc client", "err", sl.Err(err))
+		log.Error("failed to create grpc client", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	defer conn.Close()
 	userClient := grpcclient.NewUserGrpcClient(conn)
 
-	notificationService := services.NewNotificationService(userClient, notificationRepo, emailSender)
+	notificationService := service.NewNotificationService(userClient, notificationRepo, emailSender, log)
 
 	kafkaApp := appkafka.NewNotificationApp(log, cfg.Kafka.Brokers(), cfg.Kafka.Topic, notificationService)
 
 	if err = kafkaApp.Run(ctx); err != nil {
-		log.Error("app stopped with error", sl.Err(err))
+		log.Error("app stopped with error", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	log.Info("notification app stopped")
-}
-
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-
-	switch env {
-	case envLocal:
-		log = setupPrettySlog()
-	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
-	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-	}
-
-	return log
-}
-
-func setupPrettySlog() *slog.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
-	}
-
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
 }

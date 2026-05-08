@@ -28,7 +28,7 @@ type systemInitResponse struct {
 
 func NewSystemInitCmd(httpClient *client.Client) *cobra.Command {
 	var bootstrapToken string
-	var login, email, companyName string
+	var login, email string
 
 	cmd := &cobra.Command{
 		Use:   "init --bootstrap-token <bootstrap token> --login <login> --email <email> --companyName <company name>",
@@ -46,7 +46,6 @@ func NewSystemInitCmd(httpClient *client.Client) *cobra.Command {
 					Login:          login,
 					Email:          email,
 					Password:       password,
-					CompanyName:    companyName,
 				}, &resp); err != nil {
 				return fmt.Errorf("system init failed: %w", err)
 			}
@@ -68,11 +67,11 @@ func NewSystemInitCmd(httpClient *client.Client) *cobra.Command {
 	cmd.Flags().StringVar(&bootstrapToken, "bootstrap-token", "", "One-time bootstrap token")
 	cmd.Flags().StringVar(&login, "login", "", "Admin login")
 	cmd.Flags().StringVar(&email, "email", "", "Admin email")
-	cmd.Flags().StringVar(&companyName, "company-name", "", "Company name")
+	//cmd.Flags().StringVar(&companyName, "company-name", "", "Company name")
 	_ = cmd.MarkFlagRequired("bootstrap-token")
 	_ = cmd.MarkFlagRequired("login")
 	_ = cmd.MarkFlagRequired("email")
-	_ = cmd.MarkFlagRequired("company-name")
+	//_ = cmd.MarkFlagRequired("company-name")
 
 	return cmd
 }

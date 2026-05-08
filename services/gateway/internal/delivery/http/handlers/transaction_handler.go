@@ -6,8 +6,10 @@ import (
 	"gateway/internal/dto"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	transactionsv1 "shared/pkg/gen/go/transactions/v1"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type TransactionHandler struct {
@@ -19,6 +21,8 @@ func NewTransactionHandler(client *grpc.TransactionGRPCClient) *TransactionHandl
 }
 
 func (h *TransactionHandler) Transfer(c *gin.Context) {
+	userId, _ := c.Get(middleware.ContextUserID)
+
 	var req dto.TransferRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -28,6 +32,7 @@ func (h *TransactionHandler) Transfer(c *gin.Context) {
 	resp, err := h.client.Transfer(middleware.GRPCContext(c), &transactionsv1.TransferRequest{
 		FromAccountId:  req.FromAccountId.String(),
 		ToAccountId:    req.ToAccountId.String(),
+		InitiatorId:    userId.(uuid.UUID).String(),
 		Amount:         req.Amount,
 		Currency:       parseTransactionCurrency(req.Currency),
 		IdempotencyKey: req.IdempotencyKey,

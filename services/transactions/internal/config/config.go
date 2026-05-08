@@ -13,12 +13,19 @@ import (
 
 type Config struct {
 	Env        string     `yaml:"env" env:"ENV" env-default:"local"`
+	Log        LogConfig  `yaml:"log"`
 	GRPCServer GRPCServer `yaml:"grpc"`
 	GRPCClient GRPCClient `yaml:"grpc_client"`
 	DB         DB         `yaml:"db"`
 	Kafka      Kafka      `yaml:"kafka"`
 	Outbox     Outbox     `yaml:"outbox"`
 	Recover    Recover    `yaml:"recover"`
+}
+
+type LogConfig struct {
+	Level  string `yaml:"level"  env-default:"info"`
+	Output string `yaml:"output" env-default:"stdout"`
+	File   string `yaml:"file"`
 }
 
 type GRPCServer struct {

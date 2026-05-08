@@ -12,29 +12,30 @@ import (
 	"os"
 	"os/signal"
 	postgresPool "shared/pkg/db/postgres"
+	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
-	"shared/pkg/logger/slogpretty"
 	"shared/pkg/outbox"
 	"shared/pkg/outbox/publisher/kafka"
 	outboxRepository "shared/pkg/outbox/repository/postgres"
 	postgresTrm "shared/pkg/transactor/postgres"
 	"sync"
 	"syscall"
+	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
-const (
-	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
-)
-
 func main() {
 	cfg := config.MustLoad()
 
-	log := setupLogger(cfg.Env)
+	start := time.Now()
+
+	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
+	log.Info("starting account service",
+		slog.String("env", cfg.Env),
+	)
+
 	log.Info("starting account service", "env", cfg.Env)
 
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -42,13 +43,13 @@ func main() {
 
 	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
 	if err != nil {
-		log.Error("failed to connect to db", "err", sl.Err(err))
+		log.Error("failed to connect to db", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	defer pool.Close()
 	err = migrations.RunMigrations(pool)
 	if err != nil {
-		log.Error("failed to run migrations", "err", sl.Err(err))
+		log.Error("failed to run migrations", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	log.Info("migrations applied")
@@ -70,7 +71,7 @@ func main() {
 	pub := kafka.NewPublisher(cfg.Kafka.Brokers())
 	defer func() {
 		if closeErr := pub.Close(); closeErr != nil {
-			log.Error("failed to close kafka publisher", "err", sl.Err(closeErr))
+			log.Error("failed to close kafka publisher", sl.ErrWithStack(closeErr), sl.Duration(time.Since(start)))
 		}
 	}()
 
@@ -99,42 +100,11 @@ func main() {
 	case <-ctx.Done():
 		log.Info("stopping application...")
 	case err = <-errChan:
-		log.Error("grpc server failed", "err", sl.Err(err))
+		log.Error("grpc server failed", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		stopApp()
 	}
 
 	gRPCServer.Stop()
 	wg.Wait()
 	log.Info("gracefully stopped")
-}
-
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-
-	switch env {
-	case envLocal:
-		log = setupPrettySlog()
-	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
-	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-	}
-
-	return log
-}
-
-func setupPrettySlog() *slog.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
-	}
-
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
 }

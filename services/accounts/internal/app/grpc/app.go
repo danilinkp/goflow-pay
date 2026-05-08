@@ -7,12 +7,10 @@ import (
 	"log/slog"
 	"net"
 
-	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -41,7 +39,6 @@ func NewAccountsApp(log *slog.Logger, accountsService accountsgrpc.AccountProvid
 	gRPCServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		recovery.UnaryServerInterceptor(recoveryOpts...),
 		logging.UnaryServerInterceptor(InterceptorLogger(log), loggingOpts...),
-		AuthInterceptor(),
 	))
 
 	accountsgrpc.Register(gRPCServer, accountsService)
@@ -57,27 +54,6 @@ func InterceptorLogger(l *slog.Logger) logging.Logger {
 	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
 		l.Log(ctx, slog.Level(lvl), msg, fields...)
 	})
-}
-
-func AuthInterceptor() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		md, ok := metadata.FromIncomingContext(ctx)
-		if !ok {
-			return nil, status.Error(codes.Unauthenticated, "metadata is missing")
-		}
-		userIDs := md.Get("x-user-id")
-		if len(userIDs) == 0 {
-			return nil, status.Error(codes.Unauthenticated, "x-user-id header is missing")
-		}
-
-		uid, err := uuid.Parse(userIDs[0])
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "invalid user id format")
-		}
-
-		newCtx := context.WithValue(ctx, accountsgrpc.UserIDKey, uid)
-		return handler(newCtx, req)
-	}
 }
 
 func (a *AccountsApp) MustRun() {

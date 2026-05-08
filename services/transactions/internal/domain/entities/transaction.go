@@ -65,6 +65,7 @@ func NewTransaction(initiatorId, fromAccountId, toAccountId uuid.UUID, amount in
 	now := time.Now().UTC()
 	return &Transaction{
 		transactionId:  uuid.New(),
+		initiatorId:    initiatorId,
 		fromAccountId:  fromAccountId,
 		toAccountId:    toAccountId,
 		amount:         amount,

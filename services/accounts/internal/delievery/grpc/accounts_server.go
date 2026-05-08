@@ -6,7 +6,9 @@ import (
 	"accounts/internal/services"
 	"context"
 	"errors"
+	"fmt"
 	accountsv1 "shared/pkg/gen/go/accounts/v1"
+	"strings"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -17,7 +19,7 @@ import (
 
 type ctxKey string
 
-const UserIDKey ctxKey = "userID"
+const UserIDKey ctxKey = "user_id"
 
 type AccountProvider interface {
 	CreateAccount(ctx context.Context, companyID uuid.UUID, currency entities.Currency) (*entities.Account, error)
@@ -53,7 +55,9 @@ func (s *AccountServer) CreateAccount(ctx context.Context, req *accountsv1.Creat
 		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
 	}
 
-	acc, err := s.svc.CreateAccount(ctx, companyID, entities.Currency(req.GetCurrency().String()))
+	protoStr := req.GetCurrency().String()
+	cleanStr := strings.TrimPrefix(protoStr, "CURRENCY_")
+	acc, err := s.svc.CreateAccount(ctx, companyID, entities.Currency(cleanStr))
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -98,10 +102,6 @@ func (s *AccountServer) LinkBankAccount(ctx context.Context, req *accountsv1.Lin
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
 	}
-	bankID, err := uuid.Parse(req.GetBankId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid bank_id")
-	}
 	compID, err := uuid.Parse(req.GetCompanyId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
@@ -109,12 +109,11 @@ func (s *AccountServer) LinkBankAccount(ctx context.Context, req *accountsv1.Lin
 
 	input := services.LinkBankInput{
 		AccountID:         accID,
-		BankID:            bankID,
 		CompanyID:         compID,
 		Name:              req.GetName(),
 		Bic:               req.GetBic(),
 		SettlementAccount: req.GetSettlementAccount(),
-		Currency:          entities.Currency(req.GetCurrency().String()),
+		Currency:          currencyFromProto(req.GetCurrency()),
 	}
 
 	ba, err := s.svc.LinkBankAccount(ctx, input)
@@ -192,12 +191,11 @@ func (s *AccountServer) MakeBankDeposit(ctx context.Context, req *accountsv1.Mak
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid bank_account_id")
 	}
-
-	initiatorId, ok := ctx.Value(UserIDKey).(uuid.UUID)
-	if !ok {
-		return nil, status.Error(codes.Internal, "user id not found in context")
+	initiatorId, err := uuid.Parse(req.GetInitiatorId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid initiator_id")
 	}
-
+	fmt.Printf("USER ID: %s", initiatorId.String())
 	input := &services.BankOperationInput{
 		CompanyID:      companyID,
 		AccountID:      accID,
@@ -228,11 +226,10 @@ func (s *AccountServer) MakeBankWithdrawal(ctx context.Context, req *accountsv1.
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid bank_account_id")
 	}
-	initiatorId, ok := ctx.Value(UserIDKey).(uuid.UUID)
-	if !ok {
-		return nil, status.Error(codes.Internal, "user id not found in context")
+	initiatorId, err := uuid.Parse(req.GetInitiatorId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid initiator_id")
 	}
-
 	input := &services.BankOperationInput{
 		CompanyID:      companyID,
 		AccountID:      accID,
@@ -300,13 +297,78 @@ func parseIDs(accStr, txStr string) (uuid.UUID, uuid.UUID, error) {
 	return accID, txID, nil
 }
 
+func currencyFromProto(c accountsv1.Currency) entities.Currency {
+	switch c {
+	case accountsv1.Currency_CURRENCY_EUR:
+		return entities.EUR
+	case accountsv1.Currency_CURRENCY_USD:
+		return entities.USD
+	case accountsv1.Currency_CURRENCY_RUB:
+		return entities.RUB
+	case accountsv1.Currency_CURRENCY_CNY:
+		return entities.CNY
+	default:
+		return ""
+	}
+}
+
+func currencyToProto(c entities.Currency) accountsv1.Currency {
+	switch c {
+	case entities.EUR:
+		return accountsv1.Currency_CURRENCY_EUR
+	case entities.USD:
+		return accountsv1.Currency_CURRENCY_USD
+	case entities.RUB:
+		return accountsv1.Currency_CURRENCY_RUB
+	case entities.CNY:
+		return accountsv1.Currency_CURRENCY_CNY
+	default:
+		return accountsv1.Currency_CURRENCY_UNSPECIFIED
+	}
+}
+
+func accountStatusToProto(s entities.AccountStatus) accountsv1.AccountStatus {
+	switch s {
+	case entities.ActiveStatus:
+		return accountsv1.AccountStatus_ACCOUNT_STATUS_ACTIVE
+	case entities.InactiveStatus:
+		return accountsv1.AccountStatus_ACCOUNT_STATUS_INACTIVE
+	default:
+		return accountsv1.AccountStatus_ACCOUNT_STATUS_UNSPECIFIED
+	}
+}
+
+func operationTypeToProto(t entities.OperationType) accountsv1.OperationType {
+	switch t {
+	case entities.Deposit:
+		return accountsv1.OperationType_OPERATION_TYPE_DEPOSIT
+	case entities.Withdrawal:
+		return accountsv1.OperationType_OPERATION_TYPE_WITHDRAWAL
+	default:
+		return accountsv1.OperationType_OPERATION_TYPE_UNSPECIFIED
+	}
+}
+
+func operationStatusToProto(s entities.OperationStatus) accountsv1.OperationStatus {
+	switch s {
+	case entities.PendingStatus:
+		return accountsv1.OperationStatus_OPERATION_STATUS_PENDING
+	case entities.SuccessStatus:
+		return accountsv1.OperationStatus_OPERATION_STATUS_SUCCESS
+	case entities.FailedStatus:
+		return accountsv1.OperationStatus_OPERATION_STATUS_FAILED
+	default:
+		return accountsv1.OperationStatus_OPERATION_STATUS_UNSPECIFIED
+	}
+}
+
 func mapAccountToProto(a *entities.Account) *accountsv1.Account {
 	return &accountsv1.Account{
 		Id:        a.AccountId().String(),
 		CompanyId: a.CompanyId().String(),
 		Balance:   a.Balance(),
-		Currency:  accountsv1.Currency(accountsv1.Currency_value[string(a.Currency())]),
-		Status:    accountsv1.AccountStatus(accountsv1.AccountStatus_value[string(a.Status())]),
+		Currency:  currencyToProto(a.Currency()),
+		Status:    accountStatusToProto(a.Status()),
 		CreatedAt: timestamppb.New(a.CreatedAt()),
 	}
 }
@@ -318,7 +380,7 @@ func mapBankAccountToProto(ba *entities.BankAccount) *accountsv1.BankAccount {
 		Name:              ba.Name(),
 		Bic:               ba.BIC(),
 		SettlementAccount: ba.SettlementAccount(),
-		Currency:          accountsv1.Currency(accountsv1.Currency_value[string(ba.Currency())]),
+		Currency:          currencyToProto(ba.Currency()),
 		CreatedAt:         timestamppb.New(ba.CreatedAt()),
 	}
 }
@@ -328,8 +390,8 @@ func mapAccountOpToProto(op *entities.AccountOperation) *accountsv1.AccountOpera
 		OperationId:     op.AccountOperationId().String(),
 		AccountId:       op.AccountId().String(),
 		TransactionId:   op.TransactionId().String(),
-		OperationType:   accountsv1.OperationType(accountsv1.OperationType_value[string(op.OperationType())]),
-		OperationStatus: accountsv1.OperationStatus(accountsv1.OperationStatus_value[string(op.OperationStatus())]),
+		OperationType:   operationTypeToProto(op.OperationType()),
+		OperationStatus: operationStatusToProto(op.OperationStatus()),
 		Amount:          op.Amount(),
 		CreatedAt:       timestamppb.New(op.CreatedAt()),
 	}
@@ -340,8 +402,9 @@ func mapBankOpToProto(op *entities.BankOperation) *accountsv1.BankOperation {
 		BankOperationId: op.BankOperationId().String(),
 		AccountId:       op.AccountId().String(),
 		BankAccountId:   op.BankAccountId().String(),
-		OperationType:   accountsv1.OperationType(accountsv1.OperationType_value[string(op.OperationType())]),
-		OperationStatus: accountsv1.OperationStatus(accountsv1.OperationStatus_value[string(op.OperationStatus())]),
+		InitiatorId:     op.InitiatorId().String(),
+		OperationType:   operationTypeToProto(op.OperationType()),
+		OperationStatus: operationStatusToProto(op.OperationStatus()),
 		Amount:          op.Amount(),
 		IdempotencyKey:  op.IdempotencyKey(),
 		ExternalId:      op.ExternalId(),

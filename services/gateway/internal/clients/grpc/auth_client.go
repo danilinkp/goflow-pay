@@ -74,6 +74,15 @@ func (c *AuthGRPCClient) GetInviteCodeByCompanyId(ctx context.Context, req *auth
 	return resp, nil
 }
 
+func (c *AuthGRPCClient) IsTokenValid(ctx context.Context, req *authv1.IsTokenValidRequest) (*authv1.IsTokenValidResponse, error) {
+	op := "auth.client.IsTokenValid"
+	resp, err := c.client.IsTokenValid(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}
+
 func (c *AuthGRPCClient) InitSystem(ctx context.Context, req *authv1.InitSystemRequest) (*authv1.AuthResponse, error) {
 	op := "auth.client.InitSystem"
 	resp, err := c.client.InitSystem(ctx, req)

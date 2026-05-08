@@ -1,6 +1,7 @@
 package router
 
 import (
+	"gateway/internal/clients/grpc"
 	"gateway/internal/delivery/http/handlers"
 	"gateway/internal/delivery/http/middleware"
 
@@ -12,6 +13,7 @@ import (
 func NewRouter(
 	validator *jwtValidator.Validator,
 	authHandler *handlers.AuthHandler,
+	authClient *grpc.AuthGRPCClient,
 	systemHandler *handlers.SystemHandler,
 	accountHandler *handlers.AccountHandler,
 	txHandler *handlers.TransactionHandler,
@@ -31,7 +33,7 @@ func NewRouter(
 	r.POST("/api/v1/system/init", systemHandler.Init)
 
 	api := r.Group("/api/v1")
-	api.Use(middleware.Auth(validator))
+	api.Use(middleware.Auth(validator, authClient))
 	{
 		api.POST("/auth/logout", authHandler.Logout)
 

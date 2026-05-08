@@ -1,4 +1,5 @@
 .idea/
 .env
-certs/*.pem
-bin/
+/certs/*.pem
+/bin/
+/logs/
