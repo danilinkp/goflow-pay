@@ -74,7 +74,7 @@ func (r *CompanyRepo) GetById(ctx context.Context, companyId uuid.UUID) (*entiti
 }
 
 func (r *CompanyRepo) GetByInviteCode(ctx context.Context, inviteCode string) (*entities.Company, error) {
-	op := "CompanyRepo.GetById"
+	op := "CompanyRepo.GetByInviteCode"
 
 	companyModel, err := r.factory.GetOne(ctx, "invite_code = $1", inviteCode)
 	if err != nil {
@@ -88,7 +88,7 @@ func (r *CompanyRepo) GetByInviteCode(ctx context.Context, inviteCode string) (*
 }
 
 func (r *CompanyRepo) GetInviteCodeById(ctx context.Context, companyId uuid.UUID) (string, error) {
-	op := "CompanyRepo.GetById"
+	op := "CompanyRepo.GetInviteCodeById"
 
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 

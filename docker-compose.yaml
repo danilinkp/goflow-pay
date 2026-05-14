@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres-auth:
     container_name: postgres_auth_container
@@ -21,6 +19,29 @@ services:
       - auth_pgdata:/var/lib/postgresql/data
     networks:
       - goflow_network
+
+  mongo-auth:
+    container_name: mongo_auth_container
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      MONGO_INITDB_DATABASE: auth_service
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: |
+        mongosh --quiet "mongodb://localhost:27017" --username mongo --password mongo --authSource admin --eval 'db.runCommand("hello").isWritablePrimary'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - mongo_auth_data:/data/db
+    networks:
+      - goflow_network
+
 
   postgres-accounts:
     container_name: postgres_accounts_container
@@ -317,6 +338,7 @@ services:
 
 volumes:
   auth_pgdata:
+  mongo_auth_data:
   account_pgdata:
   transaction_pgdata:
   notification_pgdata:
