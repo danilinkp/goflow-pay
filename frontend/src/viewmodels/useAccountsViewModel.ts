@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
 import {accountsApi} from '@/api/accounts'
 import {useAuthStore} from '@/store/authStore'
-import type {Account, BankAccount} from '@/models/account'
+import type {Account, BankAccount, Statement} from '@/models/account'
 import {AxiosError} from "axios"
 import {mapTechnicalError} from "@/utils/baseError.ts"; // Не забываем импорт
 
@@ -123,6 +123,25 @@ export function useAccountsViewModel() {
         }, 'Ошибка при выводе средств')
     }
 
+    const [statements, setStatements] = useState<Statement[]>([])
+
+    const generateStatement = async (
+        accountId: string,
+        periodFrom: string,
+        periodTo: string
+    ) => {
+        return await handleAction(async () => {
+            const formattedFrom = `${periodFrom}T00:00:00Z`;
+            const formattedTo = `${periodTo}T23:59:59Z`;
+            const stmt = await accountsApi.generateStatement(accountId, {
+                period_from: formattedFrom,
+                period_to: formattedTo,
+            })
+            setStatements((prev) => [stmt, ...prev])
+            setSuccess('Выписка сформирована и отправлена на email')
+        }, 'Ошибка при формировании выписки')
+    }
+
     const clearMessages = () => {
         setError(null)
         setSuccess(null)
@@ -142,6 +161,8 @@ export function useAccountsViewModel() {
         linkBankAccount,
         bankDeposit,
         bankWithdrawal,
+        statements,
+        generateStatement,
         clearMessages,
     }
 }
@@ -151,11 +172,19 @@ export const mapAccountsError = (e: unknown, defaultMsg: string): string => {
     if (technical) return technical;
 
     if (e instanceof AxiosError && e.response) {
+        const backendError = e.response.data?.error?.toLowerCase() || "";
+
         switch (e.response.status) {
             case 400:
                 return "Неверный формат номера счета или БИК";
             case 404:
-                return "Банковский аккаунт не найден";
+                if (backendError.includes("statement")) {
+                    return "Операций за указанный период не найдено";
+                }
+                if (backendError.includes("bank account")) {
+                    return "Банковский аккаунт не найден";
+                }
+                return "Ресурс не найден";
             default:
                 return e.response.data?.error || defaultMsg;
         }

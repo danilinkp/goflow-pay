@@ -1,6 +1,7 @@
 package services
 
 import (
+	"accounts/internal/domain"
 	"accounts/internal/domain/entities"
 	"context"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"log/slog"
 	"shared/pkg/logger/sl"
 	"shared/pkg/outbox"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +19,7 @@ var (
 	ErrNotEnoughFunds              = errors.New("not enough funds")
 	ErrDifferentCompanies          = errors.New("different companies")
 	ErrAccountHasPendingOperations = errors.New("account has pending operations")
+	ErrNotAnyOperations            = errors.New("not any operations🤑")
 )
 
 type AccountRepository interface {
@@ -34,6 +37,7 @@ type AccountOperationRepository interface {
 	UpdateStatus(ctx context.Context, operation uuid.UUID, status string) error
 	ConfirmAllByTransactionId(ctx context.Context, transactionId uuid.UUID) error
 	HasPendingByAccountId(ctx context.Context, accountId uuid.UUID) (bool, error)
+	GetByAccountIdAndPeriod(ctx context.Context, accountId uuid.UUID, from, to time.Time) ([]*entities.AccountOperation, error)
 }
 
 type BankAccountRepository interface {
@@ -46,6 +50,12 @@ type BankOperationRepository interface {
 	Save(ctx context.Context, operation *entities.BankOperation) error
 	UpdateStatusAndExternalID(ctx context.Context, operationId uuid.UUID, status string, externalID string) error
 	GetByIdempotencyKey(ctx context.Context, idempotencyKey string) (*entities.BankOperation, error)
+	GetByAccountIdAndPeriod(ctx context.Context, accountId uuid.UUID, from, to time.Time) ([]*entities.BankOperation, error)
+}
+
+type StatementRepository interface {
+	Save(ctx context.Context, statement *entities.Statement) error
+	GetByAccountIdAndPeriod(ctx context.Context, accountId uuid.UUID, from, to time.Time) (*entities.Statement, error)
 }
 
 type BankGateway interface {
@@ -66,6 +76,7 @@ type AccountService struct {
 	accountOperationRepository AccountOperationRepository
 	bankAccountRepository      BankAccountRepository
 	bankOperationRepository    BankOperationRepository
+	statementRepository        StatementRepository
 	bankGateway                BankGateway
 	outboxRepo                 OutboxRepository
 	transactor                 Transactor
@@ -77,6 +88,7 @@ func NewAccountService(
 	accountOperationRepo AccountOperationRepository,
 	bankAccountRepository BankAccountRepository,
 	bankOperationRepository BankOperationRepository,
+	statementRepository StatementRepository,
 	bankGateway BankGateway,
 	outboxRepo OutboxRepository,
 	transactor Transactor,
@@ -87,6 +99,7 @@ func NewAccountService(
 		accountOperationRepository: accountOperationRepo,
 		bankAccountRepository:      bankAccountRepository,
 		bankOperationRepository:    bankOperationRepository,
+		statementRepository:        statementRepository,
 		bankGateway:                bankGateway,
 		outboxRepo:                 outboxRepo,
 		transactor:                 transactor,
@@ -278,7 +291,7 @@ func (a *AccountService) LinkBankAccount(ctx context.Context, request LinkBankIn
 	return bankAcc, nil
 }
 
-func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
+func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
 	op := "AccountService.ReserveWithdraw"
 
 	start := time.Now()
@@ -324,7 +337,7 @@ func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId uuid.UUI
 			return err
 		}
 
-		accOp, err = entities.NewAccountOperation(accountId, txId, entities.Withdrawal, entities.PendingStatus, amount)
+		accOp, err = entities.NewAccountOperation(accountId, counterpartyId, txId, entities.Withdrawal, entities.PendingStatus, amount, acc.Balance())
 		if err != nil {
 			return err
 		}
@@ -352,7 +365,7 @@ func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId uuid.UUI
 	return accOp, nil
 }
 
-func (a *AccountService) ReserveDeposit(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
+func (a *AccountService) ReserveDeposit(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
 	op := "AccountService.ReserveDeposit"
 
 	start := time.Now()
@@ -391,7 +404,7 @@ func (a *AccountService) ReserveDeposit(ctx context.Context, accountId uuid.UUID
 			return err
 		}
 
-		accOp, err = entities.NewAccountOperation(accountId, txId, entities.Deposit, entities.PendingStatus, amount)
+		accOp, err = entities.NewAccountOperation(accountId, counterpartyId, txId, entities.Deposit, entities.PendingStatus, amount, acc.Balance())
 		if err != nil {
 			return err
 		}
@@ -575,7 +588,8 @@ func (a *AccountService) MakeBankDeposit(ctx context.Context, request *BankOpera
 			return err
 		}
 
-		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, request.InitiatorID, entities.Deposit, entities.SuccessStatus, request.Amount, request.IdempotencyKey, externalID)
+		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, request.InitiatorID, bankAccount.Name(),
+			entities.Deposit, entities.SuccessStatus, request.Amount, acc.Balance(), request.IdempotencyKey, externalID)
 		if err != nil {
 			return err
 		}
@@ -661,7 +675,8 @@ func (a *AccountService) MakeBankWithdrawal(ctx context.Context, request *BankOp
 			return err
 		}
 
-		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, request.InitiatorID, entities.Withdrawal, entities.PendingStatus, request.Amount, request.IdempotencyKey, "")
+		bo, err = entities.NewBankOperation(request.AccountID, request.BankAccountID, request.InitiatorID, bankAccount.Name(),
+			entities.Withdrawal, entities.PendingStatus, request.Amount, acc.Balance(), request.IdempotencyKey, "")
 		if err != nil {
 			return err
 		}
@@ -771,6 +786,146 @@ func (a *AccountService) GetBankAccounts(ctx context.Context, companyId uuid.UUI
 		sl.Duration(time.Since(start)))
 
 	return accounts, nil
+}
+
+func (a *AccountService) GenerateStatement(ctx context.Context, accountId, initiatorId, companyId uuid.UUID, periodFrom, periodTo time.Time) (*entities.Statement, error) {
+	op := "AccountService.GenerateStatement"
+
+	start := time.Now()
+	log := a.log.With(
+		sl.Op(op),
+		sl.EventID(),
+	)
+
+	log.Info("trying to generate statement")
+
+	exist, err := a.statementRepository.GetByAccountIdAndPeriod(ctx, accountId, periodFrom, periodTo)
+	if err != nil && !errors.Is(err, domain.ErrStatementNotFound) {
+		log.Error("failed to get statement",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	if exist != nil {
+		err = a.saveOutboxEvent(ctx, exist)
+		if err != nil {
+			log.Error("failed to save outbox event",
+				sl.ErrWithStack(err),
+				sl.Duration(time.Since(start)))
+		}
+		log.Info("statement generated successfully",
+			sl.Duration(time.Since(start)))
+
+		return exist, nil
+	}
+
+	acc, err := a.accountRepository.GetById(ctx, accountId)
+	if err != nil {
+		log.Error("failed to get account",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
+	}
+
+	entries := make([]entities.StatementEntry, 0)
+	accOps, err := a.accountOperationRepository.GetByAccountIdAndPeriod(ctx, accountId, periodFrom, periodTo)
+	if err != nil {
+		log.Error("failed to get account operations",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	bankOps, err := a.bankOperationRepository.GetByAccountIdAndPeriod(ctx, accountId, periodFrom, periodTo)
+	if err != nil {
+		log.Error("failed to get bank operations",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)))
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	totalDebit := int64(0)
+	totalCredit := int64(0)
+	for _, operation := range accOps {
+		entry := entities.StatementEntry{
+			Date:         operation.CreatedAt(),
+			Amount:       operation.Amount(),
+			BalanceAfter: operation.BalanceAfter(),
+			Counterparty: operation.CounterpartyId().String(),
+		}
+		if operation.OperationType() == entities.Deposit {
+			entry.EntryType = entities.EntryTypeTransferIn
+			totalDebit += operation.Amount()
+		} else {
+			entry.EntryType = entities.EntryTypeTransferOut
+			totalCredit += operation.Amount()
+		}
+		entries = append(entries, entry)
+	}
+
+	for _, operation := range bankOps {
+		entry := entities.StatementEntry{
+			Date:         operation.CreatedAt(),
+			Amount:       operation.Amount(),
+			BalanceAfter: operation.BalanceAfter(),
+			Counterparty: operation.BankName(),
+		}
+		if operation.OperationType() == entities.Deposit {
+			entry.EntryType = entities.EntryTypeBankDeposit
+			totalDebit += operation.Amount()
+		} else {
+			entry.EntryType = entities.EntryTypeBankWithdrawal
+			totalCredit += operation.Amount()
+		}
+		entries = append(entries, entry)
+	}
+	if len(entries) == 0 {
+		log.Warn("no statement entries", sl.Duration(time.Since(start)))
+		return nil, fmt.Errorf("%s: %w", op, ErrNotAnyOperations)
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Date.Before(entries[j].Date)
+	})
+
+	var openingBalance int64
+	if entries[0].EntryType == entities.EntryTypeBankDeposit || entries[0].EntryType == entities.EntryTypeTransferIn {
+		openingBalance = entries[0].BalanceAfter - entries[0].Amount
+	} else {
+		openingBalance = entries[0].BalanceAfter + entries[0].Amount
+	}
+	closedBalance := entries[len(entries)-1].BalanceAfter
+
+	var statement *entities.Statement
+	err = a.transactor.WithTx(ctx, func(txCtx context.Context) error {
+		statement, err = entities.NewStatement(accountId, companyId, initiatorId, periodFrom, periodTo, openingBalance,
+			closedBalance, totalDebit, totalCredit, acc.Currency(), entries)
+		if err != nil {
+			log.Error("failed to create statement",
+				sl.ErrWithStack(err),
+				sl.Duration(time.Since(start)))
+			return err
+		}
+
+		err = a.statementRepository.Save(txCtx, statement)
+		if err != nil {
+			log.Error("failed to save statement",
+				sl.ErrWithStack(err),
+				sl.Duration(time.Since(start)),
+			)
+			return err
+		}
+		return a.saveOutboxEvent(ctx, statement)
+	})
+	if err != nil {
+		log.Error("failed to save statement",
+			sl.ErrWithStack(err),
+			sl.Duration(time.Since(start)),
+		)
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	log.Info("statement generated successfully",
+		sl.Duration(time.Since(start)))
+
+	return statement, nil
 }
 
 func (a *AccountService) compensateBankWithdrawal(ctx context.Context, acc *entities.Account, bo *entities.BankOperation, externalID string) error {

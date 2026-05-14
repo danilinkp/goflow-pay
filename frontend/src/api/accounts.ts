@@ -4,8 +4,8 @@ import type {
     BankAccount,
     BankOperation,
     BankOperationRequest,
-    CreateAccountRequest,
-    LinkBankAccountRequest,
+    CreateAccountRequest, GenerateStatementRequest,
+    LinkBankAccountRequest, Statement,
 } from '@/models/account'
 
 export const accountsApi = {
@@ -39,4 +39,7 @@ export const accountsApi = {
 
     bankWithdrawal: (req: BankOperationRequest) =>
         apiProvider.post<BankOperation>('/accounts/bank/withdrawal', req),
+
+    generateStatement: (accountId: string, req: GenerateStatementRequest) =>
+        apiProvider.post<Statement>(`/accounts/${accountId}/statement`, req),
 }

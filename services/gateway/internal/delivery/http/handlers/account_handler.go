@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type AccountHandler struct {
@@ -216,6 +217,30 @@ func (h *AccountHandler) MakeBankWithdrawal(c *gin.Context) {
 	c.JSON(http.StatusOK, mapBankOperation(resp.BankOperation))
 }
 
+func (h *AccountHandler) GenerateStatement(c *gin.Context) {
+	accountId := c.Param("account_id")
+	companyId, _ := c.Get(middleware.ContextCompanyID)
+	userId, _ := c.Get(middleware.ContextUserID)
+	var req dto.GenerateStatementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp, err := h.client.GenerateStatement(middleware.GRPCContext(c), &accountsv1.GenerateStatementRequest{
+		CompanyId:   companyId.(uuid.UUID).String(),
+		AccountId:   accountId,
+		InitiatorId: userId.(uuid.UUID).String(),
+		PeriodFrom:  timestamppb.New(req.PeriodFrom),
+		PeriodTo:    timestamppb.New(req.PeriodTo),
+	})
+
+	if err != nil {
+		handleGRPCError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, mapStatement(resp.Statement))
+}
+
 // mappers
 func mapAccount(a *accountsv1.Account) dto.AccountResponse {
 	return dto.AccountResponse{
@@ -252,6 +277,34 @@ func mapBankOperation(bo *accountsv1.BankOperation) dto.BankOperationResponse {
 		IdempotencyKey:  bo.IdempotencyKey,
 		ExternalId:      bo.ExternalId,
 		CreatedAt:       bo.CreatedAt.AsTime(),
+	}
+}
+
+func mapStatement(stmt *accountsv1.Statement) dto.StatementResponse {
+	entries := make([]dto.StatementEntry, len(stmt.GetEntries()))
+	for i, entry := range stmt.GetEntries() {
+		entries[i] = dto.StatementEntry{
+			Date:         entry.Date.AsTime(),
+			EntryType:    entry.EntryType.String(),
+			Amount:       entry.Amount,
+			BalanceAfter: entry.BalanceAfter,
+			Counterparty: entry.Counterparty,
+		}
+	}
+
+	return dto.StatementResponse{
+		StatementId:    mustParseUUID(stmt.StatementId),
+		AccountId:      mustParseUUID(stmt.AccountId),
+		InitiatorId:    mustParseUUID(stmt.InitiatorId),
+		CompanyId:      mustParseUUID(stmt.CompanyId),
+		PeriodFrom:     stmt.PeriodFrom.AsTime(),
+		PeriodTo:       stmt.PeriodTo.AsTime(),
+		OpeningBalance: stmt.OpeningBalance,
+		ClosingBalance: stmt.ClosingBalance,
+		TotalDebit:     stmt.TotalDebit,
+		TotalCredit:    stmt.TotalCredit,
+		Currency:       stmt.Currency.String(),
+		Entries:        entries,
 	}
 }
 

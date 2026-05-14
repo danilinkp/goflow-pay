@@ -5,10 +5,12 @@ CREATE TABLE IF NOT EXISTS account_operations
 (
     operation_id     UUID PRIMARY KEY,
     account_id       UUID             NOT NULL REFERENCES accounts (account_id),
+    counterparty_id  UUID             NOT NULL REFERENCES accounts (account_id),
     transaction_id   UUID             NOT NULL,
     operation_type   operation_type   NOT NULL,
     operation_status operation_status NOT NULL DEFAULT 'pending',
     amount           BIGINT           NOT NULL,
+    balance_after    BIGINT           NOT NULL,
     updated_at       TIMESTAMP        NOT NULL DEFAULT NOW(),
     created_at       TIMESTAMP        NOT NULL DEFAULT NOW()
 );

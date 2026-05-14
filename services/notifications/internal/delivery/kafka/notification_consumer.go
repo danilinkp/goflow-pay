@@ -118,6 +118,22 @@ func (c *NotificationConsumer) dispatch(ctx context.Context, eventType outbox.Ev
 		}
 		return c.service.NotifyBankWithdrawalFailed(ctx, p.InitiatorID, p.AccountID, p.Amount, p.Currency)
 
+	case outbox.EventStatementGenerated:
+		var p StatementPayload
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fmt.Errorf("unmarshal StatementPayload: %w", err)
+		}
+
+		var domainEntries []service.StatementEntry
+		if len(p.Entries) > 0 {
+			if err := json.Unmarshal(p.Entries, &domainEntries); err != nil {
+				return fmt.Errorf("unmarshal StatementEntries: %w", err)
+			}
+		}
+
+		return c.service.NotifyStatementGenerated(ctx, p.InitiatorID, p.AccountID, p.PeriodFrom, p.PeriodTo, p.OpeningBalance,
+			p.ClosingBalance, p.TotalDebit, p.TotalCredit, p.Currency, domainEntries)
+
 	default:
 		c.logger.Warn("unknown event type, skipping", slog.String("event_type", string(eventType)))
 		return nil

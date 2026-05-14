@@ -9,6 +9,7 @@ import (
 	"fmt"
 	accountsv1 "shared/pkg/gen/go/accounts/v1"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -26,14 +27,15 @@ type AccountProvider interface {
 	SetAccountInActive(ctx context.Context, accountId, companyId uuid.UUID) (*entities.Account, error)
 	GetBalance(ctx context.Context, accountID uuid.UUID) (int64, error)
 	LinkBankAccount(ctx context.Context, in services.LinkBankInput) (*entities.BankAccount, error)
-	ReserveWithdraw(ctx context.Context, accountID uuid.UUID, txID uuid.UUID, amount int64) (*entities.AccountOperation, error)
-	ReserveDeposit(ctx context.Context, accountID uuid.UUID, txID uuid.UUID, amount int64) (*entities.AccountOperation, error)
+	ReserveWithdraw(ctx context.Context, accountID, counterpartyId uuid.UUID, txID uuid.UUID, amount int64) (*entities.AccountOperation, error)
+	ReserveDeposit(ctx context.Context, accountID, counterpartyId uuid.UUID, txID uuid.UUID, amount int64) (*entities.AccountOperation, error)
 	ConfirmOperation(ctx context.Context, txID uuid.UUID) error
 	CancelOperation(ctx context.Context, txID uuid.UUID) error
 	MakeBankDeposit(ctx context.Context, in *services.BankOperationInput) (*entities.BankOperation, error)
 	MakeBankWithdrawal(ctx context.Context, in *services.BankOperationInput) (*entities.BankOperation, error)
 	GetAccounts(ctx context.Context, companyID uuid.UUID) ([]*entities.Account, error)
 	GetBankAccounts(ctx context.Context, companyID uuid.UUID) ([]*entities.BankAccount, error)
+	GenerateStatement(ctx context.Context, accountId, initiatorId, companyId uuid.UUID, periodFrom, periodTo time.Time) (*entities.Statement, error)
 }
 
 type AccountServer struct {
@@ -125,12 +127,12 @@ func (s *AccountServer) LinkBankAccount(ctx context.Context, req *accountsv1.Lin
 }
 
 func (s *AccountServer) ReserveWithdraw(ctx context.Context, req *accountsv1.ReserveWithdrawRequest) (*accountsv1.ReserveWithdrawResponse, error) {
-	accID, txID, err := parseIDs(req.GetAccountId(), req.GetTxId())
+	accID, counterpartyId, txID, err := parseIDs(req.GetAccountId(), req.GetCounterpartyId(), req.GetTxId())
 	if err != nil {
 		return nil, err
 	}
 
-	op, err := s.svc.ReserveWithdraw(ctx, accID, txID, req.GetAmount())
+	op, err := s.svc.ReserveWithdraw(ctx, accID, counterpartyId, txID, req.GetAmount())
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -139,12 +141,12 @@ func (s *AccountServer) ReserveWithdraw(ctx context.Context, req *accountsv1.Res
 }
 
 func (s *AccountServer) ReserveDeposit(ctx context.Context, req *accountsv1.ReserveDepositRequest) (*accountsv1.ReserveDepositResponse, error) {
-	accID, txID, err := parseIDs(req.GetAccountId(), req.GetTxId())
+	accID, counterpartyId, txID, err := parseIDs(req.GetAccountId(), req.GetCounterpartyId(), req.GetTxId())
 	if err != nil {
 		return nil, err
 	}
 
-	op, err := s.svc.ReserveDeposit(ctx, accID, txID, req.GetAmount())
+	op, err := s.svc.ReserveDeposit(ctx, accID, counterpartyId, txID, req.GetAmount())
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -285,16 +287,42 @@ func (s *AccountServer) GetBankAccounts(ctx context.Context, req *accountsv1.Get
 	return &accountsv1.GetBankAccountsResponse{BankAccounts: pbBankAccounts}, nil
 }
 
-func parseIDs(accStr, txStr string) (uuid.UUID, uuid.UUID, error) {
+func (s *AccountServer) GenerateStatement(ctx context.Context, req *accountsv1.GenerateStatementRequest) (*accountsv1.GenerateStatementResponse, error) {
+	accID, err := uuid.Parse(req.GetAccountId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
+	}
+	companyID, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company id")
+	}
+	initiatorID, err := uuid.Parse(req.GetInitiatorId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid initiator id")
+	}
+
+	statement, err := s.svc.GenerateStatement(ctx, accID, initiatorID, companyID, req.PeriodFrom.AsTime(), req.PeriodTo.AsTime())
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &accountsv1.GenerateStatementResponse{Statement: mapStatementToProto(statement)}, nil
+}
+
+func parseIDs(accStr, counterpartyStr, txStr string) (uuid.UUID, uuid.UUID, uuid.UUID, error) {
 	accID, err := uuid.Parse(accStr)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid account_id")
+		return uuid.Nil, uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid account_id")
+	}
+	counterpartyID, err := uuid.Parse(counterpartyStr)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid counterparty_id")
 	}
 	txID, err := uuid.Parse(txStr)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid tx_id")
+		return uuid.Nil, uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid tx_id")
 	}
-	return accID, txID, nil
+	return accID, counterpartyID, txID, nil
 }
 
 func currencyFromProto(c accountsv1.Currency) entities.Currency {
@@ -389,10 +417,12 @@ func mapAccountOpToProto(op *entities.AccountOperation) *accountsv1.AccountOpera
 	return &accountsv1.AccountOperation{
 		OperationId:     op.AccountOperationId().String(),
 		AccountId:       op.AccountId().String(),
+		CounterpartyId:  op.CounterpartyId().String(),
 		TransactionId:   op.TransactionId().String(),
 		OperationType:   operationTypeToProto(op.OperationType()),
 		OperationStatus: operationStatusToProto(op.OperationStatus()),
 		Amount:          op.Amount(),
+		BalanceAfter:    op.BalanceAfter(),
 		CreatedAt:       timestamppb.New(op.CreatedAt()),
 	}
 }
@@ -406,9 +436,53 @@ func mapBankOpToProto(op *entities.BankOperation) *accountsv1.BankOperation {
 		OperationType:   operationTypeToProto(op.OperationType()),
 		OperationStatus: operationStatusToProto(op.OperationStatus()),
 		Amount:          op.Amount(),
+		BalanceAfter:    op.BalanceAfter(),
 		IdempotencyKey:  op.IdempotencyKey(),
 		ExternalId:      op.ExternalId(),
 		CreatedAt:       timestamppb.New(op.CreatedAt()),
+	}
+}
+
+func mapEntryTypeToProto(t entities.StatementEntryType) accountsv1.StatementEntryType {
+	switch t {
+	case entities.EntryTypeTransferIn:
+		return accountsv1.StatementEntryType_STATEMENT_ENTRY_TYPE_TRANSFER_IN
+	case entities.EntryTypeTransferOut:
+		return accountsv1.StatementEntryType_STATEMENT_ENTRY_TYPE_TRANSFER_OUT
+	case entities.EntryTypeBankDeposit:
+		return accountsv1.StatementEntryType_STATEMENT_ENTRY_TYPE_BANK_DEPOSIT
+	case entities.EntryTypeBankWithdrawal:
+		return accountsv1.StatementEntryType_STATEMENT_ENTRY_TYPE_BANK_WITHDRAWAL
+	default:
+		return accountsv1.StatementEntryType_STATEMENT_ENTRY_TYPE_UNSPECIFIED
+	}
+}
+
+func mapStatementToProto(statement *entities.Statement) *accountsv1.Statement {
+	entries := make([]*accountsv1.StatementEntry, len(statement.Entries()))
+	for i, entry := range statement.Entries() {
+		entries[i] = &accountsv1.StatementEntry{
+			Date:         timestamppb.New(entry.Date),
+			EntryType:    mapEntryTypeToProto(entry.EntryType),
+			Amount:       entry.Amount,
+			BalanceAfter: entry.BalanceAfter,
+			Counterparty: entry.Counterparty,
+		}
+	}
+
+	return &accountsv1.Statement{
+		StatementId:    statement.StatementId().String(),
+		AccountId:      statement.AccountId().String(),
+		CompanyId:      statement.CompanyId().String(),
+		InitiatorId:    statement.InitiatorId().String(),
+		PeriodFrom:     timestamppb.New(statement.PeriodFrom()),
+		PeriodTo:       timestamppb.New(statement.PeriodTo()),
+		OpeningBalance: statement.OpeningBalance(),
+		ClosingBalance: statement.ClosingBalance(),
+		TotalDebit:     statement.TotalDebit(),
+		TotalCredit:    statement.TotalCredit(),
+		Currency:       currencyToProto(statement.Currency()),
+		Entries:        entries,
 	}
 }
 
@@ -425,6 +499,8 @@ func mapError(err error) error {
 		return status.Error(codes.Aborted, err.Error())
 	case errors.Is(err, domain.ErrAccountAlreadyExists):
 		return status.Error(codes.AlreadyExists, err.Error())
+	case errors.Is(err, services.ErrNotAnyOperations):
+		return status.Error(codes.NotFound, err.Error())
 	default:
 		return status.Error(codes.Internal, "internal error")
 	}

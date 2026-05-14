@@ -3,7 +3,6 @@ package email
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/smtp"
 )
 
@@ -31,15 +30,18 @@ func (s *SmtpSender) Send(_ context.Context, email string, title string, message
 			"To: %s\r\n"+
 			"Subject: %s\r\n"+
 			"MIME-Version: 1.0\r\n"+
-			"Content-Type: text/plain; charset=\"utf-8\"\r\n"+
+			"Content-Type: text/html; charset=\"utf-8\"\r\n"+
 			"\r\n"+
 			"%s",
 		s.from, email, title, message,
 	)
 
-	auth := smtp.PlainAuth("", s.from, s.password, s.host)
+	var auth smtp.Auth
+	if s.password != "" {
+		auth = smtp.PlainAuth("", s.from, s.password, s.host)
+	}
 
-	addr := net.JoinHostPort(s.host, string(rune(s.port)))
+	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	err := smtp.SendMail(addr, auth, s.from, to, []byte(msg))
 	if err != nil {
 		return fmt.Errorf("failed to send email to %s: %w", email, err)

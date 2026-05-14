@@ -7,6 +7,7 @@ package services
 import (
 	"accounts/internal/domain/entities"
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
@@ -37,6 +38,86 @@ type MockBankOperationRepository_Expecter struct {
 
 func (_m *MockBankOperationRepository) EXPECT() *MockBankOperationRepository_Expecter {
 	return &MockBankOperationRepository_Expecter{mock: &_m.Mock}
+}
+
+// GetByAccountIdAndPeriod provides a mock function for the type MockBankOperationRepository
+func (_mock *MockBankOperationRepository) GetByAccountIdAndPeriod(ctx context.Context, accountId uuid.UUID, from time.Time, to time.Time) ([]*entities.BankOperation, error) {
+	ret := _mock.Called(ctx, accountId, from, to)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByAccountIdAndPeriod")
+	}
+
+	var r0 []*entities.BankOperation
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, time.Time, time.Time) ([]*entities.BankOperation, error)); ok {
+		return returnFunc(ctx, accountId, from, to)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, time.Time, time.Time) []*entities.BankOperation); ok {
+		r0 = returnFunc(ctx, accountId, from, to)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*entities.BankOperation)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, time.Time, time.Time) error); ok {
+		r1 = returnFunc(ctx, accountId, from, to)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBankOperationRepository_GetByAccountIdAndPeriod_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByAccountIdAndPeriod'
+type MockBankOperationRepository_GetByAccountIdAndPeriod_Call struct {
+	*mock.Call
+}
+
+// GetByAccountIdAndPeriod is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountId uuid.UUID
+//   - from time.Time
+//   - to time.Time
+func (_e *MockBankOperationRepository_Expecter) GetByAccountIdAndPeriod(ctx interface{}, accountId interface{}, from interface{}, to interface{}) *MockBankOperationRepository_GetByAccountIdAndPeriod_Call {
+	return &MockBankOperationRepository_GetByAccountIdAndPeriod_Call{Call: _e.mock.On("GetByAccountIdAndPeriod", ctx, accountId, from, to)}
+}
+
+func (_c *MockBankOperationRepository_GetByAccountIdAndPeriod_Call) Run(run func(ctx context.Context, accountId uuid.UUID, from time.Time, to time.Time)) *MockBankOperationRepository_GetByAccountIdAndPeriod_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		var arg3 time.Time
+		if args[3] != nil {
+			arg3 = args[3].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBankOperationRepository_GetByAccountIdAndPeriod_Call) Return(bankOperations []*entities.BankOperation, err error) *MockBankOperationRepository_GetByAccountIdAndPeriod_Call {
+	_c.Call.Return(bankOperations, err)
+	return _c
+}
+
+func (_c *MockBankOperationRepository_GetByAccountIdAndPeriod_Call) RunAndReturn(run func(ctx context.Context, accountId uuid.UUID, from time.Time, to time.Time) ([]*entities.BankOperation, error)) *MockBankOperationRepository_GetByAccountIdAndPeriod_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetByIdempotencyKey provides a mock function for the type MockBankOperationRepository

@@ -5,7 +5,7 @@ COPY shared/go.mod shared/go.sum ./shared/
 COPY services/gateway/go.mod services/gateway/go.sum ./services/gateway/
 
 WORKDIR /app/services/gateway
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 WORKDIR /app
 COPY shared/ ./shared/
@@ -13,7 +13,10 @@ COPY certs/ ./certs/
 COPY services/gateway/ ./services/gateway/
 
 WORKDIR /app/services/gateway
-RUN CGO_ENABLED=0 GOOS=linux go build -o gateway_server ./cmd/gateway
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" \
+    -o gateway_server ./cmd/gateway
 
 FROM alpine:3.19
 WORKDIR /app

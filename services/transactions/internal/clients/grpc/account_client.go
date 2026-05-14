@@ -19,12 +19,13 @@ func NewAccountGRPCClient(conn *grpc.ClientConn) *AccountGRPCClient {
 	}
 }
 
-func (c *AccountGRPCClient) ReserveWithdraw(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error {
+func (c *AccountGRPCClient) ReserveWithdraw(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error {
 	op := "AccountGRPCClient.ReserveWithdraw"
 	_, err := c.client.ReserveWithdraw(ctx, &accountsv1.ReserveWithdrawRequest{
-		AccountId: accountId.String(),
-		TxId:      txId.String(),
-		Amount:    amount,
+		AccountId:      accountId.String(),
+		CounterpartyId: counterpartyId.String(),
+		TxId:           txId.String(),
+		Amount:         amount,
 	})
 
 	if err != nil {
@@ -34,13 +35,14 @@ func (c *AccountGRPCClient) ReserveWithdraw(ctx context.Context, accountId uuid.
 	return nil
 }
 
-func (c *AccountGRPCClient) ReserveDeposit(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error {
+func (c *AccountGRPCClient) ReserveDeposit(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error {
 	op := "AccountGRPCClient.ReserveDeposit"
 
 	_, err := c.client.ReserveDeposit(ctx, &accountsv1.ReserveDepositRequest{
-		AccountId: accountId.String(),
-		TxId:      txId.String(),
-		Amount:    amount,
+		AccountId:      accountId.String(),
+		CounterpartyId: counterpartyId.String(),
+		TxId:           txId.String(),
+		Amount:         amount,
 	})
 
 	if err != nil {

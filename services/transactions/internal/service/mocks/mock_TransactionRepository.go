@@ -2,7 +2,7 @@
 // github.com/vektra/mockery
 // template: testify
 
-package services
+package service
 
 import (
 	"context"
@@ -177,8 +177,8 @@ func (_c *MockTransactionRepository_GetById_Call) RunAndReturn(run func(ctx cont
 }
 
 // GetByIdempotencyKey provides a mock function for the type MockTransactionRepository
-func (_mock *MockTransactionRepository) GetByIdempotencyKey(ctx context.Context, IdempotencyKey string) (*entities.Transaction, error) {
-	ret := _mock.Called(ctx, IdempotencyKey)
+func (_mock *MockTransactionRepository) GetByIdempotencyKey(ctx context.Context, idempotencyKey string) (*entities.Transaction, error) {
+	ret := _mock.Called(ctx, idempotencyKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByIdempotencyKey")
@@ -187,17 +187,17 @@ func (_mock *MockTransactionRepository) GetByIdempotencyKey(ctx context.Context,
 	var r0 *entities.Transaction
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*entities.Transaction, error)); ok {
-		return returnFunc(ctx, IdempotencyKey)
+		return returnFunc(ctx, idempotencyKey)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *entities.Transaction); ok {
-		r0 = returnFunc(ctx, IdempotencyKey)
+		r0 = returnFunc(ctx, idempotencyKey)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*entities.Transaction)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, IdempotencyKey)
+		r1 = returnFunc(ctx, idempotencyKey)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -211,12 +211,12 @@ type MockTransactionRepository_GetByIdempotencyKey_Call struct {
 
 // GetByIdempotencyKey is a helper method to define mock.On call
 //   - ctx context.Context
-//   - IdempotencyKey string
-func (_e *MockTransactionRepository_Expecter) GetByIdempotencyKey(ctx interface{}, IdempotencyKey interface{}) *MockTransactionRepository_GetByIdempotencyKey_Call {
-	return &MockTransactionRepository_GetByIdempotencyKey_Call{Call: _e.mock.On("GetByIdempotencyKey", ctx, IdempotencyKey)}
+//   - idempotencyKey string
+func (_e *MockTransactionRepository_Expecter) GetByIdempotencyKey(ctx interface{}, idempotencyKey interface{}) *MockTransactionRepository_GetByIdempotencyKey_Call {
+	return &MockTransactionRepository_GetByIdempotencyKey_Call{Call: _e.mock.On("GetByIdempotencyKey", ctx, idempotencyKey)}
 }
 
-func (_c *MockTransactionRepository_GetByIdempotencyKey_Call) Run(run func(ctx context.Context, IdempotencyKey string)) *MockTransactionRepository_GetByIdempotencyKey_Call {
+func (_c *MockTransactionRepository_GetByIdempotencyKey_Call) Run(run func(ctx context.Context, idempotencyKey string)) *MockTransactionRepository_GetByIdempotencyKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -239,7 +239,7 @@ func (_c *MockTransactionRepository_GetByIdempotencyKey_Call) Return(transaction
 	return _c
 }
 
-func (_c *MockTransactionRepository_GetByIdempotencyKey_Call) RunAndReturn(run func(ctx context.Context, IdempotencyKey string) (*entities.Transaction, error)) *MockTransactionRepository_GetByIdempotencyKey_Call {
+func (_c *MockTransactionRepository_GetByIdempotencyKey_Call) RunAndReturn(run func(ctx context.Context, idempotencyKey string) (*entities.Transaction, error)) *MockTransactionRepository_GetByIdempotencyKey_Call {
 	_c.Call.Return(run)
 	return _c
 }

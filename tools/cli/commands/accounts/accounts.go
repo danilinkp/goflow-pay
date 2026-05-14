@@ -20,6 +20,7 @@ func NewAccountsCmd(httpClient *client.Client) *cobra.Command {
 	cmd.AddCommand(NewGetBankAccountsCmd(httpClient))
 	cmd.AddCommand(NewBankDepositCmd(httpClient))
 	cmd.AddCommand(NewBankWithdrawalCmd(httpClient))
+	cmd.AddCommand(NewGenerateStatementCmd(httpClient))
 
 	return cmd
 }

@@ -32,6 +32,11 @@ type MakeBankOperationRequest struct {
 	IdempotencyKey string    `json:"idempotency_key"`
 }
 
+type GenerateStatementRequest struct {
+	PeriodFrom time.Time `json:"period_from"`
+	PeriodTo   time.Time `json:"period_to"`
+}
+
 // RESPONSES
 type AccountResponse struct {
 	AccountId uuid.UUID `json:"account_id"`
@@ -73,4 +78,27 @@ type BankOperationResponse struct {
 	IdempotencyKey  string    `json:"idempotency_key"`
 	ExternalId      string    `json:"external_id"`
 	CreatedAt       time.Time `json:"created_at"`
+}
+
+type StatementEntry struct {
+	Date         time.Time `json:"date"`
+	EntryType    string    `json:"entry_type"`
+	Amount       int64     `json:"amount"`
+	BalanceAfter int64     `json:"balance_after"`
+	Counterparty string    `json:"counterparty"`
+}
+
+type StatementResponse struct {
+	StatementId    uuid.UUID        `json:"statement_id"`
+	AccountId      uuid.UUID        `json:"account_id"`
+	CompanyId      uuid.UUID        `json:"company_id"`
+	InitiatorId    uuid.UUID        `json:"initiator_id"`
+	PeriodFrom     time.Time        `json:"period_from"`
+	PeriodTo       time.Time        `json:"period_to"`
+	OpeningBalance int64            `json:"opening_balance"`
+	ClosingBalance int64            `json:"closing_balance"`
+	TotalDebit     int64            `json:"total_debit"`
+	TotalCredit    int64            `json:"total_credit"`
+	Currency       string           `json:"currency"`
+	Entries        []StatementEntry `json:"entries"`
 }

@@ -47,3 +47,32 @@ export interface BankOperationRequest {
     amount: number
     idempotency_key: string
 }
+
+export interface StatementEntry {
+    date: string
+    entry_type: string
+    amount: number
+    balance_after: number
+    counterparty: string
+}
+
+export interface Statement {
+    statement_id: string
+    account_id: string
+    company_id: string
+    initiator_id: string
+    period_from: string
+    period_to: string
+    opening_balance: number
+    closing_balance: number
+    total_debit: number
+    total_credit: number
+    currency: string
+    entries: StatementEntry[]
+    created_at: string
+}
+
+export interface GenerateStatementRequest {
+    period_from: string
+    period_to: string
+}

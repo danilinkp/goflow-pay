@@ -32,7 +32,7 @@ func TestBankOperationRepo_Save_And_GetByIdempotencyKey(t *testing.T) {
 	bankAcc, _ := entities.NewBankAccount(companyId, "Alfa Bank", "044525225", "40702840500000000001", "USD")
 	require.NoError(t, bankAccRepo.Save(ctx, bankAcc))
 
-	op, err := entities.NewBankOperation(acc.AccountId(), bankAcc.BankAccountId(), userId, "withdrawal", "pending", 1000, key, "")
+	op, err := entities.NewBankOperation(acc.AccountId(), bankAcc.BankAccountId(), userId, bankAcc.Name(), "withdrawal", "pending", 1000, acc.Balance(), key, "")
 	require.NoError(t, err)
 	err = repo.Save(ctx, op)
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestBankOperationRepo_UpdateStatusAndExternalID(t *testing.T) {
 
 	repo := newBankOperationRepo()
 
-	op, _ := entities.NewBankOperation(acc.AccountId(), bankAcc.BankAccountId(), uuid.New(), "deposit", "pending", 500, "key", "")
+	op, _ := entities.NewBankOperation(acc.AccountId(), bankAcc.BankAccountId(), uuid.New(), bankAcc.Name(), "deposit", "pending", 500, acc.Balance(), "key", "")
 	_ = repo.Save(ctx, op)
 
 	err := repo.UpdateStatusAndExternalID(ctx, op.BankOperationId(), "success", "ext-id-999")
