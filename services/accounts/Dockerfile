@@ -5,14 +5,17 @@ COPY shared/go.mod shared/go.sum ./shared/
 COPY services/accounts/go.mod services/accounts/go.sum ./services/accounts/
 
 WORKDIR /app/services/accounts
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 WORKDIR /app
 COPY shared/ ./shared/
 COPY services/accounts/ ./services/accounts/
 
 WORKDIR /app/services/accounts
-RUN CGO_ENABLED=0 GOOS=linux go build -o account_service ./cmd/account_server
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" \
+    -o account_service ./cmd/account_server
 
 FROM alpine:3.19
 WORKDIR /app

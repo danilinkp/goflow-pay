@@ -2,7 +2,7 @@
 // github.com/vektra/mockery
 // template: testify
 
-package services
+package service
 
 import (
 	"context"
@@ -153,16 +153,16 @@ func (_c *MockAccountClient_ConfirmOperation_Call) RunAndReturn(run func(ctx con
 }
 
 // ReserveDeposit provides a mock function for the type MockAccountClient
-func (_mock *MockAccountClient) ReserveDeposit(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error {
-	ret := _mock.Called(ctx, accountId, txId, amount)
+func (_mock *MockAccountClient) ReserveDeposit(ctx context.Context, accountId uuid.UUID, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error {
+	ret := _mock.Called(ctx, accountId, counterpartyId, txId, amount)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ReserveDeposit")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, int64) error); ok {
-		r0 = returnFunc(ctx, accountId, txId, amount)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, int64) error); ok {
+		r0 = returnFunc(ctx, accountId, counterpartyId, txId, amount)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -177,13 +177,14 @@ type MockAccountClient_ReserveDeposit_Call struct {
 // ReserveDeposit is a helper method to define mock.On call
 //   - ctx context.Context
 //   - accountId uuid.UUID
+//   - counterpartyId uuid.UUID
 //   - txId uuid.UUID
 //   - amount int64
-func (_e *MockAccountClient_Expecter) ReserveDeposit(ctx interface{}, accountId interface{}, txId interface{}, amount interface{}) *MockAccountClient_ReserveDeposit_Call {
-	return &MockAccountClient_ReserveDeposit_Call{Call: _e.mock.On("ReserveDeposit", ctx, accountId, txId, amount)}
+func (_e *MockAccountClient_Expecter) ReserveDeposit(ctx interface{}, accountId interface{}, counterpartyId interface{}, txId interface{}, amount interface{}) *MockAccountClient_ReserveDeposit_Call {
+	return &MockAccountClient_ReserveDeposit_Call{Call: _e.mock.On("ReserveDeposit", ctx, accountId, counterpartyId, txId, amount)}
 }
 
-func (_c *MockAccountClient_ReserveDeposit_Call) Run(run func(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64)) *MockAccountClient_ReserveDeposit_Call {
+func (_c *MockAccountClient_ReserveDeposit_Call) Run(run func(ctx context.Context, accountId uuid.UUID, counterpartyId uuid.UUID, txId uuid.UUID, amount int64)) *MockAccountClient_ReserveDeposit_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -197,15 +198,20 @@ func (_c *MockAccountClient_ReserveDeposit_Call) Run(run func(ctx context.Contex
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 int64
+		var arg3 uuid.UUID
 		if args[3] != nil {
-			arg3 = args[3].(int64)
+			arg3 = args[3].(uuid.UUID)
+		}
+		var arg4 int64
+		if args[4] != nil {
+			arg4 = args[4].(int64)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
+			arg4,
 		)
 	})
 	return _c
@@ -216,22 +222,22 @@ func (_c *MockAccountClient_ReserveDeposit_Call) Return(err error) *MockAccountC
 	return _c
 }
 
-func (_c *MockAccountClient_ReserveDeposit_Call) RunAndReturn(run func(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error) *MockAccountClient_ReserveDeposit_Call {
+func (_c *MockAccountClient_ReserveDeposit_Call) RunAndReturn(run func(ctx context.Context, accountId uuid.UUID, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error) *MockAccountClient_ReserveDeposit_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ReserveWithdraw provides a mock function for the type MockAccountClient
-func (_mock *MockAccountClient) ReserveWithdraw(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error {
-	ret := _mock.Called(ctx, accountId, txId, amount)
+func (_mock *MockAccountClient) ReserveWithdraw(ctx context.Context, accountId uuid.UUID, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error {
+	ret := _mock.Called(ctx, accountId, counterpartyId, txId, amount)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ReserveWithdraw")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, int64) error); ok {
-		r0 = returnFunc(ctx, accountId, txId, amount)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, int64) error); ok {
+		r0 = returnFunc(ctx, accountId, counterpartyId, txId, amount)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -246,13 +252,14 @@ type MockAccountClient_ReserveWithdraw_Call struct {
 // ReserveWithdraw is a helper method to define mock.On call
 //   - ctx context.Context
 //   - accountId uuid.UUID
+//   - counterpartyId uuid.UUID
 //   - txId uuid.UUID
 //   - amount int64
-func (_e *MockAccountClient_Expecter) ReserveWithdraw(ctx interface{}, accountId interface{}, txId interface{}, amount interface{}) *MockAccountClient_ReserveWithdraw_Call {
-	return &MockAccountClient_ReserveWithdraw_Call{Call: _e.mock.On("ReserveWithdraw", ctx, accountId, txId, amount)}
+func (_e *MockAccountClient_Expecter) ReserveWithdraw(ctx interface{}, accountId interface{}, counterpartyId interface{}, txId interface{}, amount interface{}) *MockAccountClient_ReserveWithdraw_Call {
+	return &MockAccountClient_ReserveWithdraw_Call{Call: _e.mock.On("ReserveWithdraw", ctx, accountId, counterpartyId, txId, amount)}
 }
 
-func (_c *MockAccountClient_ReserveWithdraw_Call) Run(run func(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64)) *MockAccountClient_ReserveWithdraw_Call {
+func (_c *MockAccountClient_ReserveWithdraw_Call) Run(run func(ctx context.Context, accountId uuid.UUID, counterpartyId uuid.UUID, txId uuid.UUID, amount int64)) *MockAccountClient_ReserveWithdraw_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -266,15 +273,20 @@ func (_c *MockAccountClient_ReserveWithdraw_Call) Run(run func(ctx context.Conte
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 int64
+		var arg3 uuid.UUID
 		if args[3] != nil {
-			arg3 = args[3].(int64)
+			arg3 = args[3].(uuid.UUID)
+		}
+		var arg4 int64
+		if args[4] != nil {
+			arg4 = args[4].(int64)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
+			arg4,
 		)
 	})
 	return _c
@@ -285,7 +297,7 @@ func (_c *MockAccountClient_ReserveWithdraw_Call) Return(err error) *MockAccount
 	return _c
 }
 
-func (_c *MockAccountClient_ReserveWithdraw_Call) RunAndReturn(run func(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error) *MockAccountClient_ReserveWithdraw_Call {
+func (_c *MockAccountClient_ReserveWithdraw_Call) RunAndReturn(run func(ctx context.Context, accountId uuid.UUID, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error) *MockAccountClient_ReserveWithdraw_Call {
 	_c.Call.Return(run)
 	return _c
 }

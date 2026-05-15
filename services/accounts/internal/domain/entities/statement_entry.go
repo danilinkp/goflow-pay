@@ -1,15 +1,6 @@
-package service
+package entities
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
-
-type UserResponse struct {
-	ID    uuid.UUID
-	Email string
-}
+import "time"
 
 type StatementEntryType string
 

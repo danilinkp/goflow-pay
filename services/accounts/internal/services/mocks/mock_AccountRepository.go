@@ -320,12 +320,12 @@ type MockAccountRepository_UpdateStatus_Call struct {
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
 //   - accountId uuid.UUID
-//   - status string
+//   - status entities.AccountStatus
 func (_e *MockAccountRepository_Expecter) UpdateStatus(ctx interface{}, accountId interface{}, status interface{}) *MockAccountRepository_UpdateStatus_Call {
 	return &MockAccountRepository_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, accountId, status)}
 }
 
-func (_c *MockAccountRepository_UpdateStatus_Call) Run(run func(ctx context.Context, accountId uuid.UUID, status string)) *MockAccountRepository_UpdateStatus_Call {
+func (_c *MockAccountRepository_UpdateStatus_Call) Run(run func(ctx context.Context, accountId uuid.UUID, status entities.AccountStatus)) *MockAccountRepository_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -335,9 +335,9 @@ func (_c *MockAccountRepository_UpdateStatus_Call) Run(run func(ctx context.Cont
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 string
+		var arg2 entities.AccountStatus
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(entities.AccountStatus)
 		}
 		run(
 			arg0,
@@ -353,7 +353,7 @@ func (_c *MockAccountRepository_UpdateStatus_Call) Return(err error) *MockAccoun
 	return _c
 }
 
-func (_c *MockAccountRepository_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, accountId uuid.UUID, status string) error) *MockAccountRepository_UpdateStatus_Call {
+func (_c *MockAccountRepository_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, accountId uuid.UUID, status entities.AccountStatus) error) *MockAccountRepository_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

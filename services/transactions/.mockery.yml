@@ -2,6 +2,6 @@ dir: "mocks/{{.InterfaceDirRelative}}"
 filename: "mock_{{.InterfaceName}}.go"
 template: testify
 packages:
-  transactions/internal/services:
+  transactions/internal/service:
     config:
       all: true

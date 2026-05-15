@@ -12,30 +12,37 @@ import (
 type AccountOperation struct {
 	operationId     uuid.UUID
 	accountId       uuid.UUID
+	counterpartyId  uuid.UUID
 	transactionId   uuid.UUID
 	operationType   OperationType
 	operationStatus OperationStatus
 	amount          int64
+	balanceAfter    int64
 	createdAt       time.Time
 	updatedAt       time.Time
 }
 
-func ReconstructAccountOperation(operationId, accountId, transactionId uuid.UUID, operationType OperationType, status OperationStatus, amount int64, createdAt, updatedAt time.Time) *AccountOperation {
+func ReconstructAccountOperation(operationId, accountId, counterpartyId, transactionId uuid.UUID, operationType OperationType, status OperationStatus, amount, balanceAfter int64, createdAt, updatedAt time.Time) *AccountOperation {
 	return &AccountOperation{
 		operationId:     operationId,
 		accountId:       accountId,
+		counterpartyId:  counterpartyId,
 		transactionId:   transactionId,
 		operationType:   operationType,
 		operationStatus: status,
 		amount:          amount,
+		balanceAfter:    balanceAfter,
 		createdAt:       createdAt,
 		updatedAt:       updatedAt,
 	}
 }
 
-func NewAccountOperation(accountId uuid.UUID, transactionId uuid.UUID, operationType OperationType, operationStatus OperationStatus, amount int64) (*AccountOperation, error) {
+func NewAccountOperation(accountId, counterpartyId, transactionId uuid.UUID, operationType OperationType, operationStatus OperationStatus, amount, balanceAfter int64) (*AccountOperation, error) {
 	if accountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create bank operation")
+	}
+	if counterpartyId == uuid.Nil {
+		return nil, fmt.Errorf("%s: counterpartyId is required", "create bank operation")
 	}
 	if transactionId == uuid.Nil {
 		return nil, fmt.Errorf("%s: transactoin id is required", "create bank operation")
@@ -54,10 +61,12 @@ func NewAccountOperation(accountId uuid.UUID, transactionId uuid.UUID, operation
 	return &AccountOperation{
 		operationId:     uuid.New(),
 		accountId:       accountId,
+		counterpartyId:  counterpartyId,
 		transactionId:   transactionId,
 		operationType:   operationType,
 		operationStatus: operationStatus,
 		amount:          amount,
+		balanceAfter:    balanceAfter,
 		createdAt:       now,
 		updatedAt:       now,
 	}, nil
@@ -65,10 +74,12 @@ func NewAccountOperation(accountId uuid.UUID, transactionId uuid.UUID, operation
 
 func (ao *AccountOperation) AccountOperationId() uuid.UUID    { return ao.operationId }
 func (ao *AccountOperation) AccountId() uuid.UUID             { return ao.accountId }
+func (ao *AccountOperation) CounterpartyId() uuid.UUID        { return ao.counterpartyId }
 func (ao *AccountOperation) TransactionId() uuid.UUID         { return ao.transactionId }
 func (ao *AccountOperation) OperationType() OperationType     { return ao.operationType }
 func (ao *AccountOperation) OperationStatus() OperationStatus { return ao.operationStatus }
 func (ao *AccountOperation) Amount() int64                    { return ao.amount }
+func (ao *AccountOperation) BalanceAfter() int64              { return ao.balanceAfter }
 func (ao *AccountOperation) CreatedAt() time.Time             { return ao.createdAt }
 func (ao *AccountOperation) UpdatedAt() time.Time             { return ao.updatedAt }
 
@@ -100,21 +111,25 @@ func (ao *AccountOperation) ToOutboxEvent() (*outbox.Event, error) {
 	}
 
 	payload, err := json.Marshal(struct {
-		OperationID   uuid.UUID `json:"operation_id"`
-		AccountID     uuid.UUID `json:"account_id"`
-		TransactionID uuid.UUID `json:"transaction_id"`
-		Type          string    `json:"type"`
-		Status        string    `json:"status"`
-		Amount        int64     `json:"amount"`
-		CreatedAt     time.Time `json:"created_at"`
+		OperationID    uuid.UUID `json:"operation_id"`
+		AccountID      uuid.UUID `json:"account_id"`
+		CounterpartyId uuid.UUID `json:"counterparty_id"`
+		TransactionID  uuid.UUID `json:"transaction_id"`
+		Type           string    `json:"type"`
+		Status         string    `json:"status"`
+		Amount         int64     `json:"amount"`
+		BalanceAfter   int64     `json:"balance_after"`
+		CreatedAt      time.Time `json:"created_at"`
 	}{
-		OperationID:   ao.operationId,
-		AccountID:     ao.accountId,
-		TransactionID: ao.transactionId,
-		Type:          string(ao.operationType),
-		Status:        string(ao.operationStatus),
-		Amount:        ao.amount,
-		CreatedAt:     ao.createdAt,
+		OperationID:    ao.operationId,
+		AccountID:      ao.accountId,
+		CounterpartyId: ao.counterpartyId,
+		TransactionID:  ao.transactionId,
+		Type:           string(ao.operationType),
+		Status:         string(ao.operationStatus),
+		Amount:         ao.amount,
+		BalanceAfter:   ao.balanceAfter,
+		CreatedAt:      ao.createdAt,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshal account operation: %w", err)

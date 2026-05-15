@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	postgresLib "shared/pkg/db/postgres"
+	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -35,16 +36,19 @@ func (r *AccountOperationRepo) Save(ctx context.Context, accountOp *entities.Acc
 
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 	accountOpModel := models.ToAccountOperationModel(accountOp)
-	query := `INSERT INTO account_operations(operation_id, account_id, transaction_id, operation_type, operation_status, amount, updated_at, created_at)
-			 VALUES($1, $2, $3, $4, $5, $6, $7, $8)`
+	query := `INSERT INTO account_operations(operation_id, account_id, counterparty_id, transaction_id, operation_type,
+                               operation_status, amount, balance_after, updated_at, created_at)
+			 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	_, err := conn.Exec(ctx, query,
 		accountOpModel.OperationId,
 		accountOpModel.AccountId,
+		accountOpModel.CounterpartyId,
 		accountOpModel.TransactionId,
 		accountOpModel.OperationType,
 		accountOpModel.OperationStatus,
 		accountOpModel.Amount,
+		accountOpModel.BalanceAfter,
 		accountOpModel.UpdatedAt,
 		accountOpModel.CreatedAt,
 	)
@@ -133,4 +137,20 @@ func (r *AccountOperationRepo) HasPendingByAccountId(ctx context.Context, accoun
 	}
 
 	return exists, nil
+}
+
+func (r *AccountOperationRepo) GetByAccountIdAndPeriod(ctx context.Context, accountId uuid.UUID, from, to time.Time) ([]*entities.AccountOperation, error) {
+	op := "AccountOperationRepo.GetByAccountIdAndPeriod"
+
+	ops, err := r.factory.List(ctx, "account_id = $1 AND created_at >= $2 AND created_at < DATE($3) + 1", accountId, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	res := make([]*entities.AccountOperation, len(ops))
+	for i, row := range ops {
+		res[i] = row.ToDomain()
+	}
+
+	return res, nil
 }

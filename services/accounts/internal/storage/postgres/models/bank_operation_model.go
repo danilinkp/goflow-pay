@@ -12,9 +12,11 @@ type BankOperationModel struct {
 	AccountId       uuid.UUID `db:"account_id"`
 	BankAccountId   uuid.UUID `db:"bank_account_id"`
 	InitiatorId     uuid.UUID `db:"initiator_id"`
+	BankName        string    `db:"bank_name"`
 	OperationType   string    `db:"operation_type"`
 	OperationStatus string    `db:"operation_status"`
 	Amount          int64     `db:"amount"`
+	BalanceAfter    int64     `db:"balance_after"`
 	IdempotencyKey  string    `db:"idempotency_key"`
 	ExternalId      string    `db:"external_id"`
 	CreatedAt       time.Time `db:"created_at"`
@@ -27,9 +29,11 @@ func (m *BankOperationModel) ToDomain() *entities.BankOperation {
 		m.AccountId,
 		m.BankAccountId,
 		m.InitiatorId,
+		m.BankName,
 		entities.OperationType(m.OperationType),
 		entities.OperationStatus(m.OperationStatus),
 		m.Amount,
+		m.BalanceAfter,
 		m.IdempotencyKey,
 		m.ExternalId,
 		m.CreatedAt,
@@ -43,9 +47,11 @@ func ToBankOperationModel(bankOperation *entities.BankOperation) *BankOperationM
 		AccountId:       bankOperation.AccountId(),
 		BankAccountId:   bankOperation.BankAccountId(),
 		InitiatorId:     bankOperation.InitiatorId(),
+		BankName:        bankOperation.BankName(),
 		OperationType:   bankOperation.OperationType().String(),
 		OperationStatus: bankOperation.OperationStatus().String(),
 		Amount:          bankOperation.Amount(),
+		BalanceAfter:    bankOperation.BalanceAfter(),
 		IdempotencyKey:  bankOperation.IdempotencyKey(),
 		ExternalId:      bankOperation.ExternalId(),
 		CreatedAt:       bankOperation.CreatedAt(),
@@ -59,9 +65,11 @@ func BankOperationColumns() []string {
 		"account_id",
 		"bank_account_id",
 		"initiator_id",
+		"bank_name",
 		"operation_type",
 		"operation_status",
 		"amount",
+		"balance_after",
 		"idempotency_key",
 		"external_id",
 		"updated_at",

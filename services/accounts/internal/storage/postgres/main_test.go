@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	testPool, err = postgresPool.NewPool(ctx, connStr, time.Second, time.Second)
+	testPool, err = postgresPool.NewPool(ctx, connStr, time.Second*5, time.Second*5)
 	if err != nil {
 		panic(err)
 	}
@@ -57,12 +57,19 @@ func TestMain(m *testing.M) {
 
 	testGetter = trmpgx.DefaultCtxGetter
 
-	os.Exit(m.Run())
+	code := m.Run()
+
+	if testPool != nil {
+		testPool.Close()
+	}
+	_ = container.Terminate(ctx)
+
+	os.Exit(code)
 }
 
 func truncate(t *testing.T) {
 	t.Helper()
 	_, err := testPool.Exec(context.Background(),
-		"TRUNCATE accounts, bank_accounts, bank_operations, account_operations, outbox CASCADE")
+		"TRUNCATE accounts, bank_accounts, bank_operations, account_operations, outbox, statements CASCADE")
 	require.NoError(t, err)
 }

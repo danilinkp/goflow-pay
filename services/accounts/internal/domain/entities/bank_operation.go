@@ -14,17 +14,19 @@ type BankOperation struct {
 	accountId       uuid.UUID
 	bankAccountId   uuid.UUID
 	initiatorId     uuid.UUID
+	bankName        string
 	operationType   OperationType
 	operationStatus OperationStatus
 	amount          int64
+	balanceAfter    int64
 	idempotencyKey  string
 	externalId      string
 	createdAt       time.Time
 	updatedAt       time.Time
 }
 
-func NewBankOperation(accountId, bankAccountId, initiatorId uuid.UUID, operationType OperationType,
-	operationStatus OperationStatus, amount int64, idempotencyKey string, externalId string) (*BankOperation, error) {
+func NewBankOperation(accountId, bankAccountId, initiatorId uuid.UUID, bankName string, operationType OperationType,
+	operationStatus OperationStatus, amount, balanceAfter int64, idempotencyKey string, externalId string) (*BankOperation, error) {
 	if accountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create bank operation")
 	}
@@ -33,6 +35,9 @@ func NewBankOperation(accountId, bankAccountId, initiatorId uuid.UUID, operation
 	}
 	if initiatorId == uuid.Nil {
 		return nil, fmt.Errorf("%s: initiatorId is required", "create bank operation")
+	}
+	if bankName == "" {
+		return nil, fmt.Errorf("%s: bankName is required", "create bank operation")
 	}
 	if !operationType.IsValid() {
 		return nil, fmt.Errorf("%s: invalid operation type %v", "create bank operation", operationType)
@@ -53,9 +58,11 @@ func NewBankOperation(accountId, bankAccountId, initiatorId uuid.UUID, operation
 		accountId:       accountId,
 		bankAccountId:   bankAccountId,
 		initiatorId:     initiatorId,
+		bankName:        bankName,
 		operationType:   operationType,
 		operationStatus: operationStatus,
 		amount:          amount,
+		balanceAfter:    balanceAfter,
 		idempotencyKey:  idempotencyKey,
 		externalId:      externalId,
 		createdAt:       now,
@@ -63,16 +70,18 @@ func NewBankOperation(accountId, bankAccountId, initiatorId uuid.UUID, operation
 	}, nil
 }
 
-func ReconstructBankAccountOperation(bankOperationId, accountId, bankAccountId, initiatorId uuid.UUID, operationType OperationType,
-	status OperationStatus, amount int64, idempotencyKey, externalId string, createdAt, updatedAt time.Time) *BankOperation {
+func ReconstructBankAccountOperation(bankOperationId, accountId, bankAccountId, initiatorId uuid.UUID, bankName string, operationType OperationType,
+	status OperationStatus, amount, balanceAfter int64, idempotencyKey, externalId string, createdAt, updatedAt time.Time) *BankOperation {
 	return &BankOperation{
 		bankOperationId: bankOperationId,
 		accountId:       accountId,
 		bankAccountId:   bankAccountId,
 		initiatorId:     initiatorId,
+		bankName:        bankName,
 		operationType:   operationType,
 		operationStatus: status,
 		amount:          amount,
+		balanceAfter:    balanceAfter,
 		idempotencyKey:  idempotencyKey,
 		externalId:      externalId,
 		createdAt:       createdAt,
@@ -84,9 +93,11 @@ func (bo *BankOperation) BankOperationId() uuid.UUID       { return bo.bankOpera
 func (bo *BankOperation) AccountId() uuid.UUID             { return bo.accountId }
 func (bo *BankOperation) BankAccountId() uuid.UUID         { return bo.bankAccountId }
 func (bo *BankOperation) InitiatorId() uuid.UUID           { return bo.initiatorId }
+func (bo *BankOperation) BankName() string                 { return bo.bankName }
 func (bo *BankOperation) OperationType() OperationType     { return bo.operationType }
 func (bo *BankOperation) OperationStatus() OperationStatus { return bo.operationStatus }
 func (bo *BankOperation) Amount() int64                    { return bo.amount }
+func (bo *BankOperation) BalanceAfter() int64              { return bo.balanceAfter }
 func (bo *BankOperation) IdempotencyKey() string           { return bo.idempotencyKey }
 func (bo *BankOperation) ExternalId() string               { return bo.externalId }
 func (bo *BankOperation) CreatedAt() time.Time             { return bo.createdAt }
@@ -133,9 +144,11 @@ func (bo *BankOperation) ToOutboxEvent() (*outbox.Event, error) {
 		AccountID     uuid.UUID `json:"account_id"`
 		BankAccountID uuid.UUID `json:"bank_account_id"`
 		InitiatorId   uuid.UUID `json:"initiator_id"`
+		BankName      string    `json:"bank_name"`
 		Type          string    `json:"type"`
 		Status        string    `json:"status"`
 		Amount        int64     `json:"amount"`
+		BalanceAfter  int64     `json:"balance_after"`
 		ExternalId    string    `json:"external_id"`
 		CreatedAt     time.Time `json:"created_at"`
 	}{
@@ -143,9 +156,11 @@ func (bo *BankOperation) ToOutboxEvent() (*outbox.Event, error) {
 		AccountID:     bo.accountId,
 		BankAccountID: bo.bankAccountId,
 		InitiatorId:   bo.initiatorId,
+		BankName:      bo.bankName,
 		Type:          string(bo.operationType),
 		Status:        string(bo.operationStatus),
 		Amount:        bo.amount,
+		BalanceAfter:  bo.balanceAfter,
 		ExternalId:    bo.externalId,
 		CreatedAt:     bo.createdAt,
 	})

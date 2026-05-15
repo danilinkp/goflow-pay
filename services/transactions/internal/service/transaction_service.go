@@ -22,8 +22,8 @@ type TransactionRepository interface {
 }
 
 type AccountClient interface {
-	ReserveWithdraw(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error
-	ReserveDeposit(ctx context.Context, accountId uuid.UUID, txId uuid.UUID, amount int64) error
+	ReserveWithdraw(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error
+	ReserveDeposit(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) error
 	ConfirmOperation(ctx context.Context, txId uuid.UUID) error
 	CancelOperation(ctx context.Context, txId uuid.UUID) error
 }
@@ -104,12 +104,12 @@ func (t *TransactionService) Transfer(ctx context.Context, request *TransferInpu
 func (t *TransactionService) executeSaga(ctx context.Context, transaction *entities.Transaction) error {
 	op := "TransactionService.executeSaga"
 
-	err := t.accountClient.ReserveWithdraw(ctx, transaction.FromAccountID(), transaction.TransactionID(), transaction.Amount())
+	err := t.accountClient.ReserveWithdraw(ctx, transaction.FromAccountID(), transaction.ToAccountID(), transaction.TransactionID(), transaction.Amount())
 	if err != nil {
 		return t.failTransaction(ctx, transaction, fmt.Errorf("%s: withdraw reservation: %w", op, err))
 	}
 
-	err = t.accountClient.ReserveDeposit(ctx, transaction.ToAccountID(), transaction.TransactionID(), transaction.Amount())
+	err = t.accountClient.ReserveDeposit(ctx, transaction.ToAccountID(), transaction.FromAccountID(), transaction.TransactionID(), transaction.Amount())
 	if err != nil {
 		_ = t.accountClient.CancelOperation(ctx, transaction.TransactionID())
 		return t.failTransaction(ctx, transaction, fmt.Errorf("%s: deposit reservation: %w", op, err))

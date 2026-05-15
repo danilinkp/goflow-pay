@@ -10,7 +10,7 @@ export default function AccountsView() {
     const {
         accounts, activeAccounts, bankAccounts, loading, error, success,
         fetchAccounts, createAccount, deactivateAccount,
-        linkBankAccount, bankDeposit, bankWithdrawal,
+        linkBankAccount, bankDeposit, bankWithdrawal, generateStatement,
         clearMessages,
     } = useAccountsViewModel()
 
@@ -26,6 +26,9 @@ export default function AccountsView() {
     const [opAccountId, setOpAccountId] = useState('')
     const [opBankAccountId, setOpBankAccountId] = useState('')
     const [opAmount, setOpAmount] = useState('')
+    const [stmtAccountId, setStmtAccountId] = useState('')
+    const [stmtFrom, setStmtFrom] = useState('')
+    const [stmtTo, setStmtTo] = useState('')
 
     const isCompanyAdmin = role === 'company_admin'
     const isAdmin = role === 'admin'
@@ -43,7 +46,7 @@ export default function AccountsView() {
             </div>
 
             {!modal && error && <div className="alert alert-error">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
+            {!modal && success && <div className="alert alert-success">{success}</div>}
 
             {isAdmin && (
                 <div className="card">
@@ -63,14 +66,42 @@ export default function AccountsView() {
                 </div>
             )}
 
-            {isCompanyAdmin && (
-                <div className="actions-bar">
-                    <button className="btn btn-primary" onClick={() => setModal('create')}>+ New Account</button>
-                    <button className="btn btn-ghost" onClick={() => setModal('link-bank')}>Link Bank Account</button>
-                    <button className="btn btn-ghost" onClick={() => setModal('deposit')}>Bank Deposit</button>
-                    <button className="btn btn-ghost" onClick={() => setModal('withdrawal')}>Bank Withdrawal</button>
+            <div className="actions-bar" style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+            }}>
+                {isCompanyAdmin ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        <button className="btn btn-primary" onClick={() => setModal('create')}>
+                            + New Account
+                        </button>
+                        <button className="btn btn-ghost" onClick={() => setModal('link-bank')}>Link Bank</button>
+                        <button className="btn btn-ghost" onClick={() => setModal('deposit')}>Deposit</button>
+                        <button className="btn btn-ghost" onClick={() => setModal('withdrawal')}>Withdrawal</button>
+                    </div>
+                ) : (
+                    <div />
+                )}
+
+                <div className="mobile-full-width" style={{ marginLeft: 'auto' }}>
+                    <button
+                        className="btn btn-outline"
+                        onClick={() => setModal('statement')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            borderColor: '#007bff',
+                            color: '#007bff'
+                        }}
+                    >
+                        <span>📋</span> Generate statement
+                    </button>
                 </div>
-            )}
+            </div>
 
             <div className="card">
                 <div className="card-title">Company Accounts</div>
@@ -336,6 +367,81 @@ export default function AccountsView() {
                     </div>
                 </div>
             )}
+
+            {modal === 'statement' && (
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-title">Выписка по счёту</div>
+
+                        {error && <div className="alert alert-error mb-4">{error}</div>}
+                        {success && <div className="alert alert-success mb-4">{success}</div>}
+
+                        <div className="form-group">
+                            <label className="form-label">Счёт</label>
+                            <select
+                                className="form-select"
+                                value={stmtAccountId}
+                                disabled={!!success}
+                                onChange={(e) => setStmtAccountId(e.target.value)}
+                            >
+                                <option value="">Выберите счёт</option>
+                                {accounts.map((a) => (
+                                    <option key={a.account_id} value={a.account_id}>
+                                        {a.account_id.slice(0, 8)}... ({a.currency.replace('CURRENCY_', '')})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="grid-2">
+                            <div className="form-group">
+                                <label className="form-label">С даты</label>
+                                <input
+                                    className="form-input"
+                                    type="date"
+                                    value={stmtFrom}
+                                    disabled={!!success}
+                                    onChange={(e) => setStmtFrom(e.target.value)}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">По дату</label>
+                                <input
+                                    className="form-input"
+                                    type="date"
+                                    value={stmtTo}
+                                    disabled={!!success}
+                                    onChange={(e) => setStmtTo(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
+                            Выписка будет отправлена на ваш email
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={closeModal}>
+                                {success ? 'Закрыть' : 'Отмена'}
+                            </button>
+                            <button
+                                className={`btn ${success ? 'btn-success' : 'btn-primary'}`}
+                                disabled={loading || !!success || !stmtAccountId || !stmtFrom || !stmtTo}
+                                onClick={async () => {
+                                    const ok = await generateStatement(stmtAccountId, stmtFrom, stmtTo);
+                                    if (ok) {
+                                        setTimeout(() => {
+                                            closeModal();
+                                        }, 2500);
+                                    }
+                                }}
+                            >
+                                {loading ? 'Формирование...' : success ? 'Отправлено ✔' : 'Сформировать и отправить'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     )
 }
