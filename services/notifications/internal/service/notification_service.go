@@ -223,7 +223,6 @@ func (n *NotificationService) NotifyStatementGenerated(
 		periodTo.Format("02.01.2006"),
 	)
 
-	// Формируем полное HTML-тело письма
 	message := fmt.Sprintf(`
         <html>
         <body style="font-family: sans-serif; color: #333; line-height: 1.6; padding: 20px;">
@@ -281,7 +280,6 @@ func (n *NotificationService) NotifyStatementGenerated(
 		formatEntries(entries),
 	)
 
-	// ВАЖНО: Убедись, что внутри n.notify устанавливается Header "Content-Type: text/html"
 	err := n.notify(ctx, userId, accountId, title, message)
 	if err != nil {
 		log.Error("notify statement generated failed",

@@ -825,6 +825,7 @@ func (a *AccountService) GenerateStatement(ctx context.Context, accountId, initi
 			sl.ErrWithStack(err),
 			sl.Duration(time.Since(start)),
 		)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	entries := make([]entities.StatementEntry, 0)
