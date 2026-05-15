@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	postgresLib "shared/pkg/db/postgres"
+	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
@@ -35,17 +36,20 @@ func (r *BankOperationRepo) Save(ctx context.Context, operation *entities.BankOp
 
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 	bankOpModel := models.ToBankOperationModel(operation)
-	query := `INSERT INTO bank_operations(bank_operation_id, account_id, bank_account_id, initiator_id, operation_type, operation_status, amount, idempotency_key, external_id, updated_at, created_at)
-			 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+	query := `INSERT INTO bank_operations(bank_operation_id, account_id, bank_account_id, initiator_id, bank_name, operation_type,
+                            operation_status, amount, balance_after, idempotency_key, external_id, updated_at, created_at)
+			 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	_, err := conn.Exec(ctx, query,
 		bankOpModel.BankOperationId,
 		bankOpModel.AccountId,
 		bankOpModel.BankAccountId,
 		bankOpModel.InitiatorId,
+		bankOpModel.BankName,
 		bankOpModel.OperationType,
 		bankOpModel.OperationStatus,
 		bankOpModel.Amount,
+		bankOpModel.BalanceAfter,
 		bankOpModel.IdempotencyKey,
 		bankOpModel.ExternalId,
 		bankOpModel.UpdatedAt,
@@ -89,4 +93,20 @@ func (r *BankOperationRepo) UpdateStatusAndExternalID(ctx context.Context, opera
 		return domain.ErrBankOperationNotFound
 	}
 	return nil
+}
+
+func (r *BankOperationRepo) GetByAccountIdAndPeriod(ctx context.Context, accountId uuid.UUID, from, to time.Time) ([]*entities.BankOperation, error) {
+	op := "AccountOperationRepo.GetByAccountIdAndPeriod"
+
+	ops, err := r.factory.List(ctx, "account_id = $1 AND created_at >= $2 AND created_at < DATE($3) + 1", accountId, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	res := make([]*entities.BankOperation, len(ops))
+	for i, row := range ops {
+		res[i] = row.ToDomain()
+	}
+
+	return res, nil
 }

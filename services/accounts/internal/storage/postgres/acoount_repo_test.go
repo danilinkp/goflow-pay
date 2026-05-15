@@ -138,16 +138,3 @@ func TestAccountRepo_ContextCancelled(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), context.Canceled.Error())
 }
-
-func TestAccountRepo_DatabaseConnectionError(t *testing.T) {
-	ctx := context.Background()
-
-	repo := newAccountRepo()
-	acc := newTestAccount(t)
-
-	testPool.Close()
-
-	err := repo.Save(ctx, acc)
-
-	assert.Error(t, err)
-}

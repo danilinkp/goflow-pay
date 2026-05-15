@@ -11,4 +11,6 @@ var (
 	ErrAccountOperationAlreadyExists = errors.New("account operation already exists")
 	ErrBankOperationAlreadyExists    = errors.New("bank operation already exists")
 	ErrBankOperationNotFound         = errors.New("bank operation not found")
+	ErrStatementAlreadyExists        = errors.New("statement already exists")
+	ErrStatementNotFound             = errors.New("statement not found")
 )

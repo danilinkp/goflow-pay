@@ -19,6 +19,7 @@ service AccountService {
   rpc MakeBankWithdrawal(MakeBankWithdrawalRequest) returns (MakeBankWithdrawalResponse);
   rpc GetAccounts(GetAccountsRequest) returns (GetAccountsResponse);
   rpc GetBankAccounts(GetBankAccountsRequest) returns (GetBankAccountsResponse);
+  rpc GenerateStatement(GenerateStatementRequest) returns (GenerateStatementResponse);
 }
 
 enum AccountStatus {
@@ -48,6 +49,14 @@ enum Currency {
   CURRENCY_CNY = 4;
 }
 
+enum StatementEntryType {
+  STATEMENT_ENTRY_TYPE_UNSPECIFIED = 0;
+  STATEMENT_ENTRY_TYPE_TRANSFER_IN = 1;
+  STATEMENT_ENTRY_TYPE_TRANSFER_OUT = 2;
+  STATEMENT_ENTRY_TYPE_BANK_DEPOSIT = 3;
+  STATEMENT_ENTRY_TYPE_BANK_WITHDRAWAL = 4;
+}
+
 message Account {
   string id = 1;
   string company_id = 2;
@@ -70,11 +79,13 @@ message BankAccount {
 message AccountOperation {
   string operation_id = 1;
   string account_id = 2;
-  string transaction_id = 3;
-  OperationType operation_type = 4;
-  OperationStatus operation_status = 5;
-  int64 amount = 6;
-  google.protobuf.Timestamp created_at = 7;
+  string counterparty_id = 3;
+  string transaction_id = 4;
+  OperationType operation_type = 5;
+  OperationStatus operation_status = 6;
+  int64 amount = 7;
+  int64 balance_after = 8;
+  google.protobuf.Timestamp created_at = 9;
 }
 
 message BankOperation {
@@ -82,12 +93,37 @@ message BankOperation {
   string account_id = 2;
   string bank_account_id = 3;
   string initiator_id = 4;
-  OperationType operation_type = 5;
-  OperationStatus operation_status = 6;
-  int64 amount = 7;
-  string idempotency_key = 8;
-  string external_id = 9;
-  google.protobuf.Timestamp created_at = 10;
+  string bank_name = 5;
+  OperationType operation_type = 6;
+  OperationStatus operation_status = 7;
+  int64 amount = 8;
+  int64 balance_after = 9;
+  string idempotency_key = 10;
+  string external_id = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+message StatementEntry {
+  google.protobuf.Timestamp date = 1;
+  StatementEntryType entry_type = 2;
+  int64 amount = 3;
+  int64 balance_after = 4;
+  string counterparty = 5;
+}
+
+message Statement {
+  string statement_id = 1;
+  string account_id = 2;
+  string company_id = 3;
+  string initiator_id = 4;
+  google.protobuf.Timestamp period_from = 5;
+  google.protobuf.Timestamp period_to = 6;
+  int64 opening_balance = 7;
+  int64 closing_balance = 8;
+  int64 total_debit = 9;
+  int64 total_credit = 10;
+  Currency currency = 11;
+  repeated StatementEntry entries = 12;
 }
 
 message CreateAccountRequest {
@@ -131,8 +167,9 @@ message LinkBankAccountResponse {
 
 message ReserveWithdrawRequest {
   string account_id = 1;
-  string tx_id = 2;
-  int64 amount = 3;
+  string counterparty_id = 2;
+  string tx_id = 3;
+  int64 amount = 4;
 }
 
 message ReserveWithdrawResponse {
@@ -141,8 +178,9 @@ message ReserveWithdrawResponse {
 
 message ReserveDepositRequest {
   string account_id = 1;
-  string tx_id = 2;
-  int64 amount = 3;
+  string counterparty_id = 2;
+  string tx_id = 3;
+  int64 amount = 4;
 }
 
 message ReserveDepositResponse {
@@ -201,4 +239,16 @@ message GetBankAccountsRequest {
 
 message GetBankAccountsResponse {
   repeated BankAccount bank_accounts = 1;
+}
+
+message GenerateStatementRequest {
+  string account_id = 1;
+  string initiator_id = 2;
+  string company_id = 3;
+  google.protobuf.Timestamp period_from = 4;
+  google.protobuf.Timestamp period_to = 5;
+}
+
+message GenerateStatementResponse {
+  Statement statement = 1;
 }

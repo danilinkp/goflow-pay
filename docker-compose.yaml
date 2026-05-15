@@ -127,6 +127,22 @@ services:
     networks:
       - goflow_network
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - DYNAMIC_CONFIG_ENABLED=true
+    networks:
+      - goflow_network
+    depends_on:
+      kafka:
+        condition: service_healthy
+
   auth:
     build:
       context: .
@@ -286,12 +302,26 @@ services:
     networks:
       - goflow_network
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    volumes:
+      - mailpit-data:/data
+    environment:
+      MP_MAX_MESSAGES: 500
+    networks:
+      - goflow_network
+
 volumes:
   auth_pgdata:
   account_pgdata:
   transaction_pgdata:
   notification_pgdata:
   blacklist_redis_data:
+  mailpit-data:
 
 networks:
   goflow_network:

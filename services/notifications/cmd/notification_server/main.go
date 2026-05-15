@@ -55,11 +55,11 @@ func main() {
 
 	var emailSender service.EmailSender
 
-	if cfg.Env == envLocal {
-		emailSender = email.NewMockSender(log)
-	} else {
-		emailSender = email.NewSmtpSender(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Password, cfg.SMTP.From)
-	}
+	//if cfg.Env == envLocal {
+	//	emailSender = email.NewMockSender(log)
+	//} else {
+	emailSender = email.NewSmtpSender(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Password, cfg.SMTP.From)
+	//}
 
 	conn, err := grpc.NewClient(cfg.AuthGRPC.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

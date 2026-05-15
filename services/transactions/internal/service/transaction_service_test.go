@@ -52,8 +52,8 @@ func TestTransactionService_Transfer(t *testing.T) {
 			return tx != nil && tx.IdempotencyKey() == req.IdempotencyKey
 		})).Return(nil)
 
-		client.On("ReserveWithdraw", mock.Anything, req.FromAccountId, mock.Anything, req.Amount).Return(nil)
-		client.On("ReserveDeposit", mock.Anything, req.ToAccountId, mock.Anything, req.Amount).Return(nil)
+		client.On("ReserveWithdraw", mock.Anything, req.FromAccountId, req.ToAccountId, mock.Anything, req.Amount).Return(nil)
+		client.On("ReserveDeposit", mock.Anything, req.ToAccountId, req.FromAccountId, mock.Anything, req.Amount).Return(nil)
 		repo.On("UpdateStatus", mock.Anything, mock.Anything, string(entities.ProcessingStatus)).Return(nil)
 		client.On("ConfirmOperation", mock.Anything, mock.Anything).Return(nil)
 
@@ -102,7 +102,7 @@ func TestTransactionService_SagaFailures(t *testing.T) {
 			return tx != nil && tx.IdempotencyKey() == req.IdempotencyKey
 		})).Return(nil)
 
-		client.On("ReserveWithdraw", mock.Anything, mock.Anything, mock.Anything, req.Amount).Return(errors.New("no money"))
+		client.On("ReserveWithdraw", mock.Anything, mock.Anything, mock.Anything, mock.Anything, req.Amount).Return(errors.New("no money"))
 
 		transactor.On("WithTx", mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
 			fn := args.Get(1).(func(context.Context) error)
@@ -128,8 +128,8 @@ func TestTransactionService_SagaFailures(t *testing.T) {
 			return tx != nil && tx.IdempotencyKey() == req.IdempotencyKey
 		})).Return(nil)
 
-		client.On("ReserveWithdraw", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		client.On("ReserveDeposit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("blocked"))
+		client.On("ReserveWithdraw", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		client.On("ReserveDeposit", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("blocked"))
 		client.On("CancelOperation", mock.Anything, mock.Anything).Return(nil)
 
 		transactor.On("WithTx", mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
@@ -159,8 +159,8 @@ func TestTransactionService_Recover(t *testing.T) {
 
 		repo.On("GetById", mock.Anything, txID).Return(tx, nil)
 
-		client.On("ReserveWithdraw", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		client.On("ReserveDeposit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		client.On("ReserveWithdraw", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		client.On("ReserveDeposit", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		repo.On("UpdateStatus", mock.Anything, mock.Anything, string(entities.ProcessingStatus)).Return(nil)
 		client.On("ConfirmOperation", mock.Anything, mock.Anything).Return(nil)
 

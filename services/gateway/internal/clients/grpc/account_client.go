@@ -91,3 +91,12 @@ func (c *AccountGRPCClient) GetBankAccounts(ctx context.Context, req *accountsv1
 	}
 	return resp, nil
 }
+
+func (c *AccountGRPCClient) GenerateStatement(ctx context.Context, req *accountsv1.GenerateStatementRequest) (*accountsv1.GenerateStatementResponse, error) {
+	op := "accountGRPCClient.GenerateStatement"
+	resp, err := c.client.GenerateStatement(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}

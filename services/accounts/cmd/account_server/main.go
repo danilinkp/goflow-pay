@@ -62,11 +62,12 @@ func main() {
 	bankAccountRepo := postgres.NewBankAccountRepo(pool, getter)
 	accountOperationRepo := postgres.NewAccountOperationRepo(pool, getter)
 	bankOperationRepo := postgres.NewBankOperationRepo(pool, getter)
+	statementRepo := postgres.NewStatementRepo(pool, getter)
 	outboxRepo := outboxRepository.NewOutboxRepo(pool, getter)
 
 	bankGateway := bank.NewMockBankGateway(cfg.BankGateway.FailureRate)
 
-	accountsService := services.NewAccountService(accountRepo, accountOperationRepo, bankAccountRepo, bankOperationRepo, bankGateway, outboxRepo, trmAdapter, log)
+	accountsService := services.NewAccountService(accountRepo, accountOperationRepo, bankAccountRepo, bankOperationRepo, statementRepo, bankGateway, outboxRepo, trmAdapter, log)
 
 	pub := kafka.NewPublisher(cfg.Kafka.Brokers())
 	defer func() {

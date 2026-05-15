@@ -2,7 +2,7 @@ env: local
 
 log:
   level: debug
-  output: file
+  output: stdout
   file: logs/app.log
 
 http_server:

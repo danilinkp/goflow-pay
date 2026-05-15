@@ -16,6 +16,7 @@ const (
 	EventBankDepositFailed       EventType = "notification.deposit.failed"
 	EventBankWithdrawalCompleted EventType = "notification.withdrawal.completed"
 	EventBankWithdrawalFailed    EventType = "notification.withdrawal.failed"
+	EventStatementGenerated      EventType = "notification.statement.generated"
 )
 
 func (e EventType) Topic() string {

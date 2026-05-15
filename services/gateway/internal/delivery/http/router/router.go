@@ -70,6 +70,7 @@ func NewRouter(
 		api.GET("/companies/banks", accountHandler.GetBankAccounts)
 
 		api.GET("/accounts/:account_id/balance", accountHandler.GetBalance)
+		api.POST("/accounts/:account_id/statement", accountHandler.GenerateStatement)
 
 		api.GET("/transactions/:account_id", txHandler.GetAllTransactions)
 		api.GET("/transactions/detail/:tx_id", txHandler.GetTransaction)
