@@ -14,7 +14,7 @@ import (
 type Config struct {
 	Env      string     `yaml:"env" env:"ENV" env-default:"local"`
 	Log      LogConfig  `yaml:"log"`
-	DB       DB         `yaml:"db"`
+	Storage  Storage    `yaml:"storage"`
 	Kafka    Kafka      `yaml:"kafka"`
 	SMTP     SMTPConfig `yaml:"smtp"`
 	AuthGRPC GRPCConfig `yaml:"auth_grpc"`
@@ -26,7 +26,13 @@ type LogConfig struct {
 	File   string `yaml:"file"`
 }
 
-type DB struct {
+type Storage struct {
+	Type     string     `yaml:"type"`
+	Postgres PostgresDB `yaml:"postgres"`
+	Mongo    MongoDB    `yaml:"mongodb"`
+}
+
+type PostgresDB struct {
 	Host           string        `yaml:"host"`
 	Port           string        `yaml:"port"`
 	User           string        `env:"DATABASE_USER"`
@@ -35,6 +41,19 @@ type DB struct {
 	SSLMode        string        `yaml:"ssl_mode"`
 	ConnectTimeout time.Duration `yaml:"connect_timeout" env-default:"5s"`
 	MaxRetriesTime time.Duration `yaml:"max_retries_time" env-default:"30s"`
+}
+
+type MongoDB struct {
+	URI            string        `yaml:"uri"`
+	Name           string        `yaml:"name"`
+	ConnectTimeout time.Duration `yaml:"connect_timeout" env-default:"5s"`
+}
+
+func (d PostgresDB) DSN() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		d.User, d.Password, d.Host, d.Port, d.Name, d.SSLMode,
+	)
 }
 
 type Kafka struct {
@@ -55,13 +74,6 @@ type SMTPConfig struct {
 
 type GRPCConfig struct {
 	Addr string `yaml:"addr" env:"AUTH_GRPC_ADDR"`
-}
-
-func (d DB) DSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		d.User, d.Password, d.Host, d.Port, d.Name, d.SSLMode,
-	)
 }
 
 func MustLoad() *Config {

@@ -5,13 +5,21 @@ log:
   output: stdout
   file: logs/app.log
 
-db:
-  host: postgres-auth
-  port: 5432
-  name: auth_service
-  ssl_mode: "disable"
-  connect_timeout: 5s
-  max_retries_time: 2s
+storage:
+  type: "mongodb"
+
+  postgres:
+    host: postgres-auth
+    port: 5432
+    name: auth_service
+    ssl_mode: "disable"
+    connect_timeout: 5s
+    max_retries_time: 2s
+
+  mongodb:
+    uri: mongodb://mongo-auth:27017
+    name: "auth_service"
+    connect_timeout: 5s
 
 redis:
   host: redis

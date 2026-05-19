@@ -13,6 +13,23 @@ db:
   connect_timeout: 3s
   max_retries_time: 10s
 
+storage:
+  type: "mongodb"
+
+  postgres:
+    host: postgres-auth
+    port: 5432
+    name: account_service
+    ssl_mode: "disable"
+    connect_timeout: 5s
+    max_retries_time: 2s
+
+  mongodb:
+    uri: mongodb://mongo-accounts:27017
+    name: "accounts_service"
+    connect_timeout: 5s
+
+
 grpc:
   port: 50051
   timeout: 5s
