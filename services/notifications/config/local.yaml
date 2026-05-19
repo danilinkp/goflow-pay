@@ -17,7 +17,7 @@ storage:
     max_retries_time: 2s
 
   mongodb:
-    uri: mongodb://mongo-notifications:27017
+    uri: mongodb://mongo-notifications:27017/?directConnection=true
     name: notifications_service
     connect_timeout: 5s
 

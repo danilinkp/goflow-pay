@@ -7,20 +7,32 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 func NewClient(ctx context.Context, uri string, timeout time.Duration) (*mongo.Client, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	client, err := mongo.Connect(options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, fmt.Errorf("mongo.NewClient: %w", err)
 	}
 
-	if err = client.Ping(ctx, nil); err != nil {
-		return nil, fmt.Errorf("mongo.NewClient: ping: %w", err)
-	}
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 
-	return client, nil
+	deadline := time.Now().Add(timeout)
+	for {
+		pingErr := client.Ping(ctx, readpref.Primary())
+		if pingErr == nil {
+			return client, nil
+		}
+		if time.Now().After(deadline) {
+			_ = client.Disconnect(ctx)
+			return nil, fmt.Errorf("mongo.NewClient: ping: %w", pingErr)
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-ticker.C:
+		}
+	}
 }

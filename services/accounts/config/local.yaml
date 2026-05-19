@@ -25,7 +25,7 @@ storage:
     max_retries_time: 2s
 
   mongodb:
-    uri: mongodb://mongo-accounts:27017
+    uri: mongodb://mongo-accounts:27017/?directConnection=true
     name: "accounts_service"
     connect_timeout: 5s
 

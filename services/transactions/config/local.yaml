@@ -17,7 +17,7 @@ storage:
     max_retries_time: 10s
 
   mongodb:
-    uri: mongodb://mongo-transactions:27017
+    uri: mongodb://mongo-transactions:27017/?directConnection=true
     name: transactions_service
     connect_timeout: 5s
 

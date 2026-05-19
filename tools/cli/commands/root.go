@@ -48,7 +48,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	authCmd := auth.NewAuthCmd(httpClient)
-	systemCmd := system.NewSystemCmd(httpClient)
+	systemCmd := system.NewSystemCmd(httpClient, cfg)
 	companiesCmd := companies.NewCompaniesCmd(httpClient)
 	accountsCmd := accounts.NewAccountsCmd(httpClient)
 	transactionsCmd := transactions.NewTransactionsCmd(httpClient)
