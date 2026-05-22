@@ -6,6 +6,7 @@ import (
 	"auth/internal/infrastructure/jwt"
 	"auth/internal/infrastructure/security"
 	"auth/internal/services"
+	mongoRepo "auth/internal/storage/mongo"
 	"auth/internal/storage/postgres"
 	"auth/internal/storage/redis"
 	"auth/migrations"
@@ -13,12 +14,14 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	mongoDB "shared/pkg/db/mongo"
 	postgresPool "shared/pkg/db/postgres"
 	redisdb "shared/pkg/db/redis"
 	jwtValidator "shared/pkg/jwt"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
-	postgresTrm "shared/pkg/transactor/postgres"
+	trm "shared/pkg/transactor"
+	trmmongo "shared/pkg/transactor/mongo"
 	"syscall"
 	"time"
 
@@ -39,23 +42,52 @@ func main() {
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stopApp()
 
-	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
-	if err != nil {
-		log.Error("failed to connect to db",
-			sl.ErrWithStack(err),
-			sl.Duration(time.Since(start)),
-		)
-		os.Exit(1)
+	var (
+		userRepo    services.UserRepository
+		companyRepo services.CompanyRepository
+		trmAdapter  trm.Transactioner
+	)
+
+	switch cfg.Storage.Type {
+	case "mongodb":
+		mongoClient, err := mongoDB.NewClient(ctx, cfg.Storage.Mongo.URI, cfg.Storage.Mongo.ConnectTimeout)
+		if err != nil {
+			log.Error("failed to connect to mongodb", sl.Err(err))
+			os.Exit(1)
+		}
+		defer mongoClient.Disconnect(ctx)
+
+		db := mongoClient.Database(cfg.Storage.Mongo.Name)
+		factory, err := mongoRepo.NewRepositoryFactory(ctx, db)
+		if err != nil {
+			log.Error("failed to init mongodb repositories", sl.Err(err))
+			os.Exit(1)
+		}
+		userRepo = factory.UserRepo()
+		companyRepo = factory.CompanyRepo()
+
+		trmAdapter = trmmongo.NewMongoAdapter(mongoClient)
+
+	default:
+		pool, err := postgresPool.NewPool(ctx, cfg.Storage.Postgres.DSN(), cfg.Storage.Postgres.ConnectTimeout, cfg.Storage.Postgres.MaxRetriesTime)
+		if err != nil {
+			log.Error("failed to connect to postgres", sl.Err(err))
+			os.Exit(1)
+		}
+		defer pool.Close()
+
+		if err = migrations.RunMigrations(pool); err != nil {
+			log.Error("failed to run migrations", sl.Err(err))
+			os.Exit(1)
+		}
+
+		getter := trmpgx.DefaultCtxGetter
+		userRepo = postgres.NewUserRepo(pool, getter)
+		companyRepo = postgres.NewCompanyRepo(pool, getter)
+
+		trManager := manager.Must(trmpgx.NewDefaultFactory(pool))
+		trmAdapter = trm.NewAvitoAdapter(trManager)
 	}
-	defer pool.Close()
-	err = migrations.RunMigrations(pool)
-	if err != nil {
-		log.Error("failed to run migrations",
-			sl.ErrWithStack(err),
-			sl.Duration(time.Since(start)))
-		os.Exit(1)
-	}
-	log.Info("migrations applied")
 
 	redisClient, err := redisdb.NewRedisClient(ctx, cfg.Redis.Addr(), cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.ReadTimeout, cfg.Redis.WriteTimeout)
 	if err != nil {
@@ -72,12 +104,6 @@ func main() {
 
 	hasher := security.NewBcryptHasher(cfg.HashCost)
 
-	trManager := manager.Must(trmpgx.NewDefaultFactory(pool))
-	trmAdapter := postgresTrm.NewTransactionAdapter(trManager)
-
-	getter := trmpgx.DefaultCtxGetter
-	userRepo := postgres.NewUserRepo(pool, getter)
-	companyRepo := postgres.NewCompanyRepo(pool, getter)
 	blackListRepo := redis.NewBlackListRepository(redisClient)
 
 	authService := services.NewAuthService(userRepo, companyRepo, trmAdapter, blackListRepo, jwtManager, validator, hasher, log)

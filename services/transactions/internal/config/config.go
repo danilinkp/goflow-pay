@@ -16,7 +16,7 @@ type Config struct {
 	Log        LogConfig  `yaml:"log"`
 	GRPCServer GRPCServer `yaml:"grpc"`
 	GRPCClient GRPCClient `yaml:"grpc_client"`
-	DB         DB         `yaml:"db"`
+	Storage    Storage    `yaml:"storage"`
 	Kafka      Kafka      `yaml:"kafka"`
 	Outbox     Outbox     `yaml:"outbox"`
 	Recover    Recover    `yaml:"recover"`
@@ -37,15 +37,34 @@ type GRPCClient struct {
 	Addr string `yaml:"addr"`
 }
 
-type DB struct {
+type Storage struct {
+	Type     string     `yaml:"type"`
+	Postgres PostgresDB `yaml:"postgres"`
+	Mongo    MongoDB    `yaml:"mongodb"`
+}
+
+type PostgresDB struct {
 	Host           string        `yaml:"host"`
 	Port           string        `yaml:"port"`
-	User           string        `env:"DATABASE_USER" yaml:"user"`
-	Password       string        `env:"DATABASE_PASSWORD" yaml:"password"`
+	User           string        `env:"DATABASE_USER"`
+	Password       string        `env:"DATABASE_PASSWORD"`
 	Name           string        `yaml:"name"`
 	SSLMode        string        `yaml:"ssl_mode"`
 	ConnectTimeout time.Duration `yaml:"connect_timeout" env-default:"5s"`
 	MaxRetriesTime time.Duration `yaml:"max_retries_time" env-default:"30s"`
+}
+
+type MongoDB struct {
+	URI            string        `yaml:"uri"`
+	Name           string        `yaml:"name"`
+	ConnectTimeout time.Duration `yaml:"connect_timeout" env-default:"5s"`
+}
+
+func (d PostgresDB) DSN() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		d.User, d.Password, d.Host, d.Port, d.Name, d.SSLMode,
+	)
 }
 
 type Kafka struct {
@@ -65,13 +84,6 @@ type Outbox struct {
 type Recover struct {
 	Interval   time.Duration `yaml:"interval" env-default:"5s"`
 	StaleAfter time.Duration `yaml:"stale_after" env-default:"30s"`
-}
-
-func (d DB) DSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		d.User, d.Password, d.Host, d.Port, d.Name, d.SSLMode,
-	)
 }
 
 func MustLoad() *Config {

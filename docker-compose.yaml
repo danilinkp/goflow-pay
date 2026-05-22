@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres-auth:
     container_name: postgres_auth_container
@@ -19,6 +17,41 @@ services:
       start_period: 10s
     volumes:
       - auth_pgdata:/var/lib/postgresql/data
+    networks:
+      - goflow_network
+
+  mongo-auth:
+    image: mongo:7.0
+    restart: unless-stopped
+    command: --replSet rs0
+    container_name: mongo_auth_container
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_auth_data:/data/db
+    networks:
+      - goflow_network
+
+  mongo-auth-init:
+    image: mongo:7.0
+    depends_on:
+      - mongo-auth
+    restart: on-failure
+    command: >
+      mongosh --host mongo-auth:27017 --eval "
+        try {
+          rs.initiate({
+            _id: 'rs0',
+            members: [{ _id: 0, host: 'mongo-auth:27017' }]
+          })
+        } catch(e) { print(e) }
+      "
     networks:
       - goflow_network
 
@@ -43,6 +76,42 @@ services:
     networks:
       - goflow_network
 
+  mongo-accounts:
+    image: mongo:7.0
+    restart: unless-stopped
+    command: --replSet rs0
+    container_name: mongo_accounts_container
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_accounts_data:/data/db
+    networks:
+      - goflow_network
+
+  mongo-accounts-init:
+    image: mongo:7.0
+    depends_on:
+      mongo-accounts:
+        condition: service_healthy
+    restart: no
+    command: >
+      mongosh --host mongo-accounts:27017 --eval "
+        try {
+          rs.initiate({
+            _id: 'rs0',
+            members: [{ _id: 0, host: 'mongo-accounts:27017' }]
+          })
+        } catch(e) { print(e) }
+      "
+    networks:
+      - goflow_network
+
   postgres-transactions:
     container_name: postgres_transactions_container
     image: postgres:16
@@ -64,6 +133,42 @@ services:
     networks:
       - goflow_network
 
+  mongo-transactions:
+    image: mongo:7.0
+    restart: unless-stopped
+    command: --replSet rs0
+    container_name: mongo_transactions_container
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo_transactions_data:/data/db
+    networks:
+      - goflow_network
+
+  mongo-transactions-init:
+    image: mongo:7.0
+    depends_on:
+      mongo-transactions:
+        condition: service_healthy
+    restart: no
+    command: >
+      mongosh --host mongo-transactions:27017 --eval "
+        try {
+          rs.initiate({
+            _id: 'rs0',
+            members: [{ _id: 0, host: 'mongo-transactions:27017' }]
+          })
+        } catch(e) { print(e) }
+      "
+    networks:
+      - goflow_network
+
   postgres-notifications:
     container_name: postgres_notifications_container
     image: postgres:16
@@ -82,6 +187,42 @@ services:
       start_period: 10s
     volumes:
       - notification_pgdata:/var/lib/postgresql/data
+    networks:
+      - goflow_network
+
+  mongo-notifications:
+    image: mongo:7.0
+    restart: unless-stopped
+    command: --replSet rs0
+    container_name: mongo_notifications_container
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo_notifications_data:/data/db
+    networks:
+      - goflow_network
+
+  mongo-notifications-init:
+    image: mongo:7.0
+    depends_on:
+      mongo-notifications:
+        condition: service_healthy
+    restart: no
+    command: >
+      mongosh --host mongo-notifications:27017 --eval "
+        try {
+          rs.initiate({
+            _id: 'rs0',
+            members: [{ _id: 0, host: 'mongo-notifications:27017' }]
+          })
+        } catch(e) { print(e) }
+      "
     networks:
       - goflow_network
 
@@ -152,6 +293,8 @@ services:
     depends_on:
       postgres-auth:
         condition: service_healthy
+      mongo-auth-init:
+        condition: service_completed_successfully
       redis:
         condition: service_started
     env_file:
@@ -180,6 +323,8 @@ services:
     depends_on:
       postgres-accounts:
         condition: service_healthy
+      mongo-accounts-init:
+        condition: service_completed_successfully
       kafka:
         condition: service_healthy
     env_file:
@@ -206,6 +351,8 @@ services:
     depends_on:
       postgres-transactions:
         condition: service_healthy
+      mongo-transactions-init:
+        condition: service_completed_successfully
       kafka:
         condition: service_healthy
       accounts:
@@ -234,6 +381,8 @@ services:
     depends_on:
       postgres-notifications:
         condition: service_healthy
+      mongo-notifications-init:
+        condition: service_completed_successfully
       kafka:
         condition: service_healthy
       auth:
@@ -317,9 +466,13 @@ services:
 
 volumes:
   auth_pgdata:
+  mongo_auth_data:
   account_pgdata:
+  mongo_accounts_data:
   transaction_pgdata:
+  mongo_transactions_data:
   notification_pgdata:
+  mongo_notifications_data:
   blacklist_redis_data:
   mailpit-data:
 

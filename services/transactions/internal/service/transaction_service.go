@@ -19,6 +19,7 @@ type TransactionRepository interface {
 	GetByAccountId(ctx context.Context, accountId uuid.UUID) ([]*entities.Transaction, error)
 	GetStale(ctx context.Context, olderThan time.Duration, statuses []string) ([]*entities.Transaction, error)
 	UpdateStatus(ctx context.Context, txId uuid.UUID, status string) error
+	EnsureIndexes(ctx context.Context) error
 }
 
 type AccountClient interface {

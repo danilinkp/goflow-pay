@@ -9,9 +9,11 @@ import (
 )
 
 type OutboxRepository interface {
+	Save(ctx context.Context, event *Event) error
 	FetchPending(ctx context.Context, limit int) ([]*Event, error)
 	MarkPublished(ctx context.Context, id uuid.UUID) error
 	MarkFailed(ctx context.Context, id uuid.UUID, reason string) error
+	EnsureIndexes(ctx context.Context) error
 }
 
 type Publisher interface {
