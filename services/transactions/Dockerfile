@@ -5,14 +5,17 @@ COPY shared/go.mod shared/go.sum ./shared/
 COPY services/transactions/go.mod services/transactions/go.sum ./services/transactions/
 
 WORKDIR /app/services/transactions
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 WORKDIR /app
 COPY shared/ ./shared/
 COPY services/transactions/ ./services/transactions/
 
 WORKDIR /app/services/transactions
-RUN CGO_ENABLED=0 GOOS=linux go build -o transaction_service ./cmd/transaction_server
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" \
+    -o transaction_service ./cmd/transaction_server
 
 FROM alpine:3.19
 WORKDIR /app

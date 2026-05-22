@@ -5,13 +5,21 @@ log:
   output: stdout
   file: logs/app.log
 
-db:
-  host: postgres-transactions
-  port: 5432
-  name: transaction_service
-  ssl_mode: disable
-  connect_timeout: 3s
-  max_retries_time: 10s
+storage:
+  type: "mongodb"
+
+  postgres:
+    host: postgres-transactions
+    port: 5432
+    name: transaction_service
+    ssl_mode: disable
+    connect_timeout: 3s
+    max_retries_time: 10s
+
+  mongodb:
+    uri: mongodb://mongo-transactions:27017/?directConnection=true
+    name: transactions_service
+    connect_timeout: 5s
 
 grpc:
   port: 50051

@@ -22,6 +22,10 @@ func NewOutboxRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *OutboxRepo {
 	}
 }
 
+func (r *OutboxRepo) EnsureIndexes(ctx context.Context) error {
+	return nil
+}
+
 func (r *OutboxRepo) Save(ctx context.Context, event *outbox.Event) error {
 	op := "OutboxRepo.Save"
 

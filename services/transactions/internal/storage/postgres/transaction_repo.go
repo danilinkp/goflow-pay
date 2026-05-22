@@ -23,6 +23,10 @@ type TransactionRepo struct {
 	factory *postgresLib.SelectFactory[models.TransactionModel]
 }
 
+func (r *TransactionRepo) EnsureIndexes(ctx context.Context) error {
+	return nil
+}
+
 func NewTransactionRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *TransactionRepo {
 	return &TransactionRepo{
 		pool:    pool,

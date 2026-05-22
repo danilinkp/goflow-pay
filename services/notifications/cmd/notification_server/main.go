@@ -7,10 +7,12 @@ import (
 	"notifications/internal/config"
 	"notifications/internal/infrastructure/email"
 	"notifications/internal/service"
+	mongoRepo "notifications/internal/storage/mongo"
 	"notifications/internal/storage/postgres"
 	"notifications/migrations"
 	"os"
 	"os/signal"
+	mongoDB "shared/pkg/db/mongo"
 	postgresPool "shared/pkg/db/postgres"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
@@ -37,29 +39,40 @@ func main() {
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stopApp()
 
-	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
-	if err != nil {
-		log.Error("failed to connect to db", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-		os.Exit(1)
-	}
-	defer pool.Close()
-	err = migrations.RunMigrations(pool)
-	if err != nil {
-		log.Error("failed to run migrations", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-		os.Exit(1)
-	}
-	log.Info("migrations applied")
+	var notificationRepo service.NotificationRepository
 
-	getter := trmpgx.DefaultCtxGetter
-	notificationRepo := postgres.NewNotificationRepo(pool, getter)
+	switch cfg.Storage.Type {
+	case "mongodb":
+		mongoClient, err := mongoDB.NewClient(ctx, cfg.Storage.Mongo.URI, cfg.Storage.Mongo.ConnectTimeout)
+		if err != nil {
+			log.Error("failed to connect to mongodb", sl.Err(err))
+			os.Exit(1)
+		}
+		defer mongoClient.Disconnect(ctx)
+
+		db := mongoClient.Database(cfg.Storage.Mongo.Name)
+
+		notificationRepo = mongoRepo.NewNotificationRepo(db)
+	default:
+		pool, err := postgresPool.NewPool(ctx, cfg.Storage.Postgres.DSN(), cfg.Storage.Postgres.ConnectTimeout, cfg.Storage.Postgres.MaxRetriesTime)
+		if err != nil {
+			log.Error("failed to connect to db", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
+			os.Exit(1)
+		}
+		defer pool.Close()
+		err = migrations.RunMigrations(pool)
+		if err != nil {
+			log.Error("failed to run migrations", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
+			os.Exit(1)
+		}
+		log.Info("migrations applied")
+
+		getter := trmpgx.DefaultCtxGetter
+		notificationRepo = postgres.NewNotificationRepo(pool, getter)
+	}
 
 	var emailSender service.EmailSender
-
-	//if cfg.Env == envLocal {
-	//	emailSender = email.NewMockSender(log)
-	//} else {
 	emailSender = email.NewSmtpSender(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Password, cfg.SMTP.From)
-	//}
 
 	conn, err := grpc.NewClient(cfg.AuthGRPC.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

@@ -4,13 +4,16 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	mongoDB "shared/pkg/db/mongo"
 	postgresPool "shared/pkg/db/postgres"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
 	"shared/pkg/outbox"
 	"shared/pkg/outbox/publisher/kafka"
+	outboxMongoRepository "shared/pkg/outbox/repository/mongo"
 	outboxRepository "shared/pkg/outbox/repository/postgres"
-	postgresTrm "shared/pkg/transactor/postgres"
+	postgresTrm "shared/pkg/transactor"
+	trmmongo "shared/pkg/transactor/mongo"
 	"sync"
 	"syscall"
 	"time"
@@ -19,8 +22,11 @@ import (
 	"transactions/internal/config"
 	"transactions/internal/infrastructure/workers"
 	"transactions/internal/service"
+	mongoRepo "transactions/internal/storage/mongo"
 	"transactions/internal/storage/postgres"
 	"transactions/migrations"
+
+	trm "shared/pkg/transactor"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
@@ -39,25 +45,56 @@ func main() {
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stopApp()
 
-	pool, err := postgresPool.NewPool(ctx, cfg.DB.DSN(), cfg.DB.ConnectTimeout, cfg.DB.MaxRetriesTime)
-	if err != nil {
-		log.Error("failed to connect to db", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-		os.Exit(1)
-	}
-	defer pool.Close()
-	err = migrations.RunMigrations(pool)
-	if err != nil {
-		log.Error("failed to run migrations", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-		os.Exit(1)
-	}
-	log.Info("migrations applied")
+	var (
+		transactionRepo service.TransactionRepository
+		outboxRepo      outbox.OutboxRepository
+		trmAdapter      trm.Transactioner
+	)
 
-	trManager := manager.Must(trmpgx.NewDefaultFactory(pool))
-	trmAdapter := postgresTrm.NewTransactionAdapter(trManager)
+	switch cfg.Storage.Type {
+	case "mongodb":
+		mongoClient, err := mongoDB.NewClient(ctx, cfg.Storage.Mongo.URI, cfg.Storage.Mongo.ConnectTimeout)
+		if err != nil {
+			log.Error("failed to connect to mongodb", sl.Err(err))
+			os.Exit(1)
+		}
+		defer mongoClient.Disconnect(ctx)
 
-	getter := trmpgx.DefaultCtxGetter
-	transactionRepo := postgres.NewTransactionRepo(pool, getter)
-	outboxRepo := outboxRepository.NewOutboxRepo(pool, getter)
+		db := mongoClient.Database(cfg.Storage.Mongo.Name)
+		transactionRepo = mongoRepo.NewTransactionRepo(db)
+		if err = transactionRepo.EnsureIndexes(ctx); err != nil {
+			log.Error("failed to init mongodb repositories", sl.Err(err))
+			os.Exit(1)
+		}
+		outboxRepo = outboxMongoRepository.NewOutboxRepo(db)
+		if err = outboxRepo.EnsureIndexes(ctx); err != nil {
+			log.Error("failed to init mongodb outbox", sl.Err(err))
+			os.Exit(1)
+		}
+
+		trmAdapter = trmmongo.NewMongoAdapter(mongoClient)
+	default:
+		pool, err := postgresPool.NewPool(ctx, cfg.Storage.Postgres.DSN(), cfg.Storage.Postgres.ConnectTimeout, cfg.Storage.Postgres.MaxRetriesTime)
+		if err != nil {
+			log.Error("failed to connect to db", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
+			os.Exit(1)
+		}
+		defer pool.Close()
+		err = migrations.RunMigrations(pool)
+		if err != nil {
+			log.Error("failed to run migrations", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
+			os.Exit(1)
+		}
+		log.Info("migrations applied")
+
+		trManager := manager.Must(trmpgx.NewDefaultFactory(pool))
+		trmAdapter = postgresTrm.NewAvitoAdapter(trManager)
+
+		getter := trmpgx.DefaultCtxGetter
+		transactionRepo = postgres.NewTransactionRepo(pool, getter)
+		outboxRepo = outboxRepository.NewOutboxRepo(pool, getter)
+	}
+
 	conn, err := grpc.NewClient(cfg.GRPCClient.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error("failed to create account grpc client", sl.ErrWithStack(err), sl.Duration(time.Since(start)))

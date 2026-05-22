@@ -14,7 +14,7 @@ type Config struct {
 	Env        string      `yaml:"env" env:"ENV" env-default:"local"`
 	GRPCServer GRPCServer  `yaml:"grpc"`
 	Log        LogConfig   `yaml:"log"`
-	DB         DB          `yaml:"db"`
+	Storage    Storage     `yaml:"storage"`
 	Redis      RedisConfig `yaml:"redis"`
 	JWT        JWT         `yaml:"jwt"`
 	HashCost   int         `yaml:"hash_cost" env-default:"10"`
@@ -31,7 +31,13 @@ type LogConfig struct {
 	File   string `yaml:"file"`
 }
 
-type DB struct {
+type Storage struct {
+	Type     string     `yaml:"type"`
+	Postgres PostgresDB `yaml:"postgres"`
+	Mongo    MongoDB    `yaml:"mongodb"`
+}
+
+type PostgresDB struct {
 	Host           string        `yaml:"host"`
 	Port           string        `yaml:"port"`
 	User           string        `env:"DATABASE_USER"`
@@ -42,7 +48,13 @@ type DB struct {
 	MaxRetriesTime time.Duration `yaml:"max_retries_time" env-default:"30s"`
 }
 
-func (d DB) DSN() string {
+type MongoDB struct {
+	URI            string        `yaml:"uri"`
+	Name           string        `yaml:"name"`
+	ConnectTimeout time.Duration `yaml:"connect_timeout" env-default:"5s"`
+}
+
+func (d PostgresDB) DSN() string {
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		d.User, d.Password, d.Host, d.Port, d.Name, d.SSLMode,
