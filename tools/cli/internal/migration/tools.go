@@ -27,3 +27,15 @@ func bulkInsert(ctx context.Context, collection *mongo.Collection, docs []interf
 	fmt.Printf("    inserted %d documents\n", len(docs))
 	return nil
 }
+
+func flushBatch(ctx context.Context, collection *mongo.Collection, batch []interface{}) error {
+	if len(batch) == 0 {
+		return nil
+	}
+	opts := options.InsertMany().SetOrdered(false)
+	_, err := collection.InsertMany(ctx, batch, opts)
+	if err != nil && !mongo.IsDuplicateKeyError(err) {
+		return fmt.Errorf("insert batch: %w", err)
+	}
+	return nil
+}

@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func MigrateNotifications(ctx context.Context, postgresDSN, mongoDSN, mongoDBName string) error {
+func MigrateNotifications(ctx context.Context, postgresDSN, mongoDSN, mongoDBName string, batchSize int) error {
 	pg, err := pgxpool.New(ctx, postgresDSN)
 	if err != nil {
 		return fmt.Errorf("postgres connect: %w", err)
@@ -29,39 +29,64 @@ func MigrateNotifications(ctx context.Context, postgresDSN, mongoDSN, mongoDBNam
 
 	fmt.Println("  notifications...")
 
-	rows, err := pg.Query(ctx, `
-		SELECT notification_id, user_id, title, message, source_id, created_at, updated_at
-		FROM notifications
-	`)
+	tx, err := pg.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("query notifications: %w", err)
+		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer rows.Close()
+	defer tx.Rollback(ctx)
 
-	var docs []interface{}
-	for rows.Next() {
-		var (
-			notificationId uuid.UUID
-			userId         uuid.UUID
-			title          *string
-			message        *string
-			sourceId       uuid.UUID
-			createdAt      time.Time
-			updatedAt      time.Time
-		)
-		if err = rows.Scan(&notificationId, &userId, &title, &message, &sourceId, &createdAt, &updatedAt); err != nil {
-			return fmt.Errorf("scan notification: %w", err)
+	_, err = tx.Exec(ctx, "DECLARE cur CURSOR FOR SELECT notification_id, user_id, title, message, source_id, created_at, updated_at FROM notifications")
+	if err != nil {
+		return fmt.Errorf("declare cursor: %w", err)
+	}
+
+	collection := db.Collection("notifications")
+	total := 0
+
+	for {
+		rows, err := tx.Query(ctx, fmt.Sprintf("FETCH %d FROM cur", batchSize))
+		if err != nil {
+			return fmt.Errorf("fetch: %w", err)
 		}
-		docs = append(docs, bson.M{
-			"_id":        notificationId,
-			"user_id":    userId,
-			"title":      title,
-			"message":    message,
-			"source_id":  sourceId,
-			"created_at": createdAt,
-			"updated_at": updatedAt,
-		})
+
+		var batch []interface{}
+		for rows.Next() {
+			var (
+				notificationId uuid.UUID
+				userId         uuid.UUID
+				title          *string
+				message        *string
+				sourceId       uuid.UUID
+				createdAt      time.Time
+				updatedAt      time.Time
+			)
+			if err = rows.Scan(&notificationId, &userId, &title, &message, &sourceId, &createdAt, &updatedAt); err != nil {
+				rows.Close()
+				return fmt.Errorf("scan: %w", err)
+			}
+			batch = append(batch, bson.M{
+				"_id":        notificationId,
+				"user_id":    userId,
+				"title":      title,
+				"message":    message,
+				"source_id":  sourceId,
+				"created_at": createdAt,
+				"updated_at": updatedAt,
+			})
+		}
+		rows.Close()
+
+		if len(batch) == 0 {
+			break
+		}
+
+		if err = flushBatch(ctx, collection, batch); err != nil {
+			return err
+		}
+		total += len(batch)
+		fmt.Printf("    inserted %d docs\n", total)
 	}
 
-	return bulkInsert(ctx, db.Collection("notifications"), docs)
+	fmt.Printf("    total: %d\n", total)
+	return nil
 }

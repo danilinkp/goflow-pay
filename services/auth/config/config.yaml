@@ -6,7 +6,7 @@ log:
   file: logs/app.log
 
 storage:
-  type: "mongodb"
+  type: postgres
 
   postgres:
     host: postgres-auth
