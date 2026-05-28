@@ -19,7 +19,7 @@ func RunMigrations(pool *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("failed to open db for migrations: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	return goose.Up(db, ".")
 }

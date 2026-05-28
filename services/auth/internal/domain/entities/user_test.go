@@ -14,7 +14,7 @@ func TestNewUser_Success(t *testing.T) {
 
 	u, err := entities.NewUser(companyId, "login", "email@test.com", "hash", entities.RoleEmployee)
 	require.NoError(t, err)
-	assert.Equal(t, companyId, u.CompanyID())
+	assert.Equal(t, companyId, u.CompanyId())
 	assert.Equal(t, "login", u.Login())
 	assert.Equal(t, "email@test.com", u.Email())
 	assert.Equal(t, entities.RoleEmployee, u.Role())

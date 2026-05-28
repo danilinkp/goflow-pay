@@ -31,11 +31,11 @@ func (r *BankOperationRepo) EnsureIndexes(ctx context.Context) error {
 
 	indexes := []mongo.IndexModel{
 		{
-			Keys:    bson.D{{"idempotency_key", 1}},
+			Keys:    bson.D{{Key: "idempotency_key", Value: 1}},
 			Options: options.Index().SetName("idx_idempotency_key").SetUnique(true),
 		},
 		{
-			Keys:    bson.D{{"account_id", 1}, {"created_at", -1}},
+			Keys:    bson.D{{Key: "account_id", Value: 1}, {Key: "created_at", Value: -1}},
 			Options: options.Index().SetName("idx_account_id_created_at"),
 		},
 	}

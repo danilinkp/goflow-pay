@@ -24,10 +24,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const (
-	envLocal = "local"
-)
-
 func main() {
 	cfg := config.MustLoad()
 
@@ -48,7 +44,7 @@ func main() {
 			log.Error("failed to connect to mongodb", sl.Err(err))
 			os.Exit(1)
 		}
-		defer mongoClient.Disconnect(ctx)
+		defer func() { _ = mongoClient.Disconnect(ctx) }()
 
 		db := mongoClient.Database(cfg.Storage.Mongo.Name)
 
@@ -71,15 +67,14 @@ func main() {
 		notificationRepo = postgres.NewNotificationRepo(pool, getter)
 	}
 
-	var emailSender service.EmailSender
-	emailSender = email.NewSmtpSender(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Password, cfg.SMTP.From)
+	emailSender := email.NewSmtpSender(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Password, cfg.SMTP.From)
 
 	conn, err := grpc.NewClient(cfg.AuthGRPC.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error("failed to create grpc client", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	userClient := grpcclient.NewUserGrpcClient(conn)
 
 	notificationService := service.NewNotificationService(userClient, notificationRepo, emailSender, log)

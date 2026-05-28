@@ -30,19 +30,19 @@ func (r *TransactionRepo) EnsureIndexes(ctx context.Context) error {
 
 	indexes := []mongo.IndexModel{
 		{
-			Keys:    bson.D{{"idempotency_key", 1}},
+			Keys:    bson.D{{Key: "idempotency_key", Value: 1}},
 			Options: options.Index().SetName("idx_idempotency_key").SetUnique(true),
 		},
 		{
-			Keys:    bson.D{{"from_account_id", 1}, {"created_at", -1}},
+			Keys:    bson.D{{Key: "from_account_id", Value: 1}, {Key: "created_at", Value: -1}},
 			Options: options.Index().SetName("idx_from_account_id_created_at"),
 		},
 		{
-			Keys:    bson.D{{"to_account_id", 1}, {"created_at", -1}},
+			Keys:    bson.D{{Key: "to_account_id", Value: 1}, {Key: "created_at", Value: -1}},
 			Options: options.Index().SetName("idx_to_account_id_created_at"),
 		},
 		{
-			Keys:    bson.D{{"status", 1}, {"updated_at", 1}},
+			Keys:    bson.D{{Key: "status", Value: 1}, {Key: "updated_at", Value: 1}},
 			Options: options.Index().SetName("idx_status_updated_at"),
 		},
 	}
@@ -112,7 +112,7 @@ func (r *TransactionRepo) GetByAccountId(ctx context.Context, accountId uuid.UUI
 		},
 	}
 
-	opts := options.Find().SetSort(bson.D{{"created_at", -1}})
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {

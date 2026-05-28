@@ -30,15 +30,15 @@ func (r *AccountOperationRepo) EnsureIndexes(ctx context.Context) error {
 
 	indexes := []mongo.IndexModel{
 		{
-			Keys:    bson.D{{"transaction_id", 1}},
+			Keys:    bson.D{{Key: "transaction_id", Value: 1}},
 			Options: options.Index().SetName("idx_transaction_id"),
 		},
 		{
-			Keys:    bson.D{{"account_id", 1}, {"created_at", -1}},
+			Keys:    bson.D{{Key: "account_id", Value: 1}, {Key: "created_at", Value: -1}},
 			Options: options.Index().SetName("idx_account_id_created_at"),
 		},
 		{
-			Keys:    bson.D{{"account_id", 1}, {"operation_status", 1}},
+			Keys:    bson.D{{Key: "account_id", Value: 1}, {Key: "operation_status", Value: 1}},
 			Options: options.Index().SetName("idx_account_id_status"),
 		},
 	}
@@ -150,7 +150,7 @@ func (r *AccountOperationRepo) HasPendingByAccountId(ctx context.Context, accoun
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
-	defer cursor.Close(ctx)
+	defer func() { _ = cursor.Close(ctx) }()
 
 	return cursor.Next(ctx), nil
 }
