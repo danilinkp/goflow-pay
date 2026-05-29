@@ -17,7 +17,7 @@ variables:
   stage: lint
   image: golangci/golangci-lint:latest
   tags:
-    - docker
+    - testing-docker
   script:
     - cd services/$SERVICE && golangci-lint run ./...
 
@@ -51,7 +51,7 @@ test:
   stage: test
   image: golang:1.25
   tags:
-    - docker
+    - testing-docker
   script:
     - go test ./services/accounts/internal/domain/...
     - go test ./services/accounts/internal/services/...
@@ -65,7 +65,7 @@ test:
   stage: build
   image: docker:26
   tags:
-    - docker
+    - testing-docker
   services:
     - docker:26-dind
   variables:
