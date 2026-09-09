@@ -14,7 +14,7 @@ db:
   max_retries_time: 10s
 
 storage:
-  type: "postgres"
+  type: "mongodb"
 
   postgres:
     host: postgres-auth

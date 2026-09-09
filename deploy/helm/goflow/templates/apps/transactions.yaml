@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transactions
+  labels:
+    app: transactions
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.apps.transactions.replicaCount }}
+  selector:
+    matchLabels:
+      app: transactions
+  template:
+    metadata:
+      labels:
+        app: transactions
+    spec:
+      containers:
+        - name: transactions
+          image: "{{ .Values.apps.transactions.image.repository }}:{{ .Values.apps.transactions.image.tag }}"
+          imagePullPolicy: {{ .Values.apps.transactions.image.pullPolicy }}
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: CONFIG_PATH
+              value: "/app/config/local.yaml"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: goflow-secrets
+                  key: DB_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: goflow-secrets
+                  key: DB_PASSWORD
+          resources:
+            {{- toYaml .Values.apps.transactions.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/local.yaml
+              subPath: local.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: transactions-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transactions-service
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: transactions
+  ports:
+    - port: 50051
+      targetPort: 50051
+      name: grpc

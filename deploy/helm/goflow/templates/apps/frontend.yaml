@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.apps.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.apps.frontend.image.repository }}:{{ .Values.apps.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.apps.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            {{- toYaml .Values.apps.frontend.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http

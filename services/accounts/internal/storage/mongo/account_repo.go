@@ -30,7 +30,7 @@ func (r *AccountRepo) EnsureIndexes(ctx context.Context) error {
 	op := "AccountRepo.EnsureIndexes"
 
 	_, err := r.collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    bson.D{{"company_id", 1}},
+		Keys:    bson.D{{Key: "company_id", Value: 1}},
 		Options: options.Index().SetName("idx_company_id"),
 	})
 	if err != nil {

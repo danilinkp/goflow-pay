@@ -428,6 +428,7 @@ services:
         max-size: "10m"
         max-file: "5"
     volumes:
+      - ./certs:/app/certs:ro
       - ./services/gateway/config/local.yaml:/app/config/local.yaml:ro
       - ./logs/gateway:/app/logs
     networks:

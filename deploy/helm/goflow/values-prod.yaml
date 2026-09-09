@@ -1,0 +1,35 @@
+global:
+  env: "production"
+
+apps:
+  auth:
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+
+  gateway:
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+
+  accounts:
+    replicaCount: 2
+
+  transactions:
+    replicaCount: 2
+
+  notifications:
+    replicaCount: 2
+
+  frontend:
+    replicaCount: 2

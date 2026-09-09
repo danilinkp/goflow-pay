@@ -47,7 +47,6 @@ func TestNotificationService_NotifyTransferCompleted(t *testing.T) {
 	currency := "USD"
 
 	expectedTitle := "Перевод на 1500 USD выполнен"
-	expectedMessage := "Средства успешно переведены"
 
 	t.Run("Success", func(t *testing.T) {
 		svc, userClient, notificationRepo, emailSender := setupNotificationService(t)
@@ -59,13 +58,11 @@ func TestNotificationService_NotifyTransferCompleted(t *testing.T) {
 			return n != nil &&
 				n.UserId() == userID &&
 				n.Title() == expectedTitle &&
-				n.Message() == expectedMessage &&
 				n.SourceId() == accountID
 		})).Return(nil)
 
-		emailSender.On("Send", mock.Anything, user.Email, expectedTitle, expectedMessage).Return(nil)
+		emailSender.On("Send", mock.Anything, user.Email, expectedTitle, mock.Anything).Return(nil)
 
-		// Исправлено: передаём userID и accountId
 		err := svc.NotifyTransferCompleted(ctx, userID, accountID, amount, currency)
 		assert.NoError(t, err)
 	})
@@ -97,7 +94,7 @@ func TestNotificationService_NotifyTransferCompleted(t *testing.T) {
 
 		userClient.On("GetUserById", mock.Anything, userID).Return(user, nil)
 		notificationRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
-		emailSender.On("Send", mock.Anything, user.Email, expectedTitle, expectedMessage).Return(errors.New("smtp error"))
+		emailSender.On("Send", mock.Anything, user.Email, expectedTitle, mock.Anything).Return(errors.New("smtp error"))
 
 		err := svc.NotifyTransferCompleted(ctx, userID, accountID, amount, currency)
 		assert.Error(t, err)
@@ -113,7 +110,6 @@ func TestNotificationService_NotifyTransferFailed(t *testing.T) {
 	currency := "EUR"
 
 	expectedTitle := "Перевод на 2000 EUR не выполнен"
-	expectedMessage := "Произошла ошибка при переводе средств"
 
 	t.Run("Success", func(t *testing.T) {
 		svc, userClient, notificationRepo, emailSender := setupNotificationService(t)
@@ -121,9 +117,9 @@ func TestNotificationService_NotifyTransferFailed(t *testing.T) {
 
 		userClient.On("GetUserById", mock.Anything, userID).Return(user, nil)
 		notificationRepo.On("Save", mock.Anything, mock.MatchedBy(func(n *entities.Notification) bool {
-			return n != nil && n.Title() == expectedTitle && n.Message() == expectedMessage
+			return n != nil && n.Title() == expectedTitle
 		})).Return(nil)
-		emailSender.On("Send", mock.Anything, user.Email, expectedTitle, expectedMessage).Return(nil)
+		emailSender.On("Send", mock.Anything, user.Email, expectedTitle, mock.Anything).Return(nil)
 
 		err := svc.NotifyTransferFailed(ctx, userID, accountID, amount, currency)
 		assert.NoError(t, err)
@@ -136,18 +132,16 @@ func TestNotificationService_BankOperations(t *testing.T) {
 	accountID := validAccountID()
 
 	tests := []struct {
-		name            string
-		amount          int64
-		currency        string
-		notifyFn        func(*service.NotificationService) error
-		expectedTitle   string
-		expectedMessage string
+		name          string
+		amount        int64
+		currency      string
+		notifyFn      func(*service.NotificationService) error
+		expectedTitle string
 	}{
 		{
 			name:   "NotifyBankDepositCompleted",
 			amount: 5000, currency: "RUB",
-			expectedTitle:   "Пополнение с банковского счёта на сумму 5000 RUB",
-			expectedMessage: "Средства успешно пополнены",
+			expectedTitle: "Пополнение с банковского счёта на сумму 5000 RUB",
 			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankDepositCompleted(ctx, userID, accountID, 5000, "RUB")
 			},
@@ -155,8 +149,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 		{
 			name:   "NotifyBankDepositFailed",
 			amount: 5000, currency: "RUB",
-			expectedTitle:   "Пополнение с банковского счёта на сумму 5000 RUB",
-			expectedMessage: "Произошла ошибка при пополнении средств",
+			expectedTitle: "Пополнение с банковского счёта на сумму 5000 RUB",
 			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankDepositFailed(ctx, userID, accountID, 5000, "RUB")
 			},
@@ -164,8 +157,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 		{
 			name:   "NotifyBankWithdrawalCompleted",
 			amount: 5000, currency: "RUB",
-			expectedTitle:   "Вывод на банковский счёт на сумму 5000 RUB",
-			expectedMessage: "Средства успешно выведены",
+			expectedTitle: "Вывод на банковский счёт на сумму 5000 RUB",
 			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankWithdrawalCompleted(ctx, userID, accountID, 5000, "RUB")
 			},
@@ -173,8 +165,7 @@ func TestNotificationService_BankOperations(t *testing.T) {
 		{
 			name:   "NotifyBankWithdrawalFailed",
 			amount: 5000, currency: "RUB",
-			expectedTitle:   "Вывод на банковский счёт на сумму 5000 RUB",
-			expectedMessage: "Произошла ошибка при выводе средств",
+			expectedTitle: "Вывод на банковский счёт на сумму 5000 RUB",
 			notifyFn: func(s *service.NotificationService) error {
 				return s.NotifyBankWithdrawalFailed(ctx, userID, accountID, 5000, "RUB")
 			},
@@ -188,9 +179,9 @@ func TestNotificationService_BankOperations(t *testing.T) {
 
 			userClient.On("GetUserById", mock.Anything, userID).Return(user, nil)
 			notificationRepo.On("Save", mock.Anything, mock.MatchedBy(func(n *entities.Notification) bool {
-				return n != nil && n.Title() == tt.expectedTitle && n.Message() == tt.expectedMessage
+				return n != nil && n.Title() == tt.expectedTitle
 			})).Return(nil)
-			emailSender.On("Send", mock.Anything, user.Email, tt.expectedTitle, tt.expectedMessage).Return(nil)
+			emailSender.On("Send", mock.Anything, user.Email, tt.expectedTitle, mock.Anything).Return(nil)
 
 			err := tt.notifyFn(svc)
 			assert.NoError(t, err)

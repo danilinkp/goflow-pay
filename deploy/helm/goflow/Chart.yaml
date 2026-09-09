@@ -1,0 +1,8 @@
+apiVersion: v2
+name: goflow
+description: Helm chart for GoFlow Pay microservices B2B payment system
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: daniil
