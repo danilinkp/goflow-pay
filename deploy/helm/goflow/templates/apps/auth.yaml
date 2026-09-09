@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  labels:
+    app: auth
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.apps.auth.replicaCount }}
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: "{{ .Values.apps.auth.image.repository }}:{{ .Values.apps.auth.image.tag }}"
+          imagePullPolicy: {{ .Values.apps.auth.image.pullPolicy }}
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: CONFIG_PATH
+              value: "/app/config/config.yaml"
+            - name: JWT_PRIVATE_KEY_PATH
+              value: "/app/certs/private.pem"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: goflow-secrets
+                  key: DB_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: goflow-secrets
+                  key: DB_PASSWORD
+          resources:
+            {{- toYaml .Values.apps.auth.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/config.yaml
+              subPath: config.yaml
+            - name: certs
+              mountPath: /app/certs/private.pem
+              subPath: private.pem
+      volumes:
+        - name: config
+          configMap:
+            name: auth-config
+        - name: certs
+          secret:
+            secretName: goflow-secrets
+            items:
+              - key: jwt-private.pem
+                path: private.pem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: auth
+  ports:
+    - port: 50051
+      targetPort: 50051
+      name: grpc

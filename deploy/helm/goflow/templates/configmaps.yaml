@@ -1,0 +1,149 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    env: {{ .Values.global.env | quote }}
+    log:
+      level: debug
+      output: stdout
+    storage:
+      type: postgres
+      postgres:
+        host: postgres-auth
+        port: 5432
+        name: auth_service
+        ssl_mode: "disable"
+        connect_timeout: 5s
+        max_retries_time: 2s
+    redis:
+      host: redis
+      port: 6379
+      password: ""
+      db: 0
+    grpc:
+      port: 50051
+      timeout: 5s
+    jwt:
+      ttl: 24h
+    hash_cost: 10
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: accounts-config
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+data:
+  local.yaml: |
+    env: {{ .Values.global.env | quote }}
+    log:
+      level: debug
+      output: stdout
+    storage:
+      type: postgres
+      postgres:
+        host: postgres-accounts
+        port: 5432
+        name: account_service
+        ssl_mode: "disable"
+        connect_timeout: 5s
+        max_retries_time: 2s
+    grpc:
+      port: 50051
+      timeout: 5s
+    kafka:
+      brokers: kafka:29092
+      write_timeout: 5s
+    outbox:
+      interval: 10s
+      batch_size: 10
+    bank_gateway:
+      failure_rate: 0.2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: transactions-config
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+data:
+  local.yaml: |
+    env: {{ .Values.global.env | quote }}
+    log:
+      level: debug
+      output: stdout
+    storage:
+      type: postgres
+      postgres:
+        host: postgres-transactions
+        port: 5432
+        name: transaction_service
+        ssl_mode: "disable"
+        connect_timeout: 5s
+        max_retries_time: 2s
+    grpc:
+      port: 50051
+      timeout: 5s
+    grpc_client:
+      addr: accounts-service:50051
+    kafka:
+      brokers: kafka:29092
+      write_timeout: 5s
+    outbox:
+      interval: 10s
+      batch_size: 10
+    recover:
+      interval: 10s
+      stale_after: 30s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notifications-config
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+data:
+  local.yaml: |
+    env: {{ .Values.global.env | quote }}
+    log:
+      level: debug
+      output: stdout
+    storage:
+      type: postgres
+      postgres:
+        host: postgres-notifications
+        port: 5432
+        name: notification_service
+        ssl_mode: "disable"
+        connect_timeout: 5s
+        max_retries_time: 2s
+    auth_grpc:
+      addr: auth-service:50051
+    kafka:
+      brokers: kafka:29092
+      topic: notifications
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+data:
+  local.yaml: |
+    env: {{ .Values.global.env | quote }}
+    log:
+      level: debug
+      output: stdout
+    http_server:
+      address: "0.0.0.0:8080"
+      timeout: 4s
+      idle_timeout: 60s
+    grpc_clients:
+      auth_address: auth-service:50051
+      account_address: accounts-service:50051
+      transaction_address: transactions-service:50051

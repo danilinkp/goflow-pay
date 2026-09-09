@@ -1,0 +1,142 @@
+global:
+  env: "local"
+
+secrets:
+  dbUser: "postgres"
+  dbPassword: "postgres"
+  bootstrapToken: "some-random-secret-string"
+
+infra:
+  postgres:
+    image: "postgres:16-alpine"
+    storageSize: "1Gi"
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        cpu: "250m"
+        memory: "256Mi"
+
+  redis:
+    image: "redis:7-alpine"
+    resources:
+      requests:
+        cpu: "20m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+
+  kafka:
+    image: "apache/kafka:3.8.0"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+  mailpit:
+    image: "axllent/mailpit:latest"
+    resources:
+      requests:
+        cpu: "20m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+
+apps:
+  auth:
+    replicaCount: 1
+    image:
+      repository: "goflow-auth"
+      tag: "local"
+      pullPolicy: "IfNotPresent"
+    resources:
+      requests:
+        cpu: "20m"
+        memory: "32Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+
+  accounts:
+    replicaCount: 1
+    image:
+      repository: "goflow-accounts"
+      tag: "local"
+      pullPolicy: "IfNotPresent"
+    resources:
+      requests:
+        cpu: "20m"
+        memory: "32Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+
+  transactions:
+    replicaCount: 1
+    image:
+      repository: "goflow-transactions"
+      tag: "local"
+      pullPolicy: "IfNotPresent"
+    resources:
+      requests:
+        cpu: "20m"
+        memory: "32Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+
+  notifications:
+    replicaCount: 1
+    image:
+      repository: "goflow-notifications"
+      tag: "local"
+      pullPolicy: "IfNotPresent"
+    resources:
+      requests:
+        cpu: "20m"
+        memory: "32Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+
+  gateway:
+    replicaCount: 1
+    image:
+      repository: "goflow-gateway"
+      tag: "local"
+      pullPolicy: "IfNotPresent"
+    resources:
+      requests:
+        cpu: "20m"
+        memory: "32Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+
+  frontend:
+    replicaCount: 1
+    image:
+      repository: "goflow-frontend"
+      tag: "local"
+      pullPolicy: "IfNotPresent"
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "16Mi"
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
