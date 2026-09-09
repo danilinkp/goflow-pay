@@ -5,6 +5,8 @@ secrets:
   dbUser: "postgres"
   dbPassword: "postgres"
   bootstrapToken: "some-random-secret-string"
+  jwtPrivateKey: ""
+  jwtPublicKey: ""
 
 infra:
   postgres:
