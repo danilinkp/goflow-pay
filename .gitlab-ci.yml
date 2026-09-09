@@ -15,9 +15,11 @@ variables:
 .lint:
   extends: .go-cache
   stage: lint
-  image: golangci/golangci-lint:latest
+  image: golang:1.25
   tags:
-    - testing-docker
+    - my-runner
+  before_script:
+    - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin
   script:
     - cd services/$SERVICE && golangci-lint run ./...
 
@@ -51,7 +53,7 @@ test:
   stage: test
   image: golang:1.25
   tags:
-    - testing-docker
+    - my-runner
   script:
     - go test ./services/accounts/internal/domain/...
     - go test ./services/accounts/internal/services/...
@@ -65,7 +67,7 @@ test:
   stage: build
   image: docker:26
   tags:
-    - testing-docker
+    - my-runner
   services:
     - docker:26-dind
   variables:
