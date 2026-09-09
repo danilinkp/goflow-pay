@@ -73,7 +73,9 @@ lint-gateway:
 
 lint-helm:
   stage: lint
-  image: alpine/helm:3.16.4
+  image:
+    name: alpine/helm:3.16.4
+    entrypoint: [""]
   script:
     - helm lint deploy/helm/goflow
     - helm template goflow deploy/helm/goflow > /dev/null
