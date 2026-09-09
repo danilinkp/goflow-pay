@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications
+  labels:
+    app: notifications
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.apps.notifications.replicaCount }}
+  selector:
+    matchLabels:
+      app: notifications
+  template:
+    metadata:
+      labels:
+        app: notifications
+    spec:
+      containers:
+        - name: notifications
+          image: "{{ .Values.apps.notifications.image.repository }}:{{ .Values.apps.notifications.image.tag }}"
+          imagePullPolicy: {{ .Values.apps.notifications.image.pullPolicy }}
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: CONFIG_PATH
+              value: "/app/config/local.yaml"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: goflow-secrets
+                  key: DB_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: goflow-secrets
+                  key: DB_PASSWORD
+            - name: SMTP_HOST
+              value: "mailpit"
+            - name: SMTP_PORT
+              value: "1025"
+            - name: SMTP_FROM
+              value: "reply@goflowpay.com"
+          resources:
+            {{- toYaml .Values.apps.notifications.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/local.yaml
+              subPath: local.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: notifications-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications-service
+  labels:
+    {{- include "goflow.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: notifications
+  ports:
+    - port: 50051
+      targetPort: 50051
+      name: grpc

@@ -12,7 +12,6 @@ import (
 	"shared/pkg/outbox/publisher/kafka"
 	outboxMongoRepository "shared/pkg/outbox/repository/mongo"
 	outboxRepository "shared/pkg/outbox/repository/postgres"
-	postgresTrm "shared/pkg/transactor"
 	trmmongo "shared/pkg/transactor/mongo"
 	"sync"
 	"syscall"
@@ -58,7 +57,7 @@ func main() {
 			log.Error("failed to connect to mongodb", sl.Err(err))
 			os.Exit(1)
 		}
-		defer mongoClient.Disconnect(ctx)
+		defer func() { _ = mongoClient.Disconnect(ctx) }()
 
 		db := mongoClient.Database(cfg.Storage.Mongo.Name)
 		transactionRepo = mongoRepo.NewTransactionRepo(db)
@@ -88,7 +87,7 @@ func main() {
 		log.Info("migrations applied")
 
 		trManager := manager.Must(trmpgx.NewDefaultFactory(pool))
-		trmAdapter = postgresTrm.NewAvitoAdapter(trManager)
+		trmAdapter = trm.NewAvitoAdapter(trManager)
 
 		getter := trmpgx.DefaultCtxGetter
 		transactionRepo = postgres.NewTransactionRepo(pool, getter)
@@ -100,7 +99,7 @@ func main() {
 		log.Error("failed to create account grpc client", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	accountClient := grpcclient.NewAccountGRPCClient(conn)
 
 	transactionService := service.NewTransactionService(accountClient, transactionRepo, outboxRepo, trmAdapter, log)

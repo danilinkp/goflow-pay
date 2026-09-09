@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	defer container.Terminate(ctx)
+	defer func() { _ = container.Terminate(ctx) }()
 
 	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {

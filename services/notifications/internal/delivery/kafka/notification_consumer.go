@@ -38,7 +38,7 @@ func NewNotificationConsumer(brokers []string, topic string, service *service.No
 }
 
 func (c *NotificationConsumer) Run(ctx context.Context) error {
-	defer c.reader.Close()
+	defer func() { _ = c.reader.Close() }()
 
 	for {
 		m, err := c.reader.FetchMessage(ctx)

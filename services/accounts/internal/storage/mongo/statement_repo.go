@@ -30,7 +30,7 @@ func (r *StatementRepo) EnsureIndexes(ctx context.Context) error {
 
 	indexes := []mongo.IndexModel{
 		{
-			Keys:    bson.D{{"account_id", 1}, {"period_from", 1}, {"period_to", 1}},
+			Keys:    bson.D{{Key: "account_id", Value: 1}, {Key: "period_from", Value: 1}, {Key: "period_to", Value: 1}},
 			Options: options.Index().SetName("idx_account_id_period"),
 		},
 	}

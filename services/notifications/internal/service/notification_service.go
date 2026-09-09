@@ -329,7 +329,7 @@ func formatEntries(entries []StatementEntry) string {
 			color = "#dc3545"
 		}
 
-		sb.WriteString(fmt.Sprintf(`
+		fmt.Fprintf(&sb, `
             <tr style="background-color: %s; border-bottom: 1px solid #eee;">
                 <td style="padding: 12px; white-space: nowrap;">%s</td>
                 <td style="padding: 12px;">%s</td>
@@ -344,7 +344,7 @@ func formatEntries(entries []StatementEntry) string {
 			sign, e.Amount,
 			e.BalanceAfter,
 			e.Counterparty,
-		))
+		)
 	}
 
 	sb.WriteString(`
