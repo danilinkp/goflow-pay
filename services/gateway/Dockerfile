@@ -9,7 +9,6 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 WORKDIR /app
 COPY shared/ ./shared/
-COPY certs/ ./certs/
 COPY services/gateway/ ./services/gateway/
 
 WORKDIR /app/services/gateway
@@ -22,7 +21,6 @@ FROM alpine:3.19
 WORKDIR /app
 
 COPY --from=builder /app/services/gateway/gateway_server .
-COPY --from=builder /app/certs ./certs
 
 EXPOSE 8080
 

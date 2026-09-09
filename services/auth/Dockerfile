@@ -9,7 +9,6 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 WORKDIR /app
 COPY shared/ ./shared/
-COPY certs/ ./certs/
 COPY services/auth/ ./services/auth/
 
 WORKDIR /app/services/auth
@@ -22,7 +21,6 @@ FROM alpine:3.19
 WORKDIR /app
 
 COPY --from=builder /app/services/auth/auth_service .
-COPY --from=builder /app/certs ./certs
 
 EXPOSE 50051
 CMD ["./auth_service"]
