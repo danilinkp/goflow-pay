@@ -1,0 +1,66 @@
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: goflow-postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5439:5432"
+    volumes:
+      - ./scripts/init-test-dbs.sql:/docker-entrypoint-initdb.d/init-test-dbs.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 3s
+    networks:
+      - goflow_test_network
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: goflow-redis-test
+    ports:
+      - "6389:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 2s
+    networks:
+      - goflow_test_network
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: goflow-test-runner
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      - TEST_ENV=docker
+      - PG_HOST=postgres-test
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=postgres
+      - ACCOUNTS_DB_NAME=account_test
+      - TRANSACTIONS_DB_NAME=transaction_test
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+    volumes:
+      - .:/app
+    working_dir: /app
+    networks:
+      - goflow_test_network
+    command: ["/bin/bash", "-c", "./scripts/test_init.sh && make test"]
+
+networks:
+  goflow_test_network:
+    name: goflow_test_network
+    driver: bridge

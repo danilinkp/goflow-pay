@@ -7,3 +7,5 @@
 /frontend/dist/
 /deploy/k8s/
 *values-secrets*.yaml
+/reports/
+allure-results/

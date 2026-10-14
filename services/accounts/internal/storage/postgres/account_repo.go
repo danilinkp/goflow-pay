@@ -13,16 +13,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AccountRepo struct {
-	pool    *pgxpool.Pool
+	pool    trmpgx.Tr
 	getter  *trmpgx.CtxGetter
 	factory *postgresLib.SelectFactory[models.AccountModel]
 }
 
-func NewAccountRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *AccountRepo {
+func NewAccountRepo(pool trmpgx.Tr, c *trmpgx.CtxGetter) *AccountRepo {
 	return &AccountRepo{
 		pool:    pool,
 		getter:  c,

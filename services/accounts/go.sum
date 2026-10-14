@@ -10,6 +10,8 @@ github.com/BurntSushi/toml v1.2.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbi
 github.com/DATA-DOG/go-sqlmock v1.5.2/go.mod h1:88MAG/4G7SMwSE3CeA0ZKzrT5CiOU3OJ+JlNzwDqpNU=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
+github.com/allure-framework/allure-go/commons v1.3.1 h1:Oj5pxx6LO24mj7H+SwsxwtGGvJc7FKFjWz7pU6CV9Og=
+github.com/allure-framework/allure-go/commons v1.3.1/go.mod h1:h+DnKOe9nlqqZFi18LjWq6UVfj3uno5z8itU7+sysAE=
 github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2 v2.0.2 h1:2C+vPF45XlFHbZDa7byVLV80oUIzbirawgfI+tkXTwY=
 github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2 v2.0.2/go.mod h1:O+bq9veJwpjhOYy6DSys82p6AP5KadYWZbm1sLipOl0=
 github.com/avito-tech/go-transaction-manager/trm/v2 v2.0.2 h1:1x77jlbvB1e9Jh5T0YQy0ZHoh4gXTKI6DmDEBG+BCv4=

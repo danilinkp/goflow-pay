@@ -1,0 +1,36 @@
+FROM golang:alpine
+
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    postgresql-client \
+    redis
+
+# Install Goose for database schema migrations
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
+# Install gocov and gocov-html for reporting
+RUN go install github.com/axw/gocov/gocov@latest || true
+RUN go install github.com/matm/gocov-html/cmd/gocov-html@latest || true
+
+WORKDIR /app
+
+# Cache Go modules across workspaces
+COPY go.work go.work.sum* ./
+COPY services/accounts/go.mod services/accounts/go.sum* ./services/accounts/
+COPY services/transactions/go.mod services/transactions/go.sum* ./services/transactions/
+COPY services/auth/go.mod services/auth/go.sum* ./services/auth/
+COPY services/notifications/go.mod services/notifications/go.sum* ./services/notifications/
+COPY services/gateway/go.mod services/gateway/go.sum* ./services/gateway/
+COPY shared/go.mod shared/go.sum* ./shared/
+COPY tools/cli/go.mod tools/cli/go.sum* ./tools/cli/
+
+RUN go work sync || true
+
+COPY . .
+
+CMD ["/bin/bash", "-c", "./scripts/test_init.sh && make test"]

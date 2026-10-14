@@ -81,6 +81,7 @@ type AccountService struct {
 	outboxRepo                 OutboxRepository
 	transactor                 Transactor
 	log                        *slog.Logger
+	now                        func() time.Time
 }
 
 func NewAccountService(
@@ -93,7 +94,12 @@ func NewAccountService(
 	outboxRepo OutboxRepository,
 	transactor Transactor,
 	log *slog.Logger,
+	now ...func() time.Time,
 ) *AccountService {
+	nowFunc := func() time.Time { return time.Now().UTC() }
+	if len(now) > 0 && now[0] != nil {
+		nowFunc = now[0]
+	}
 	return &AccountService{
 		accountRepository:          accountRepo,
 		accountOperationRepository: accountOperationRepo,
@@ -104,6 +110,7 @@ func NewAccountService(
 		outboxRepo:                 outboxRepo,
 		transactor:                 transactor,
 		log:                        log,
+		now:                        nowFunc,
 	}
 }
 
@@ -294,7 +301,7 @@ func (a *AccountService) LinkBankAccount(ctx context.Context, request LinkBankIn
 func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
 	op := "AccountService.ReserveWithdraw"
 
-	start := time.Now()
+	start := a.now()
 	log := a.log.With(
 		sl.Op(op),
 		sl.EventID(),
@@ -337,7 +344,7 @@ func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId, counter
 			return err
 		}
 
-		accOp, err = entities.NewAccountOperation(accountId, counterpartyId, txId, entities.Withdrawal, entities.PendingStatus, amount, acc.Balance())
+		accOp, err = entities.NewAccountOperation(accountId, counterpartyId, txId, entities.Withdrawal, entities.PendingStatus, amount, acc.Balance(), a.now())
 		if err != nil {
 			return err
 		}

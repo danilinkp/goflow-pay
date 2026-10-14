@@ -14,16 +14,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type StatementRepo struct {
-	pool    *pgxpool.Pool
+	pool    trmpgx.Tr
 	getter  *trmpgx.CtxGetter
 	factory *postgresLib.SelectFactory[models.StatementModel]
 }
 
-func NewStatementRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *StatementRepo {
+func NewStatementRepo(pool trmpgx.Tr, c *trmpgx.CtxGetter) *StatementRepo {
 	return &StatementRepo{
 		pool:    pool,
 		getter:  c,

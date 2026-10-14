@@ -1,0 +1,1894 @@
+openapi: 3.1.0
+info:
+  title: GoFlow Pay RESTful API
+  version: 2.0.0
+  description: |
+    # GoFlow Pay REST API v2
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: /
+    description: Относительный путь API Gateway (базовый стенд)
+  - url: https://api.goflowpay.local
+    description: Продуктовый / тестовый стенд (Nginx Reverse Proxy)
+  - url: http://127.0.0.1:4010
+    description: Локальный Prism Mock Server
+
+tags:
+  - name: Auth
+    description: Аутентификация, регистрация и управление сессией пользователя
+  - name: Companies
+    description: Регистрация компаний, управление участниками и инвайт-кодами
+  - name: Accounts
+    description: Управление внутренними мультивалютными счетами
+  - name: Bank Accounts
+    description: Привязка внешних расчетных счетов компаний в банках
+  - name: Bank Operations
+    description: Операции ввода (депозит) и вывода средств через банковские счета
+  - name: Transactions
+    description: Межкорпоративные переводы со счетами, проверка баланса и история платежей
+
+paths:
+  /api/v2/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Аутентификация пользователя (Login)
+      description: Аутентифицирует пользователя по email и паролю, возвращает JWT-токен доступа.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешная аутентификация, токен выдан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Завершение сессии (Logout)
+      description: Инвалидирует текущий JWT-токен авторизованного пользователя.
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Сессия успешно завершена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: logged out
+        '204':
+          description: Сессия успешно завершена (без тела ответа)
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Регистрация нового сотрудника по инвайт-коду компании
+      description: Создает учетную запись пользователя и прикрепляет ее к компании по валидному коду приглашения.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserWithInviteRequest'
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/auth/register/company:
+    post:
+      tags:
+        - Auth
+      summary: Регистрация новой компании и ее администратора
+      description: Создает юридическое лицо (компанию), пользователя с ролью `company_admin` и инициирует открытие базового счета.
+      operationId: registerWithNewCompany
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterCompanyRequest'
+      responses:
+        '201':
+          description: Компания успешно зарегистрирована
+          headers:
+            Location:
+              description: URI созданной компании
+              schema:
+                type: string
+                example: /api/v2/companies/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Профиль текущего авторизованного пользователя
+      description: Возвращает данные об учетной записи, роли и компании текущего пользователя.
+      operationId: getCurrentUserProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/companies:
+    get:
+      tags:
+        - Companies
+      summary: Реестр всех компаний платформы (только для системного администратора)
+      description: |
+        Возвращает постраничный список всех зарегистрированных компаний в системе с возможностью поиска.
+        Доступно исключительно администраторам платформы с ролью `admin` (system admin).
+      operationId: listCompanies
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Поисковый запрос по наименованию компании
+          schema:
+            type: string
+            example: Рога
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Реестр компаний успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/companies/{companyId}:
+    get:
+      tags:
+        - Companies
+      summary: Получение сведений о компании
+      description: Возвращает регистрационные данные компании по ее идентификатору.
+      operationId: getCompanyById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyIdPath'
+      responses:
+        '200':
+          description: Данные компании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/companies/{companyId}/users:
+    get:
+      tags:
+        - Companies
+      summary: Список сотрудников компании
+      description: Возвращает перечень пользователей, прикрепленных к указанной компании.
+      operationId: listCompanyUsers
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyIdPath'
+      responses:
+        '200':
+          description: Список пользователей компании
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Companies
+      summary: Регистрация нового сотрудника по инвайт-коду компании
+      description: Добавляет пользователя в существующую компанию при предъявлении валидного кода приглашения.
+      operationId: registerUserWithInviteCode
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserWithInviteRequest'
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/companies/{companyId}/users/{userId}:
+    get:
+      tags:
+        - Companies
+      summary: Получение профиля сотрудника компании
+      description: Возвращает подробную информацию и роль конкретного сотрудника компании.
+      operationId: getCompanyUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyIdPath'
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: Профиль сотрудника успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Companies
+      summary: Исключение (увольнение) сотрудника из компании
+      description: |
+        Удаляет сотрудника из штата компании и отзывает его доступ к счетам и операциям 
+        (доступно только пользователям с ролью `company_admin`).
+        Запрещено удалять собственную учетную запись или единственного администратора компании.
+      operationId: removeCompanyUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyIdPath'
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '204':
+          description: Сотрудник успешно исключен из компании (доступ отозван)
+        '400':
+          description: Попытка исключить самого себя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Невозможно удалить последнего администратора компании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/companies/{companyId}/invite-codes:
+    get:
+      tags:
+        - Companies
+      summary: Получение инвайт-кода для приглашения новых сотрудников
+      description: Возвращает активный код приглашения компании (требуется роль `company_admin`).
+      operationId: getCompanyInviteCode
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CompanyIdPath'
+      responses:
+        '200':
+          description: Активный инвайт-код
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteCodeResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/accounts:
+    post:
+      tags:
+        - Accounts
+      summary: 'Открытие нового внутреннего счета'
+      description: Открывает новый балансовый мультивалютный счет для компании клиента.
+      operationId: createAccount
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Счет успешно открыт
+          headers:
+            Location:
+              description: URI созданного счета
+              schema:
+                type: string
+                example: /api/v2/accounts/3fa85f64-5717-4562-b3fc-2c963f66afa6
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+        - Accounts
+      summary: 'Получение списка счетов с фильтрацией'
+      description: Возвращает список всех внутренних счетов компании текущего пользователя.
+      operationId: listAccounts
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: currency
+          in: query
+          required: false
+          description: Фильтрация по валюте
+          schema:
+            $ref: '#/components/schemas/CurrencyEnum'
+        - name: status
+          in: query
+          required: false
+          description: Фильтрация по статусу счета
+          schema:
+            $ref: '#/components/schemas/AccountStatusEnum'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Список счетов компании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/accounts/{accountId}:
+    get:
+      tags:
+        - Accounts
+      summary: 'Получение детальной информации о счете'
+      description: Возвращает актуальные реквизиты счета, валюту, статус и текущий баланс.
+      operationId: getAccountById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountIdPath'
+      responses:
+        '200':
+          description: Детальная информация о счете
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Accounts
+      summary: 'Полное обновление параметров счета'
+      description: Идемпотентно обновляет изменяемые атрибуты счета (название, лимит, описание).
+      operationId: updateAccount
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountRequest'
+      responses:
+        '200':
+          description: Счет успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Accounts
+      summary: 'Частичное обновление счета'
+      description: |
+        Выполняет частичное обновление атрибутов счета (например, изменение статуса `ACTIVE`/`INACTIVE`
+        или обновление пользовательского названия счета). Применяется семантика RFC 7396 Merge Patch.
+      operationId: patchAccount
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountIdPath'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/PatchAccountRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchAccountRequest'
+      responses:
+        '200':
+          description: Состояние счета частично обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Accounts
+      summary: 'Закрытие / деактивация счета'
+      description: Переводит счет в неактивное состояние (`INACTIVE`). Закрытый счет не может принимать и отправлять переводы.
+      operationId: deleteAccount
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountIdPath'
+      responses:
+        '204':
+          description: Счет успешно деактивирован
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Невозможно закрыть счет с ненулевым балансом
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/accounts/{accountId}/statements:
+    post:
+      tags:
+        - Accounts
+      summary: Формирование выписки по счету за период
+      description: Генерирует официальную банковскую выписку по операциям за указанный диапазон дат.
+      operationId: generateAccountStatement
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateStatementRequest'
+      responses:
+        '201':
+          description: Выписка успешно сформирована
+          headers:
+            Location:
+              description: URI сформированной выписки
+              schema:
+                type: string
+                example: /api/v2/accounts/3fa85f64-5717-4562-b3fc-2c963f66afa6/statements/e2b694b8-8db9-4679-b14a-58673a388b14
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/accounts/{accountId}/transactions:
+    get:
+      tags:
+        - Accounts
+        - Transactions
+      summary: История транзакций конкретного счета
+      description: Возвращает упорядоченный список входящих и исходящих транзакций для указанного счета.
+      operationId: listAccountTransactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountIdPath'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Список транзакций счета
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/bank-accounts:
+    post:
+      tags:
+        - Bank Accounts
+      summary: Привязка внешнего банковского расчетного счета
+      description: Регистрирует банковские реквизиты (БИК, расчетный счет, наименование банка) и привязывает их к внутреннему счету.
+      operationId: linkBankAccount
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkBankAccountRequest'
+      responses:
+        '201':
+          description: Банковский счет успешно привязан
+          headers:
+            Location:
+              description: URI созданного банковского счета
+              schema:
+                type: string
+                example: /api/v2/bank-accounts/550e8400-e29b-41d4-a716-446655440000
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+        - Bank Accounts
+      summary: Список привязанных банковских счетов
+      description: Возвращает перечень всех внешних расчетных счетов компании текущего авторизованного пользователя.
+      operationId: listBankAccounts
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список банковских счетов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccountResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/bank-accounts/{bankAccountId}:
+    get:
+      tags:
+        - Bank Accounts
+      summary: Получение сведений о банковском счете
+      description: Возвращает реквизиты внешнего банковского счета по идентификатору.
+      operationId: getBankAccountById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BankAccountIdPath'
+      responses:
+        '200':
+          description: Реквизиты банковского счета
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Bank Accounts
+      summary: Частичное обновление банковского счета
+      description: Обновление названия или пользовательской метки банковского счета.
+      operationId: patchBankAccount
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BankAccountIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchBankAccountRequest'
+      responses:
+        '200':
+          description: Банковский счет обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Bank Accounts
+      summary: Отвязка / удаление банковского счета
+      description: Отвязывает внешний расчетный счет компании.
+      operationId: unlinkBankAccount
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BankAccountIdPath'
+      responses:
+        '204':
+          description: Банковский счет успешно отвязан
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Невозможно отвязать счет с незавершенными банковскими операциями
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/bank-operations:
+    post:
+      tags:
+        - Bank Operations
+      summary: Создание банковской операции ввода (депозит) или вывода (снятие)
+      description: |
+        Вместо глаголов в URL (`/deposit`, `/withdrawal`) операция моделируется как создание ресурса
+        в коллекции `bank-operations` с типом `DEPOSIT` или `WITHDRAWAL`.
+        Обязателен заголовок `Idempotency-Key` для защиты от дублирования банковских проводок.
+      operationId: createBankOperation
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBankOperationRequest'
+      responses:
+        '201':
+          description: Банковская операция создана и передана в обработку
+          headers:
+            Location:
+              description: URI созданной банковской операции
+              schema:
+                type: string
+                example: /api/v2/bank-operations/6fa85f64-5717-4562-b3fc-2c963f66afa6
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankOperationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+        - Bank Operations
+      summary: Список банковских операций
+      description: |
+        Возвращает журнал операций ввода (депозит) и вывода (снятие) средств компании текущего авторизованного пользователя.
+      operationId: listBankOperations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: account_id
+          in: query
+          required: false
+          description: Фильтр по внутреннему счету
+          schema:
+            type: string
+            format: uuid
+        - name: operation_type
+          in: query
+          required: false
+          description: Фильтр по типу операции
+          schema:
+            $ref: '#/components/schemas/BankOperationTypeEnum'
+        - name: status
+          in: query
+          required: false
+          description: Фильтр по статусу операции
+          schema:
+            $ref: '#/components/schemas/OperationStatusEnum'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Список банковских операций
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankOperationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/bank-operations/{operationId}:
+    get:
+      tags:
+        - Bank Operations
+      summary: Просмотр деталей банковской операции
+      description: Возвращает подробную информацию о конкретной проводке ввода или вывода.
+      operationId: getBankOperationById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OperationIdPath'
+      responses:
+        '200':
+          description: Детали банковской операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankOperationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/transactions:
+    post:
+      tags:
+        - Transactions
+      summary: Создание платежа / перевода между счетами (B2B Transfer)
+      description: |
+        Создает транзакцию перевода денежных средств с одного счета на другой.
+        Вместо глагола в пути (`/transactions/transfer`) используется стандартный REST POST в коллекцию `/transactions`.
+        Идемпотентность гарантируется обязательным заголовком `Idempotency-Key` (RFC 8470 / draft-ietf-httpapi-idempotency-key-header).
+      operationId: createTransaction
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+      responses:
+        '201':
+          description: Транзакция успешно принята к исполнению
+          headers:
+            Location:
+              description: URI созданной транзакции
+              schema:
+                type: string
+                example: /api/v2/transactions/7fa85f64-5717-4562-b3fc-2c963f66afa6
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Конфликт идемпотентности (запрос с тем же ключом обрабатывается с другими параметрами)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Ошибка бизнес-логики (недостаточно средств на балансе, разные валюты счетов)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v2/transactions/{transactionId}:
+    get:
+      tags:
+        - Transactions
+      summary: Получение детальной информации о транзакции
+      description: Возвращает полную квитанцию о транзакции, текущий статус и временные метки.
+      operationId: getTransactionById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransactionIdPath'
+      responses:
+        '200':
+          description: Детальные данные транзакции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Передайте JWT токен в заголовке `Authorization: Bearer <token>`.
+        Токен выпускается эндпоинтом `POST /api/v2/auth/login`.
+
+  parameters:
+    CompanyIdPath:
+      name: companyId
+      in: path
+      required: true
+      description: Уникальный идентификатор компании (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+
+    UserIdPath:
+      name: userId
+      in: path
+      required: true
+      description: Уникальный идентификатор пользователя / сотрудника (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: e3a12345-6789-4bcd-8ef0-123456789abc
+
+    AccountIdPath:
+      name: accountId
+      in: path
+      required: true
+      description: Уникальный идентификатор внутреннего счета (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    BankAccountIdPath:
+      name: bankAccountId
+      in: path
+      required: true
+      description: Уникальный идентификатор банковского расчетного счета (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: 550e8400-e29b-41d4-a716-446655440000
+
+    TransactionIdPath:
+      name: transactionId
+      in: path
+      required: true
+      description: Уникальный идентификатор транзакции перевода (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: 7fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    OperationIdPath:
+      name: operationId
+      in: path
+      required: true
+      description: Идентификатор банковской операции (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: 6fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Уникальный ключ идемпотентности (UUIDv4) для предотвращения повторной проводки
+      schema:
+        type: string
+        format: uuid
+        example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      description: Максимальное количество возвращаемых записей (пагинация)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+        example: 20
+
+    OffsetQuery:
+      name: offset
+      in: query
+      required: false
+      description: Смещение от начала выборки (пагинация)
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
+
+  schemas:
+    CurrencyEnum:
+      type: string
+      enum: [RUB, USD, EUR, CNY]
+      description: Международный трехбуквенный код валюты (ISO 4217)
+      example: RUB
+
+    AccountStatusEnum:
+      type: string
+      enum: [ACTIVE, INACTIVE, BLOCKED]
+      description: Статус внутреннего балансового счета
+      example: ACTIVE
+
+    TransactionStatusEnum:
+      type: string
+      enum: [PENDING, COMPLETED, FAILED]
+      description: Жизненный цикл транзакции перевода
+      example: COMPLETED
+
+    BankOperationTypeEnum:
+      type: string
+      enum: [DEPOSIT, WITHDRAWAL]
+      description: Тип банковской проводки
+      example: DEPOSIT
+
+    OperationStatusEnum:
+      type: string
+      enum: [PENDING, COMPLETED, FAILED]
+      description: Статус исполнения банковской проводки
+      example: COMPLETED
+
+    RoleEnum:
+      type: string
+      enum: [guest, user, company_admin, admin]
+      description: Роль учетной записи в системе
+      example: company_admin
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - code
+      properties:
+        error:
+          type: string
+          description: Человекочитаемое описание ошибки
+          example: Недостаточно средств на счете списания
+        code:
+          type: string
+          description: Машиночитаемый код ошибки
+          example: INSUFFICIENT_FUNDS
+        details:
+          type: object
+          description: Дополнительный контекст ошибки
+          additionalProperties: true
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: finance@acme-corp.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: SecureP@ssw0rd2026!
+
+    AuthTokenResponse:
+      type: object
+      required:
+        - user_id
+        - company_id
+        - email
+        - role
+        - token
+        - token_type
+        - expires_in
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: e3a12345-6789-4bcd-8ef0-123456789abc
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        email:
+          type: string
+          format: email
+          example: finance@acme-corp.com
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        token:
+          type: string
+          description: JWT Access Token
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          description: Время жизни токена в секундах
+          example: 900
+
+    UserProfileResponse:
+      type: object
+      required:
+        - user_id
+        - company_id
+        - login
+        - email
+        - role
+        - created_at
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: e3a12345-6789-4bcd-8ef0-123456789abc
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        login:
+          type: string
+          example: ivan_petrov
+        email:
+          type: string
+          format: email
+          example: ivan@acme-corp.com
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-01T10:00:00Z'
+
+    UserResponse:
+      type: object
+      required:
+        - user_id
+        - company_id
+        - login
+        - email
+        - role
+        - created_at
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: e3a12345-6789-4bcd-8ef0-123456789abc
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        login:
+          type: string
+          example: accountant_anna
+        email:
+          type: string
+          format: email
+          example: anna@acme-corp.com
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-02T12:00:00Z'
+
+    RegisterCompanyRequest:
+      type: object
+      required:
+        - company_name
+        - login
+        - email
+        - password
+      properties:
+        company_name:
+          type: string
+          minLength: 2
+          maxLength: 150
+          example: ООО "Рога и Копыта"
+        login:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: ceo_acme
+        email:
+          type: string
+          format: email
+          example: ceo@acme-corp.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: VeryStr0ngPass!2026
+
+    RegisterUserWithInviteRequest:
+      type: object
+      required:
+        - login
+        - email
+        - password
+        - invite_code
+      properties:
+        login:
+          type: string
+          minLength: 3
+          example: dev_user
+        email:
+          type: string
+          format: email
+          example: dev@acme-corp.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: UserPass2026!
+        invite_code:
+          type: string
+          example: INV-9872-ACME
+
+    CompanyResponse:
+      type: object
+      required:
+        - company_id
+        - name
+        - created_at
+      properties:
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        name:
+          type: string
+          example: ООО "Рога и Копыта"
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-01T09:00:00Z'
+
+    CompanyListResponse:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyResponse'
+        total:
+          type: integer
+          example: 12
+
+    InviteCodeResponse:
+      type: object
+      required:
+        - company_id
+        - invite_code
+      properties:
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        invite_code:
+          type: string
+          example: INV-9872-ACME
+
+    CreateAccountRequest:
+      type: object
+      required:
+        - currency
+      properties:
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        name:
+          type: string
+          description: Пользовательское название счета для наглядности
+          example: Основной расчетный счет (RUB)
+
+    UpdateAccountRequest:
+      type: object
+      required:
+        - name
+        - status
+      properties:
+        name:
+          type: string
+          example: Основной операционный счет
+        status:
+          $ref: '#/components/schemas/AccountStatusEnum'
+
+    PatchAccountRequest:
+      type: object
+      description: Поля для частичного обновления счета (RFC 7396)
+      properties:
+        status:
+          $ref: '#/components/schemas/AccountStatusEnum'
+        name:
+          type: string
+          example: Спецсчет для взаиморасчетов с партнерами
+
+    AccountResponse:
+      type: object
+      required:
+        - account_id
+        - company_id
+        - balance
+        - currency
+        - status
+        - created_at
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        name:
+          type: string
+          example: Основной расчетный счет
+        balance:
+          type: integer
+          format: int64
+          description: Баланс счета в неделимых единицах (копейках/центах). 1000000 = 10,000.00 руб.
+          example: 100000000
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        status:
+          $ref: '#/components/schemas/AccountStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-01T12:00:00Z'
+
+    AccountListResponse:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountResponse'
+        total:
+          type: integer
+          example: 3
+
+    GenerateStatementRequest:
+      type: object
+      required:
+        - period_from
+        - period_to
+      properties:
+        period_from:
+          type: string
+          format: date-time
+          example: '2026-03-01T00:00:00Z'
+        period_to:
+          type: string
+          format: date-time
+          example: '2026-03-31T23:59:59Z'
+
+    StatementEntry:
+      type: object
+      required:
+        - date
+        - entry_type
+        - amount
+        - balance_after
+        - counterparty
+      properties:
+        date:
+          type: string
+          format: date-time
+          example: '2026-03-10T14:32:00Z'
+        entry_type:
+          type: string
+          example: DEBIT
+        amount:
+          type: integer
+          format: int64
+          example: 5000000
+        balance_after:
+          type: integer
+          format: int64
+          example: 95000000
+        counterparty:
+          type: string
+          example: АО "Поставщик IT-Услуг"
+
+    StatementResponse:
+      type: object
+      required:
+        - statement_id
+        - account_id
+        - company_id
+        - initiator_id
+        - period_from
+        - period_to
+        - opening_balance
+        - closing_balance
+        - total_debit
+        - total_credit
+        - currency
+        - entries
+      properties:
+        statement_id:
+          type: string
+          format: uuid
+          example: e2b694b8-8db9-4679-b14a-58673a388b14
+        account_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        initiator_id:
+          type: string
+          format: uuid
+          example: e3a12345-6789-4bcd-8ef0-123456789abc
+        period_from:
+          type: string
+          format: date-time
+          example: '2026-03-01T00:00:00Z'
+        period_to:
+          type: string
+          format: date-time
+          example: '2026-03-31T23:59:59Z'
+        opening_balance:
+          type: integer
+          format: int64
+          example: 50000000
+        closing_balance:
+          type: integer
+          format: int64
+          example: 95000000
+        total_debit:
+          type: integer
+          format: int64
+          example: 10000000
+        total_credit:
+          type: integer
+          format: int64
+          example: 55000000
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatementEntry'
+
+    LinkBankAccountRequest:
+      type: object
+      required:
+        - account_id
+        - name
+        - bic
+        - settlement_account
+        - currency
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          example: ПАО Сбербанк
+        bic:
+          type: string
+          pattern: '^[0-9]{9}$'
+          description: Банковский идентификационный код (9 цифр)
+          example: '044525225'
+        settlement_account:
+          type: string
+          pattern: '^[0-9]{20}$'
+          description: 20-значный номер расчетного счета
+          example: '40702810938000012345'
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+
+    PatchBankAccountRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: ПАО Сбербанк (Главный расчетный)
+
+    BankAccountResponse:
+      type: object
+      required:
+        - bank_account_id
+        - company_id
+        - name
+        - bic
+        - settlement_account
+        - currency
+        - created_at
+      properties:
+        bank_account_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        company_id:
+          type: string
+          format: uuid
+          example: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        name:
+          type: string
+          example: ПАО Сбербанк
+        bic:
+          type: string
+          example: '044525225'
+        settlement_account:
+          type: string
+          example: '40702810938000012345'
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-02T10:30:00Z'
+
+    CreateBankOperationRequest:
+      type: object
+      required:
+        - operation_type
+        - account_id
+        - bank_account_id
+        - amount
+      properties:
+        operation_type:
+          $ref: '#/components/schemas/BankOperationTypeEnum'
+        account_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        bank_account_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        amount:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Сумма в минимальных неделимых единицах (копейках)
+          example: 5000000
+
+    BankOperationResponse:
+      type: object
+      required:
+        - bank_operation_id
+        - account_id
+        - bank_account_id
+        - initiator_id
+        - operation_type
+        - operation_status
+        - amount
+        - idempotency_key
+        - created_at
+      properties:
+        bank_operation_id:
+          type: string
+          format: uuid
+          example: 6fa85f64-5717-4562-b3fc-2c963f66afa6
+        account_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        bank_account_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        initiator_id:
+          type: string
+          format: uuid
+          example: e3a12345-6789-4bcd-8ef0-123456789abc
+        operation_type:
+          $ref: '#/components/schemas/BankOperationTypeEnum'
+        operation_status:
+          $ref: '#/components/schemas/OperationStatusEnum'
+        amount:
+          type: integer
+          format: int64
+          example: 5000000
+        idempotency_key:
+          type: string
+          example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        external_id:
+          type: string
+          example: BANK-REF-998231
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-03T11:20:00Z'
+
+    CreateTransactionRequest:
+      type: object
+      required:
+        - from_account_id
+        - to_account_id
+        - amount
+        - currency
+      properties:
+        from_account_id:
+          type: string
+          format: uuid
+          description: Счет компании-отправителя
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        to_account_id:
+          type: string
+          format: uuid
+          description: Счет компании-получателя
+          example: 4fa85f64-5717-4562-b3fc-2c963f66afa7
+        amount:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Сумма перевода в минимальных неделимых единицах (копейки/центы)
+          example: 2500000
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        purpose:
+          type: string
+          maxLength: 255
+          description: Назначение платежа
+          example: Оплата по договору № 142/26 за облачные сервисы
+
+    TransactionResponse:
+      type: object
+      required:
+        - transaction_id
+        - initiator_id
+        - from_account_id
+        - to_account_id
+        - amount
+        - currency
+        - idempotency_key
+        - transaction_status
+        - created_at
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+          example: 7fa85f64-5717-4562-b3fc-2c963f66afa6
+        initiator_id:
+          type: string
+          format: uuid
+          example: e3a12345-6789-4bcd-8ef0-123456789abc
+        from_account_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        to_account_id:
+          type: string
+          format: uuid
+          example: 4fa85f64-5717-4562-b3fc-2c963f66afa7
+        amount:
+          type: integer
+          format: int64
+          example: 2500000
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        idempotency_key:
+          type: string
+          example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        transaction_status:
+          $ref: '#/components/schemas/TransactionStatusEnum'
+        purpose:
+          type: string
+          example: Оплата по договору № 142/26 за облачные сервисы
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-03T15:45:00Z'
+
+    TransactionListResponse:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponse'
+        total:
+          type: integer
+          example: 42
+
+  responses:
+    BadRequestError:
+      description: Некорректный синтаксис запроса или невалидный JSON
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Некорректный синтаксис тела запроса
+            code: BAD_REQUEST
+
+    UnauthorizedError:
+      description: Отсутствует или недействителен токен аутентификации (JWT)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Требуется авторизация
+            code: UNAUTHORIZED
+
+    ForbiddenError:
+      description: Недостаточно прав для выполнения действия (ограничение по ролям)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Доступ запрещен для текущей роли
+            code: FORBIDDEN
+
+    NotFoundError:
+      description: Запрашиваемый ресурс с данным идентификатором не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Ресурс с указанным ID не найден
+            code: NOT_FOUND
+
+    ConflictError:
+      description: Конфликт состояния данных (например, email уже зарегистрирован или дубликат валюты)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Пользователь с таким email уже существует
+            code: CONFLICT
+
+    UnprocessableEntityError:
+      description: Семантическая ошибка валидации параметров (недостаточно баланса, неверная сумма)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Недостаточно средств на счете списания
+            code: INSUFFICIENT_FUNDS
+
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Внутренняя ошибка сервера
+            code: INTERNAL_SERVER_ERROR
