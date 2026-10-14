@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .window { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; rx: 8; }
+      .bar { fill: #f1f5f9; stroke: #cbd5e1; stroke-width: 1; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; rx: 6; }
+      .title { font-family: ui-monospace, monospace, sans-serif; font-size: 14px; font-weight: bold; fill: #0f172a; }
+      .label { font-family: ui-monospace, monospace, sans-serif; font-size: 11px; fill: #475569; }
+      .input { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1; rx: 4; }
+      .input-opt { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; stroke-dasharray: 4 3; rx: 4; }
+      .val-text { font-family: ui-monospace, monospace, sans-serif; font-size: 11px; fill: #1e293b; }
+      .btn { fill: #334155; rx: 4; }
+      .btn-text { font-family: ui-monospace, monospace, sans-serif; font-size: 12px; font-weight: bold; fill: #ffffff; text-anchor: middle; }
+      .error-box { fill: #fff1f2; stroke: #fda4af; stroke-width: 1; rx: 4; }
+      .error-text { font-family: ui-monospace, monospace, sans-serif; font-size: 11px; fill: #be123c; }
+      .hint { font-family: ui-monospace, monospace, sans-serif; font-size: 10px; fill: #64748b; }
+      .active-tab { fill: #0f172a; font-weight: bold; }
+      .inactive-tab { fill: #94a3b8; }
+      .badge { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 1; rx: 3; }
+    </style>
+  </defs>
+
+  <!-- Canvas & Window Frame -->
+  <rect width="800" height="520" class="bg"/>
+  <rect x="20" y="15" width="760" height="490" class="window"/>
+  <rect x="20" y="15" width="760" height="30" class="bar"/>
+  <circle cx="40" cy="30" r="4" fill="#cbd5e1"/>
+  <circle cx="55" cy="30" r="4" fill="#cbd5e1"/>
+  <circle cx="70" cy="30" r="4" fill="#cbd5e1"/>
+  <text x="400" y="34" class="hint" text-anchor="middle">Wireframe #1 — Auth &amp; Registration Screen (/login, /register)</text>
+
+  <!-- Auth Card -->
+  <rect x="230" y="65" width="340" height="420" class="card"/>
+  <text x="400" y="95" class="title" text-anchor="middle">GoFlow Pay | Auth Module</text>
+
+  <!-- Tabs Switcher -->
+  <rect x="250" y="110" width="150" height="30" fill="#f1f5f9" stroke="#cbd5e1" rx="4"/>
+  <text x="325" y="129" class="title active-tab" font-size="12" text-anchor="middle">[ Вход ]</text>
+  <rect x="400" y="110" width="150" height="30" fill="#ffffff" stroke="#cbd5e1" rx="4"/>
+  <text x="475" y="129" class="title inactive-tab" font-size="12" text-anchor="middle">Регистрация</text>
+
+  <!-- Validation Error Alert Box -->
+  <rect x="250" y="150" width="300" height="34" class="error-box"/>
+  <text x="260" y="171" class="error-text">⚠ 401 Unauthorized: Invalid credentials</text>
+
+  <!-- Form Field: Email -->
+  <text x="250" y="202" class="label">Email адрес *</text>
+  <rect x="250" y="210" width="300" height="32" class="input"/>
+  <text x="260" y="230" class="val-text">accountant@company.io</text>
+
+  <!-- Form Field: Password -->
+  <text x="250" y="260" class="label">Пароль *</text>
+  <rect x="250" y="268" width="300" height="32" class="input"/>
+  <text x="260" y="288" class="val-text">••••••••••••••••</text>
+
+  <!-- Form Field: Company Name (Register mode) -->
+  <text x="250" y="318" class="label">Название компании (только для /register)</text>
+  <rect x="250" y="326" width="300" height="32" class="input-opt"/>
+  <text x="260" y="346" class="hint">ООО "ТехноПром" (optional in login)</text>
+
+  <!-- Action Button -->
+  <rect x="250" y="375" width="300" height="36" class="btn"/>
+  <text x="400" y="397" class="btn-text">Войти в систему →</text>
+
+  <!-- Subtext & API Link -->
+  <text x="400" y="430" class="hint" text-anchor="middle">Забыли пароль? | Регистрация новой организации</text>
+  <rect x="250" y="445" width="300" height="24" class="badge"/>
+  <text x="400" y="460" class="hint" font-size="9" text-anchor="middle">API: POST /api/v1/auth/login → 200 { token, user_id }</text>
+</svg>

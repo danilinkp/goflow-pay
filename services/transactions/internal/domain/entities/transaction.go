@@ -39,7 +39,7 @@ type Transaction struct {
 	updatedAt      time.Time
 }
 
-func NewTransaction(initiatorId, fromAccountId, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string) (*Transaction, error) {
+func NewTransaction(initiatorId, fromAccountId, toAccountId uuid.UUID, amount int64, currency Currency, status TransactionStatus, idempotencyKey string, createdAt ...time.Time) (*Transaction, error) {
 	if initiatorId == uuid.Nil {
 		return nil, fmt.Errorf("transaction initiatorId is required")
 	}
@@ -63,6 +63,9 @@ func NewTransaction(initiatorId, fromAccountId, toAccountId uuid.UUID, amount in
 	}
 
 	now := time.Now().UTC()
+	if len(createdAt) > 0 && !createdAt[0].IsZero() {
+		now = createdAt[0].UTC()
+	}
 	return &Transaction{
 		transactionId:  uuid.New(),
 		initiatorId:    initiatorId,

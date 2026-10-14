@@ -43,22 +43,28 @@ type TransactionService struct {
 	outboxRepository      OutboxRepository
 	transactor            Transactor
 	log                   *slog.Logger
+	now                   func() time.Time
 }
 
-func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor, log *slog.Logger) *TransactionService {
+func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor, log *slog.Logger, now ...func() time.Time) *TransactionService {
+	nowFunc := func() time.Time { return time.Now().UTC() }
+	if len(now) > 0 && now[0] != nil {
+		nowFunc = now[0]
+	}
 	return &TransactionService{
 		accountClient:         client,
 		transactionRepository: transactionRepository,
 		outboxRepository:      outboxRepository,
 		transactor:            transactor,
 		log:                   log,
+		now:                   nowFunc,
 	}
 }
 
 func (t *TransactionService) Transfer(ctx context.Context, request *TransferInput) (*entities.Transaction, error) {
 	op := "TransactionService.Transfer"
 
-	start := time.Now()
+	start := t.now()
 	log := t.log.With(
 		sl.Op(op),
 		sl.EventID(),
@@ -80,6 +86,7 @@ func (t *TransactionService) Transfer(ctx context.Context, request *TransferInpu
 		request.Currency,
 		entities.PendingStatus,
 		request.IdempotencyKey,
+		t.now(),
 	)
 	if err != nil {
 		log.Error("failed to create new transaction", sl.ErrWithStack(err), sl.Duration(time.Since(start)))

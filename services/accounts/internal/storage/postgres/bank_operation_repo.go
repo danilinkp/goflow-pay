@@ -14,16 +14,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type BankOperationRepo struct {
-	pool    *pgxpool.Pool
+	pool    trmpgx.Tr
 	getter  *trmpgx.CtxGetter
 	factory *postgresLib.SelectFactory[models.BankOperationModel]
 }
 
-func NewBankOperationRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *BankOperationRepo {
+func NewBankOperationRepo(pool trmpgx.Tr, c *trmpgx.CtxGetter) *BankOperationRepo {
 	return &BankOperationRepo{
 		pool:    pool,
 		getter:  c,

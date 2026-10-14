@@ -37,7 +37,7 @@ func ReconstructAccountOperation(operationId, accountId, counterpartyId, transac
 	}
 }
 
-func NewAccountOperation(accountId, counterpartyId, transactionId uuid.UUID, operationType OperationType, operationStatus OperationStatus, amount, balanceAfter int64) (*AccountOperation, error) {
+func NewAccountOperation(accountId, counterpartyId, transactionId uuid.UUID, operationType OperationType, operationStatus OperationStatus, amount, balanceAfter int64, createdAt ...time.Time) (*AccountOperation, error) {
 	if accountId == uuid.Nil {
 		return nil, fmt.Errorf("%s: accountId is required", "create bank operation")
 	}
@@ -58,6 +58,9 @@ func NewAccountOperation(accountId, counterpartyId, transactionId uuid.UUID, ope
 	}
 
 	now := time.Now().UTC()
+	if len(createdAt) > 0 && !createdAt[0].IsZero() {
+		now = createdAt[0].UTC()
+	}
 	return &AccountOperation{
 		operationId:     uuid.New(),
 		accountId:       accountId,

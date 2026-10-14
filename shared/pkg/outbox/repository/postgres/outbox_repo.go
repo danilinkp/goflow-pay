@@ -7,15 +7,14 @@ import (
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type OutboxRepo struct {
-	pool   *pgxpool.Pool
+	pool   trmpgx.Tr
 	getter *trmpgx.CtxGetter
 }
 
-func NewOutboxRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *OutboxRepo {
+func NewOutboxRepo(pool trmpgx.Tr, c *trmpgx.CtxGetter) *OutboxRepo {
 	return &OutboxRepo{
 		pool:   pool,
 		getter: c,
