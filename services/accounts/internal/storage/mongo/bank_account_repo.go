@@ -91,3 +91,15 @@ func (r *BankAccountRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUI
 
 	return res, nil
 }
+
+func (r *BankAccountRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	op := "BankAccountRepo.Delete"
+	res, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.DeletedCount == 0 {
+		return fmt.Errorf("%s: %w", op, domain.ErrBankAccountNotFound)
+	}
+	return nil
+}

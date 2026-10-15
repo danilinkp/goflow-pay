@@ -44,6 +44,7 @@ type BankAccountRepository interface {
 	Save(ctx context.Context, account *entities.BankAccount) error
 	GetById(ctx context.Context, id uuid.UUID) (*entities.BankAccount, error)
 	GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.BankAccount, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type BankOperationRepository interface {
@@ -973,4 +974,49 @@ func (a *AccountService) saveOutboxEvent(ctx context.Context, o outbox.Outboxabl
 		return fmt.Errorf("build outbox event: %w", err)
 	}
 	return a.outboxRepo.Save(ctx, evt)
+}
+
+func (a *AccountService) GetAccount(ctx context.Context, accountId uuid.UUID) (*entities.Account, error) {
+	const op = "AccountService.GetAccount"
+	acc, err := a.accountRepository.GetById(ctx, accountId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return acc, nil
+}
+
+func (a *AccountService) UpdateAccountStatus(ctx context.Context, accountId uuid.UUID, status entities.AccountStatus) (*entities.Account, error) {
+	const op = "AccountService.UpdateAccountStatus"
+	if err := a.accountRepository.UpdateStatus(ctx, accountId, status); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	acc, err := a.accountRepository.GetById(ctx, accountId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return acc, nil
+}
+
+func (a *AccountService) GetBankAccount(ctx context.Context, bankAccountId uuid.UUID) (*entities.BankAccount, error) {
+	const op = "AccountService.GetBankAccount"
+	ba, err := a.bankAccountRepository.GetById(ctx, bankAccountId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return ba, nil
+}
+
+func (a *AccountService) DeleteBankAccount(ctx context.Context, bankAccountId, companyId uuid.UUID) error {
+	const op = "AccountService.DeleteBankAccount"
+	ba, err := a.bankAccountRepository.GetById(ctx, bankAccountId)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if ba.CompanyId() != companyId {
+		return ErrDifferentCompanies
+	}
+	if err := a.bankAccountRepository.Delete(ctx, bankAccountId); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
 }

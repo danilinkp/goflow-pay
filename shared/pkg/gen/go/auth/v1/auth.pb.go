@@ -954,6 +954,362 @@ func (x *IsTokenValidResponse) GetExpiresAt() *timestamppb.Timestamp {
 	return nil
 }
 
+type CompanyInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompanyInfo) Reset() {
+	*x = CompanyInfo{}
+	mi := &file_auth_v1_auth_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompanyInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompanyInfo) ProtoMessage() {}
+
+func (x *CompanyInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompanyInfo.ProtoReflect.Descriptor instead.
+func (*CompanyInfo) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CompanyInfo) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *CompanyInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CompanyInfo) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type GetCompanyByIdRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCompanyByIdRequest) Reset() {
+	*x = GetCompanyByIdRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCompanyByIdRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCompanyByIdRequest) ProtoMessage() {}
+
+func (x *GetCompanyByIdRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCompanyByIdRequest.ProtoReflect.Descriptor instead.
+func (*GetCompanyByIdRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetCompanyByIdRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+type GetCompanyByIdResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Company       *CompanyInfo           `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCompanyByIdResponse) Reset() {
+	*x = GetCompanyByIdResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCompanyByIdResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCompanyByIdResponse) ProtoMessage() {}
+
+func (x *GetCompanyByIdResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCompanyByIdResponse.ProtoReflect.Descriptor instead.
+func (*GetCompanyByIdResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetCompanyByIdResponse) GetCompany() *CompanyInfo {
+	if x != nil {
+		return x.Company
+	}
+	return nil
+}
+
+type ListCompaniesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Search        string                 `protobuf:"bytes,1,opt,name=search,proto3" json:"search,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCompaniesRequest) Reset() {
+	*x = ListCompaniesRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCompaniesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCompaniesRequest) ProtoMessage() {}
+
+func (x *ListCompaniesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCompaniesRequest.ProtoReflect.Descriptor instead.
+func (*ListCompaniesRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ListCompaniesRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListCompaniesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListCompaniesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type ListCompaniesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Companies     []*CompanyInfo         `protobuf:"bytes,1,rep,name=companies,proto3" json:"companies,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCompaniesResponse) Reset() {
+	*x = ListCompaniesResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCompaniesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCompaniesResponse) ProtoMessage() {}
+
+func (x *ListCompaniesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCompaniesResponse.ProtoReflect.Descriptor instead.
+func (*ListCompaniesResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListCompaniesResponse) GetCompanies() []*CompanyInfo {
+	if x != nil {
+		return x.Companies
+	}
+	return nil
+}
+
+func (x *ListCompaniesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type RemoveCompanyUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	RequesterId   string                 `protobuf:"bytes,3,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveCompanyUserRequest) Reset() {
+	*x = RemoveCompanyUserRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveCompanyUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveCompanyUserRequest) ProtoMessage() {}
+
+func (x *RemoveCompanyUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveCompanyUserRequest.ProtoReflect.Descriptor instead.
+func (*RemoveCompanyUserRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *RemoveCompanyUserRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *RemoveCompanyUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *RemoveCompanyUserRequest) GetRequesterId() string {
+	if x != nil {
+		return x.RequesterId
+	}
+	return ""
+}
+
+type RemoveCompanyUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveCompanyUserResponse) Reset() {
+	*x = RemoveCompanyUserResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveCompanyUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveCompanyUserResponse) ProtoMessage() {}
+
+func (x *RemoveCompanyUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveCompanyUserResponse.ProtoReflect.Descriptor instead.
+func (*RemoveCompanyUserResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{23}
+}
+
 var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
@@ -1023,7 +1379,31 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"company_id\x18\x03 \x01(\tR\tcompanyId\x12\x12\n" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x129\n" +
 	"\n" +
-	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2\xa3\x06\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"{\n" +
+	"\vCompanyInfo\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x129\n" +
+	"\n" +
+	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"6\n" +
+	"\x15GetCompanyByIdRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\"H\n" +
+	"\x16GetCompanyByIdResponse\x12.\n" +
+	"\acompany\x18\x01 \x01(\v2\x14.auth.v1.CompanyInfoR\acompany\"\\\n" +
+	"\x14ListCompaniesRequest\x12\x16\n" +
+	"\x06search\x18\x01 \x01(\tR\x06search\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"a\n" +
+	"\x15ListCompaniesResponse\x122\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x14.auth.v1.CompanyInfoR\tcompanies\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"u\n" +
+	"\x18RemoveCompanyUserRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12!\n" +
+	"\frequester_id\x18\x03 \x01(\tR\vrequesterId\"\x1b\n" +
+	"\x19RemoveCompanyUserResponse2\xa2\b\n" +
 	"\vAuthService\x12W\n" +
 	"\x16RegisterWithNewCompany\x12&.auth.v1.RegisterWithNewCompanyRequest\x1a\x15.auth.v1.AuthResponse\x12a\n" +
 	"\x1bRegisterWithExistingCompany\x12+.auth.v1.RegisterWithExistingCompanyRequest\x1a\x15.auth.v1.AuthResponse\x125\n" +
@@ -1035,7 +1415,10 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\fIsTokenValid\x12\x1c.auth.v1.IsTokenValidRequest\x1a\x1d.auth.v1.IsTokenValidResponse\x12?\n" +
 	"\n" +
 	"InitSystem\x12\x1a.auth.v1.InitSystemRequest\x1a\x15.auth.v1.AuthResponse\x12;\n" +
-	"\bAddAdmin\x12\x18.auth.v1.AddAdminRequest\x1a\x15.auth.v1.AuthResponseBw\n" +
+	"\bAddAdmin\x12\x18.auth.v1.AddAdminRequest\x1a\x15.auth.v1.AuthResponse\x12Q\n" +
+	"\x0eGetCompanyById\x12\x1e.auth.v1.GetCompanyByIdRequest\x1a\x1f.auth.v1.GetCompanyByIdResponse\x12N\n" +
+	"\rListCompanies\x12\x1d.auth.v1.ListCompaniesRequest\x1a\x1e.auth.v1.ListCompaniesResponse\x12Z\n" +
+	"\x11RemoveCompanyUser\x12!.auth.v1.RemoveCompanyUserRequest\x1a\".auth.v1.RemoveCompanyUserResponseBw\n" +
 	"\vcom.auth.v1B\tAuthProtoP\x01Z shared/pkg/gen/go/auth/v1;authv1\xa2\x02\x03AXX\xaa\x02\aAuth.V1\xca\x02\aAuth\\V1\xe2\x02\x13Auth\\V1\\GPBMetadata\xea\x02\bAuth::V1b\x06proto3"
 
 var (
@@ -1050,7 +1433,7 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_auth_v1_auth_proto_rawDescData
 }
 
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_auth_v1_auth_proto_goTypes = []any{
 	(*RegisterWithNewCompanyRequest)(nil),      // 0: auth.v1.RegisterWithNewCompanyRequest
 	(*AuthResponse)(nil),                       // 1: auth.v1.AuthResponse
@@ -1069,38 +1452,54 @@ var file_auth_v1_auth_proto_goTypes = []any{
 	(*AddAdminRequest)(nil),                    // 14: auth.v1.AddAdminRequest
 	(*IsTokenValidRequest)(nil),                // 15: auth.v1.IsTokenValidRequest
 	(*IsTokenValidResponse)(nil),               // 16: auth.v1.IsTokenValidResponse
-	(*timestamppb.Timestamp)(nil),              // 17: google.protobuf.Timestamp
+	(*CompanyInfo)(nil),                        // 17: auth.v1.CompanyInfo
+	(*GetCompanyByIdRequest)(nil),              // 18: auth.v1.GetCompanyByIdRequest
+	(*GetCompanyByIdResponse)(nil),             // 19: auth.v1.GetCompanyByIdResponse
+	(*ListCompaniesRequest)(nil),               // 20: auth.v1.ListCompaniesRequest
+	(*ListCompaniesResponse)(nil),              // 21: auth.v1.ListCompaniesResponse
+	(*RemoveCompanyUserRequest)(nil),           // 22: auth.v1.RemoveCompanyUserRequest
+	(*RemoveCompanyUserResponse)(nil),          // 23: auth.v1.RemoveCompanyUserResponse
+	(*timestamppb.Timestamp)(nil),              // 24: google.protobuf.Timestamp
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
-	17, // 0: auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
+	24, // 0: auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: auth.v1.GetUsersByCompanyIdResponse.users:type_name -> auth.v1.UserInfo
 	7,  // 2: auth.v1.GetUserByIdResponse.user:type_name -> auth.v1.UserInfo
-	17, // 3: auth.v1.IsTokenValidResponse.expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 4: auth.v1.AuthService.RegisterWithNewCompany:input_type -> auth.v1.RegisterWithNewCompanyRequest
-	2,  // 5: auth.v1.AuthService.RegisterWithExistingCompany:input_type -> auth.v1.RegisterWithExistingCompanyRequest
-	3,  // 6: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
-	4,  // 7: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
-	6,  // 8: auth.v1.AuthService.GetUsersByCompanyId:input_type -> auth.v1.GetUsersByCompanyIdRequest
-	9,  // 9: auth.v1.AuthService.GetUserById:input_type -> auth.v1.GetUserByIdRequest
-	11, // 10: auth.v1.AuthService.GetInviteCodeByCompanyId:input_type -> auth.v1.GetInviteCodeByCompanyIdRequest
-	15, // 11: auth.v1.AuthService.IsTokenValid:input_type -> auth.v1.IsTokenValidRequest
-	13, // 12: auth.v1.AuthService.InitSystem:input_type -> auth.v1.InitSystemRequest
-	14, // 13: auth.v1.AuthService.AddAdmin:input_type -> auth.v1.AddAdminRequest
-	1,  // 14: auth.v1.AuthService.RegisterWithNewCompany:output_type -> auth.v1.AuthResponse
-	1,  // 15: auth.v1.AuthService.RegisterWithExistingCompany:output_type -> auth.v1.AuthResponse
-	1,  // 16: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
-	5,  // 17: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
-	8,  // 18: auth.v1.AuthService.GetUsersByCompanyId:output_type -> auth.v1.GetUsersByCompanyIdResponse
-	10, // 19: auth.v1.AuthService.GetUserById:output_type -> auth.v1.GetUserByIdResponse
-	12, // 20: auth.v1.AuthService.GetInviteCodeByCompanyId:output_type -> auth.v1.GetInviteCodeByCompanyIdResponse
-	16, // 21: auth.v1.AuthService.IsTokenValid:output_type -> auth.v1.IsTokenValidResponse
-	1,  // 22: auth.v1.AuthService.InitSystem:output_type -> auth.v1.AuthResponse
-	1,  // 23: auth.v1.AuthService.AddAdmin:output_type -> auth.v1.AuthResponse
-	14, // [14:24] is the sub-list for method output_type
-	4,  // [4:14] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	24, // 3: auth.v1.IsTokenValidResponse.expires_at:type_name -> google.protobuf.Timestamp
+	24, // 4: auth.v1.CompanyInfo.created_at:type_name -> google.protobuf.Timestamp
+	17, // 5: auth.v1.GetCompanyByIdResponse.company:type_name -> auth.v1.CompanyInfo
+	17, // 6: auth.v1.ListCompaniesResponse.companies:type_name -> auth.v1.CompanyInfo
+	0,  // 7: auth.v1.AuthService.RegisterWithNewCompany:input_type -> auth.v1.RegisterWithNewCompanyRequest
+	2,  // 8: auth.v1.AuthService.RegisterWithExistingCompany:input_type -> auth.v1.RegisterWithExistingCompanyRequest
+	3,  // 9: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
+	4,  // 10: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
+	6,  // 11: auth.v1.AuthService.GetUsersByCompanyId:input_type -> auth.v1.GetUsersByCompanyIdRequest
+	9,  // 12: auth.v1.AuthService.GetUserById:input_type -> auth.v1.GetUserByIdRequest
+	11, // 13: auth.v1.AuthService.GetInviteCodeByCompanyId:input_type -> auth.v1.GetInviteCodeByCompanyIdRequest
+	15, // 14: auth.v1.AuthService.IsTokenValid:input_type -> auth.v1.IsTokenValidRequest
+	13, // 15: auth.v1.AuthService.InitSystem:input_type -> auth.v1.InitSystemRequest
+	14, // 16: auth.v1.AuthService.AddAdmin:input_type -> auth.v1.AddAdminRequest
+	18, // 17: auth.v1.AuthService.GetCompanyById:input_type -> auth.v1.GetCompanyByIdRequest
+	20, // 18: auth.v1.AuthService.ListCompanies:input_type -> auth.v1.ListCompaniesRequest
+	22, // 19: auth.v1.AuthService.RemoveCompanyUser:input_type -> auth.v1.RemoveCompanyUserRequest
+	1,  // 20: auth.v1.AuthService.RegisterWithNewCompany:output_type -> auth.v1.AuthResponse
+	1,  // 21: auth.v1.AuthService.RegisterWithExistingCompany:output_type -> auth.v1.AuthResponse
+	1,  // 22: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
+	5,  // 23: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
+	8,  // 24: auth.v1.AuthService.GetUsersByCompanyId:output_type -> auth.v1.GetUsersByCompanyIdResponse
+	10, // 25: auth.v1.AuthService.GetUserById:output_type -> auth.v1.GetUserByIdResponse
+	12, // 26: auth.v1.AuthService.GetInviteCodeByCompanyId:output_type -> auth.v1.GetInviteCodeByCompanyIdResponse
+	16, // 27: auth.v1.AuthService.IsTokenValid:output_type -> auth.v1.IsTokenValidResponse
+	1,  // 28: auth.v1.AuthService.InitSystem:output_type -> auth.v1.AuthResponse
+	1,  // 29: auth.v1.AuthService.AddAdmin:output_type -> auth.v1.AuthResponse
+	19, // 30: auth.v1.AuthService.GetCompanyById:output_type -> auth.v1.GetCompanyByIdResponse
+	21, // 31: auth.v1.AuthService.ListCompanies:output_type -> auth.v1.ListCompaniesResponse
+	23, // 32: auth.v1.AuthService.RemoveCompanyUser:output_type -> auth.v1.RemoveCompanyUserResponse
+	20, // [20:33] is the sub-list for method output_type
+	7,  // [7:20] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_auth_v1_auth_proto_init() }
@@ -1114,7 +1513,7 @@ func file_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

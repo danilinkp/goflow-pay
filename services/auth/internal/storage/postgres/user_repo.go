@@ -103,3 +103,16 @@ func (r *UserRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*
 
 	return res, nil
 }
+
+func (r *UserRepo) Delete(ctx context.Context, userId uuid.UUID) error {
+	op := "UserRepo.Delete"
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+	cmd, err := conn.Exec(ctx, "DELETE FROM users WHERE user_id = $1", userId)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
+	}
+	return nil
+}

@@ -19,6 +19,7 @@ type TransactionProvider interface {
 	Transfer(ctx context.Context, request *service.TransferInput) (*entities.Transaction, error)
 	GetAllTransactions(ctx context.Context, accountId uuid.UUID) ([]*entities.Transaction, error)
 	GetTransaction(ctx context.Context, txId uuid.UUID) (*entities.Transaction, error)
+	ListTransactions(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error)
 }
 
 type TransactionServer struct {
@@ -95,6 +96,40 @@ func (s *TransactionServer) GetTransaction(ctx context.Context, req *transaction
 	}
 
 	return &transactionsv1.GetTransactionResponse{Transaction: mapTransactionToProto(tx)}, nil
+}
+
+func (s *TransactionServer) ListTransactions(ctx context.Context, req *transactionsv1.ListTransactionsRequest) (*transactionsv1.ListTransactionsResponse, error) {
+	var accIds []uuid.UUID
+	for _, idStr := range req.GetAccountIds() {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid account_id %q: %v", idStr, err)
+		}
+		accIds = append(accIds, id)
+	}
+
+	curr := ""
+	if req.GetCurrency() != transactionsv1.Currency_CURRENCY_UNSPECIFIED {
+		curr = string(currencyFromProto(req.GetCurrency()))
+	}
+
+	limit := int(req.GetLimit())
+	offset := int(req.GetOffset())
+
+	txs, total, err := s.svc.ListTransactions(ctx, accIds, req.GetStatus(), curr, limit, offset)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	pbTxs := make([]*transactionsv1.Transaction, len(txs))
+	for i, tx := range txs {
+		pbTxs[i] = mapTransactionToProto(tx)
+	}
+
+	return &transactionsv1.ListTransactionsResponse{
+		Transactions: pbTxs,
+		Total:        int32(total),
+	}, nil
 }
 
 func currencyFromProto(c transactionsv1.Currency) entities.Currency {

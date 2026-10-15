@@ -29,6 +29,9 @@ const (
 	AuthService_IsTokenValid_FullMethodName                = "/auth.v1.AuthService/IsTokenValid"
 	AuthService_InitSystem_FullMethodName                  = "/auth.v1.AuthService/InitSystem"
 	AuthService_AddAdmin_FullMethodName                    = "/auth.v1.AuthService/AddAdmin"
+	AuthService_GetCompanyById_FullMethodName              = "/auth.v1.AuthService/GetCompanyById"
+	AuthService_ListCompanies_FullMethodName               = "/auth.v1.AuthService/ListCompanies"
+	AuthService_RemoveCompanyUser_FullMethodName           = "/auth.v1.AuthService/RemoveCompanyUser"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -45,6 +48,9 @@ type AuthServiceClient interface {
 	IsTokenValid(ctx context.Context, in *IsTokenValidRequest, opts ...grpc.CallOption) (*IsTokenValidResponse, error)
 	InitSystem(ctx context.Context, in *InitSystemRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	AddAdmin(ctx context.Context, in *AddAdminRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	GetCompanyById(ctx context.Context, in *GetCompanyByIdRequest, opts ...grpc.CallOption) (*GetCompanyByIdResponse, error)
+	ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error)
+	RemoveCompanyUser(ctx context.Context, in *RemoveCompanyUserRequest, opts ...grpc.CallOption) (*RemoveCompanyUserResponse, error)
 }
 
 type authServiceClient struct {
@@ -155,6 +161,36 @@ func (c *authServiceClient) AddAdmin(ctx context.Context, in *AddAdminRequest, o
 	return out, nil
 }
 
+func (c *authServiceClient) GetCompanyById(ctx context.Context, in *GetCompanyByIdRequest, opts ...grpc.CallOption) (*GetCompanyByIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanyByIdResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetCompanyById_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCompaniesResponse)
+	err := c.cc.Invoke(ctx, AuthService_ListCompanies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RemoveCompanyUser(ctx context.Context, in *RemoveCompanyUserRequest, opts ...grpc.CallOption) (*RemoveCompanyUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveCompanyUserResponse)
+	err := c.cc.Invoke(ctx, AuthService_RemoveCompanyUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -169,6 +205,9 @@ type AuthServiceServer interface {
 	IsTokenValid(context.Context, *IsTokenValidRequest) (*IsTokenValidResponse, error)
 	InitSystem(context.Context, *InitSystemRequest) (*AuthResponse, error)
 	AddAdmin(context.Context, *AddAdminRequest) (*AuthResponse, error)
+	GetCompanyById(context.Context, *GetCompanyByIdRequest) (*GetCompanyByIdResponse, error)
+	ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error)
+	RemoveCompanyUser(context.Context, *RemoveCompanyUserRequest) (*RemoveCompanyUserResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -208,6 +247,15 @@ func (UnimplementedAuthServiceServer) InitSystem(context.Context, *InitSystemReq
 }
 func (UnimplementedAuthServiceServer) AddAdmin(context.Context, *AddAdminRequest) (*AuthResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddAdmin not implemented")
+}
+func (UnimplementedAuthServiceServer) GetCompanyById(context.Context, *GetCompanyByIdRequest) (*GetCompanyByIdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompanyById not implemented")
+}
+func (UnimplementedAuthServiceServer) ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCompanies not implemented")
+}
+func (UnimplementedAuthServiceServer) RemoveCompanyUser(context.Context, *RemoveCompanyUserRequest) (*RemoveCompanyUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveCompanyUser not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -410,6 +458,60 @@ func _AuthService_AddAdmin_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_GetCompanyById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanyByIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetCompanyById(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetCompanyById_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetCompanyById(ctx, req.(*GetCompanyByIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ListCompanies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCompaniesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListCompanies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListCompanies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListCompanies(ctx, req.(*ListCompaniesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RemoveCompanyUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveCompanyUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RemoveCompanyUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RemoveCompanyUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RemoveCompanyUser(ctx, req.(*RemoveCompanyUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -456,6 +558,18 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddAdmin",
 			Handler:    _AuthService_AddAdmin_Handler,
+		},
+		{
+			MethodName: "GetCompanyById",
+			Handler:    _AuthService_GetCompanyById_Handler,
+		},
+		{
+			MethodName: "ListCompanies",
+			Handler:    _AuthService_ListCompanies_Handler,
+		},
+		{
+			MethodName: "RemoveCompanyUser",
+			Handler:    _AuthService_RemoveCompanyUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

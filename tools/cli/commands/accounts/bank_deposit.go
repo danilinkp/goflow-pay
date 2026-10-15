@@ -11,11 +11,10 @@ import (
 )
 
 type bankOperationRequest struct {
-	CompanyId      uuid.UUID `json:"companyId"`
-	AccountId      uuid.UUID `json:"account_id"`
-	BankAccountId  uuid.UUID `json:"bank_account_id"`
-	Amount         int64     `json:"amount"`
-	IdempotencyKey string    `json:"idempotency_key"`
+	AccountId     uuid.UUID `json:"account_id"`
+	BankAccountId uuid.UUID `json:"bank_account_id"`
+	Amount        int64     `json:"amount"`
+	OperationType string    `json:"operation_type"`
 }
 
 type bankOperationResponse struct {
@@ -38,19 +37,21 @@ func NewBankDepositCmd(httpClient *client.Client) *cobra.Command {
 		Use:   "bank-deposit",
 		Short: "Make a bank deposit (company_admin only)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, err := credentials.Load()
-			if err != nil {
+			if _, err := credentials.Load(); err != nil {
 				return err
 			}
 
+			headers := map[string]string{
+				"Idempotency-Key": idempotencyKey,
+			}
 			var resp bankOperationResponse
-			if err = httpClient.Post(context.Background(), "/api/v1/accounts/bank/deposit",
+			if err := httpClient.PostWithHeaders(context.Background(), "/api/v2/bank-operations",
+				headers,
 				bankOperationRequest{
-					CompanyId:      uuid.MustParse(creds.CompanyID),
-					AccountId:      uuid.MustParse(accountID),
-					BankAccountId:  uuid.MustParse(bankAccountID),
-					Amount:         amount,
-					IdempotencyKey: idempotencyKey,
+					AccountId:     uuid.MustParse(accountID),
+					BankAccountId: uuid.MustParse(bankAccountID),
+					Amount:        amount,
+					OperationType: "DEPOSIT",
 				}, &resp,
 			); err != nil {
 				return fmt.Errorf("failed to make bank deposit: %w", err)

@@ -1,0 +1,20 @@
+env: "test"
+storage:
+  type: "postgres"
+  postgres:
+    host: "localhost"
+    port: "5439"
+    name: "account_test"
+    ssl_mode: "disable"
+    connect_timeout: 5s
+    max_retries_time: 2s
+grpc:
+  port: 50052
+  timeout: 5s
+kafka:
+  brokers: "localhost:9092"
+outbox:
+  interval: 60s
+  batch_size: 10
+bank_gateway:
+  failure_rate: 0.0

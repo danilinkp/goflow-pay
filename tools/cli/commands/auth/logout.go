@@ -14,7 +14,7 @@ func NewLogoutCmd(httpClient *client.Client) *cobra.Command {
 		Use:   "logout",
 		Short: "Logout from GoFlow Pay",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := httpClient.Post(context.Background(), "/api/v1/auth/logout", nil, nil); err != nil {
+			if err := httpClient.Post(context.Background(), "/api/v2/auth/logout", nil, nil); err != nil {
 				return fmt.Errorf("logout failed: %w", err)
 			}
 

@@ -39,7 +39,7 @@ func NewLoginCmd(httpClient *client.Client) *cobra.Command {
 			}
 
 			var resp loginResponse
-			if err = httpClient.Post(context.Background(), "/api/v1/auth/login", loginRequest{
+			if err = httpClient.Post(context.Background(), "/api/v2/auth/login", loginRequest{
 				Email:    emailFlag,
 				Password: string(passwordBytes),
 			}, &resp); err != nil {

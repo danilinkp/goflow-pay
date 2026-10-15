@@ -27,6 +27,9 @@ type AuthProvider interface {
 	IsTokenValid(ctx context.Context, token string) (*auth.AccessClaims, error)
 	InitSystem(ctx context.Context, req services.InitAdminInput) (*services.AuthOutput, error)
 	AddAdmin(ctx context.Context, req services.AddAdminInput) (*services.AuthOutput, error)
+	GetCompanyById(ctx context.Context, companyId uuid.UUID) (*entities.Company, error)
+	ListCompanies(ctx context.Context, search string, limit, offset int) ([]*entities.Company, int, error)
+	RemoveCompanyUser(ctx context.Context, companyId, userId, requesterId uuid.UUID) error
 }
 
 type AuthServer struct {
@@ -206,6 +209,68 @@ func mapClaimsToProto(claims *auth.AccessClaims) *authv1.IsTokenValidResponse {
 	}
 }
 
+func (s *AuthServer) GetCompanyById(ctx context.Context, req *authv1.GetCompanyByIdRequest) (*authv1.GetCompanyByIdResponse, error) {
+	companyId, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
+	}
+
+	company, err := s.svc.GetCompanyById(ctx, companyId)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &authv1.GetCompanyByIdResponse{
+		Company: &authv1.CompanyInfo{
+			CompanyId: company.CompanyId().String(),
+			Name:      company.Name(),
+			CreatedAt: timestamppb.New(company.CreatedAt()),
+		},
+	}, nil
+}
+
+func (s *AuthServer) ListCompanies(ctx context.Context, req *authv1.ListCompaniesRequest) (*authv1.ListCompaniesResponse, error) {
+	companies, total, err := s.svc.ListCompanies(ctx, req.GetSearch(), int(req.GetLimit()), int(req.GetOffset()))
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	pbCompanies := make([]*authv1.CompanyInfo, len(companies))
+	for i, c := range companies {
+		pbCompanies[i] = &authv1.CompanyInfo{
+			CompanyId: c.CompanyId().String(),
+			Name:      c.Name(),
+			CreatedAt: timestamppb.New(c.CreatedAt()),
+		}
+	}
+
+	return &authv1.ListCompaniesResponse{
+		Companies: pbCompanies,
+		Total:     int32(total),
+	}, nil
+}
+
+func (s *AuthServer) RemoveCompanyUser(ctx context.Context, req *authv1.RemoveCompanyUserRequest) (*authv1.RemoveCompanyUserResponse, error) {
+	companyId, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
+	}
+	userId, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	requesterId, err := uuid.Parse(req.GetRequesterId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+
+	if err := s.svc.RemoveCompanyUser(ctx, companyId, userId, requesterId); err != nil {
+		return nil, mapError(err)
+	}
+
+	return &authv1.RemoveCompanyUserResponse{}, nil
+}
+
 func mapError(err error) error {
 	switch {
 	case errors.Is(err, services.ErrInvalidCredentials):
@@ -218,6 +283,10 @@ func mapError(err error) error {
 	case errors.Is(err, domain.ErrUserAlreadyExists),
 		errors.Is(err, domain.ErrCompanyAlreadyExists):
 		return status.Error(codes.AlreadyExists, err.Error())
+	case errors.Is(err, domain.ErrCannotDeleteSelf),
+		errors.Is(err, domain.ErrCannotDeleteLastAdmin),
+		errors.Is(err, domain.ErrUserNotInCompany):
+		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
 		return status.Error(codes.Internal, "internal error")
 	}

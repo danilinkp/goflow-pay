@@ -59,7 +59,7 @@ func NewGenerateStatementCmd(httpClient *client.Client) *cobra.Command {
 			var resp statementResponse
 			if err = httpClient.Post(
 				context.Background(),
-				"/api/v1/accounts/"+accountIDFlag+"/statement",
+				"/api/v2/accounts/"+accountIDFlag+"/statements",
 				generateStatementRequest{
 					PeriodFrom: periodFrom,
 					PeriodTo:   periodTo,

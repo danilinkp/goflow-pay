@@ -43,14 +43,17 @@ func NewTransferCmd(httpClient *client.Client) *cobra.Command {
 		Use:   "transfer",
 		Short: "Transfer funds between accounts",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			headers := map[string]string{
+				"Idempotency-Key": idempotencyKey,
+			}
 			var resp transactionResponse
-			if err := httpClient.Post(context.Background(), "/api/v1/transactions/transfer",
+			if err := httpClient.PostWithHeaders(context.Background(), "/api/v2/transactions",
+				headers,
 				transferRequest{
-					FromAccountId:  uuid.MustParse(fromAccountID),
-					ToAccountId:    uuid.MustParse(toAccountID),
-					Amount:         amount,
-					Currency:       currency,
-					IdempotencyKey: idempotencyKey,
+					FromAccountId: uuid.MustParse(fromAccountID),
+					ToAccountId:   uuid.MustParse(toAccountID),
+					Amount:        amount,
+					Currency:      currency,
 				}, &resp,
 			); err != nil {
 				return fmt.Errorf("transfer failed: %w", err)

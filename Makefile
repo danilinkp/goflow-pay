@@ -60,17 +60,26 @@ test-coverage-open: test-coverage-html
 
 .PHONY: test-report
 test-report:
+	@echo "=== Обеспечение готовности тестовых БД (PostgreSQL + Redis) ==="
+	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
+	@./scripts/test_init.sh > /dev/null 2>&1 || true
 	@rm -rf $(ALLURE_RESULTS) $(ALLURE_REPORT)
 	@mkdir -p $(ALLURE_RESULTS)
-	@for i in 1 2 3; do \
-		echo "=== Прогон $$i из 3 ==="; \
+	@for i in 1 2 3 4; do \
+		echo "=== Прогон $$i из 4 (Unit + Integration + E2E) ==="; \
 		rm -f $(ALLURE_RESULTS)/*-result.json $(ALLURE_RESULTS)/*-container.json; \
 		[ -d $(ALLURE_REPORT)/history ] && cp -r $(ALLURE_REPORT)/history $(ALLURE_RESULTS)/; \
-		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -v ./services/transactions/internal/service/... > /dev/null; \
-		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -v -run TestAccountService_Classic ./services/accounts/internal/services/... > /dev/null; \
+		printf '{"name":"Local Runner","type":"standalone","buildOrder":%d,"buildName":"Запуск #%d","reportName":"GoFlow Allure Report"}\n' $$i $$i > $(ALLURE_RESULTS)/executor.json; \
+		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 ./services/transactions/internal/service/... > /dev/null 2>&1; \
+		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -run TestAccountService_Classic ./services/accounts/internal/services/... > /dev/null 2>&1; \
+		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /dev/null 2>&1; \
+		./scripts/test_stand_up.sh > /dev/null 2>&1; \
+		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -tags=e2e ./tests/e2e/... > /dev/null 2>&1; \
+		./scripts/test_stand_down.sh > /dev/null 2>&1; \
 		npx -y allure-commandline generate $(ALLURE_RESULTS) -o $(ALLURE_REPORT) --clean > /dev/null; \
 	done
-	@echo "Allure-отчет с историей (3 запуска) успешно сгенерирован в: $(ALLURE_REPORT)"
+	@echo "=== Allure-отчет (Unit + Integration + E2E с историей запусков) успешно создан в: $(ALLURE_REPORT) ==="
+
 
 .PHONY: test-report-open
 test-report-open:
@@ -119,3 +128,42 @@ test-clean:
 test-docker:
 	@echo "=== Запуск тестов внутри изолированного контейнера test-runner ==="
 	docker compose -f docker-compose.test.yml run --rm test-runner
+
+.PHONY: test-integration
+test-integration:
+	@echo "=== Запуск Интеграционных тестов (AccountService + Real PostgreSQL) ==="
+	go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration"
+
+.PHONY: test-e2e
+test-e2e:
+	@echo "=== Запуск Сквозного E2E тестирования (Black-Box через Gateway HTTP API) ==="
+	@./scripts/test_stand_up.sh && go test -v -count=1 -tags=e2e ./tests/e2e/... ; STATUS=$$? ; ./scripts/test_stand_down.sh ; exit $$STATUS
+
+.PHONY: capture-traffic
+capture-traffic:
+	@echo "=== Захват сетевого трафика E2E-тестирования в reports/traffic_capture.pcap ==="
+	@./scripts/capture_traffic.sh
+
+# ЛР №3: Разработчик REST API (OpenAPI, Кодогенерация, Сборка Gateway)
+.PHONY: generate-api
+generate-api:
+	@echo "=== Кодогенерация REST API v2 из OpenAPI 3.1 (oapi-codegen) ==="
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1 -config services/gateway/api_v2_cfg.yaml docs/openapi/openapi.yaml
+
+.PHONY: build-all
+build-all:
+	@echo "=== Сборка всех микросервисов и CLI ==="
+	go build ./services/auth/...
+	go build ./services/accounts/...
+	go build ./services/transactions/...
+	go build ./services/gateway/...
+	go build ./tools/cli/...
+	@echo "=== Все сервисы успешно собраны! ==="
+
+.PHONY: build-gateway
+build-gateway:
+	go build -o ./bin/gateway ./services/gateway/cmd/gateway/main.go
+
+.PHONY: run-gateway
+run-gateway:
+	cd services/gateway && go run ./cmd/gateway/main.go

@@ -20,6 +20,7 @@ type TransactionRepository interface {
 	GetStale(ctx context.Context, olderThan time.Duration, statuses []string) ([]*entities.Transaction, error)
 	UpdateStatus(ctx context.Context, txId uuid.UUID, status string) error
 	EnsureIndexes(ctx context.Context) error
+	List(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error)
 }
 
 type AccountClient interface {
@@ -249,4 +250,13 @@ func (t *TransactionService) saveOutboxEvent(ctx context.Context, o outbox.Outbo
 		return nil
 	}
 	return t.outboxRepository.Save(ctx, evt)
+}
+
+func (t *TransactionService) ListTransactions(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error) {
+	const op = "TransactionService.ListTransactions"
+	txs, total, err := t.transactionRepository.List(ctx, accountIds, status, currency, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	return txs, total, nil
 }

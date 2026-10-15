@@ -31,7 +31,7 @@ func NewCreateAccountCmd(httpClient *client.Client) *cobra.Command {
 		Short: "Create a new account (company_admin only)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var resp accountResponse
-			if err := httpClient.Post(context.Background(), "/api/v1/accounts",
+			if err := httpClient.Post(context.Background(), "/api/v2/accounts",
 				createAccountRequest{Currency: currency},
 				&resp,
 			); err != nil {

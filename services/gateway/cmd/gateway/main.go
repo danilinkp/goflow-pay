@@ -7,6 +7,7 @@ import (
 	"gateway/internal/config"
 	"gateway/internal/delivery/http/handlers"
 	"gateway/internal/delivery/http/router"
+	v2 "gateway/internal/delivery/http/v2"
 	"net/http"
 	"os"
 	"os/signal"
@@ -50,8 +51,9 @@ func main() {
 	systemHandler := handlers.NewSystemHandler(clients.Auth, cfg.BootstrapToken)
 	accountHandler := handlers.NewAccountHandler(clients.Account)
 	transactionHandler := handlers.NewTransactionHandler(clients.Transaction)
+	v2Server := v2.NewServer(clients.Auth, clients.Account, clients.Transaction)
 
-	engine := router.NewRouter(validator, authHandler, clients.Auth, systemHandler, accountHandler, transactionHandler)
+	engine := router.NewRouter(validator, authHandler, clients.Auth, systemHandler, accountHandler, transactionHandler, v2Server)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPServer.Address,

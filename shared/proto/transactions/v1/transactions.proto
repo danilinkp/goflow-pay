@@ -10,6 +10,7 @@ service TransactionService {
   rpc Transfer(TransferRequest) returns (TransferResponse);
   rpc GetAllTransactions(GetAllTransactionsRequest) returns (GetAllTransactionsResponse);
   rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse);
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
 }
 
 enum Currency {
@@ -68,3 +69,17 @@ message GetTransactionRequest {
 message GetTransactionResponse {
   Transaction transaction = 1;
 }
+
+message ListTransactionsRequest {
+  repeated string account_ids = 1;
+  string status = 2;
+  Currency currency = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  int32 total = 2;
+}
+

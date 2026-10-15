@@ -42,7 +42,7 @@ func NewRegisterNewCompanyCmd(httpClient *client.Client) *cobra.Command {
 			}
 
 			var resp loginResponse
-			if err = httpClient.Post(context.Background(), "/api/v1/auth/register/company", registerWithNewCompanyRequest{
+			if err = httpClient.Post(context.Background(), "/api/v2/auth/register/company", registerWithNewCompanyRequest{
 				Login:       registerLogin,
 				Email:       registerEmail,
 				Password:    password,
@@ -89,7 +89,7 @@ func NewRegisterExistingCompanyCmd(httpClient *client.Client) *cobra.Command {
 			}
 
 			var resp loginResponse
-			if err = httpClient.Post(context.Background(), "/api/v1/auth/register", registerWithExistingCompanyRequest{
+			if err = httpClient.Post(context.Background(), "/api/v2/auth/register", registerWithExistingCompanyRequest{
 				Login:      registerLogin,
 				Email:      registerEmail,
 				Password:   password,

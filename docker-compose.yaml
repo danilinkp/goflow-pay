@@ -431,6 +431,8 @@ services:
       - ./certs:/app/certs:ro
       - ./services/gateway/config/local.yaml:/app/config/local.yaml:ro
       - ./logs/gateway:/app/logs
+    ports:
+      - "8080:8080"
     networks:
       - goflow_network
 

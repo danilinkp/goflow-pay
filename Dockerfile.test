@@ -8,7 +8,8 @@ RUN apk add --no-cache \
     gcc \
     musl-dev \
     postgresql-client \
-    redis
+    redis \
+    tcpdump
 
 # Install Goose for database schema migrations
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest
@@ -28,6 +29,7 @@ COPY services/notifications/go.mod services/notifications/go.sum* ./services/not
 COPY services/gateway/go.mod services/gateway/go.sum* ./services/gateway/
 COPY shared/go.mod shared/go.sum* ./shared/
 COPY tools/cli/go.mod tools/cli/go.sum* ./tools/cli/
+COPY tests/e2e/go.mod tests/e2e/go.sum* ./tests/e2e/
 
 RUN go work sync || true
 

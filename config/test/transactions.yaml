@@ -1,0 +1,23 @@
+env: "test"
+storage:
+  type: "postgres"
+  postgres:
+    host: "localhost"
+    port: "5439"
+    name: "transaction_test"
+    ssl_mode: "disable"
+    connect_timeout: 5s
+    max_retries_time: 2s
+grpc:
+  port: 50053
+  timeout: 5s
+grpc_client:
+  addr: "127.0.0.1:50052"
+kafka:
+  brokers: "localhost:9092"
+outbox:
+  interval: 60s
+  batch_size: 10
+recover:
+  interval: 60s
+  stale_after: 30s

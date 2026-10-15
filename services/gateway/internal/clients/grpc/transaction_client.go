@@ -44,3 +44,12 @@ func (c *TransactionGRPCClient) GetTransaction(ctx context.Context, request *tra
 	}
 	return resp, nil
 }
+
+func (c *TransactionGRPCClient) ListTransactions(ctx context.Context, request *transactionsv1.ListTransactionsRequest) (*transactionsv1.ListTransactionsResponse, error) {
+	op := "TransactionGRPCClient.ListTransactions"
+	resp, err := c.client.ListTransactions(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}

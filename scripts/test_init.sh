@@ -18,6 +18,7 @@ PG_USER="${PG_USER:-postgres}"
 PG_PASSWORD="${PG_PASSWORD:-postgres}"
 ACCOUNTS_DB="${ACCOUNTS_DB_NAME:-account_test}"
 TRANSACTIONS_DB="${TRANSACTIONS_DB_NAME:-transaction_test}"
+AUTH_DB="${AUTH_DB_NAME:-auth_test}"
 
 export PGPASSWORD="$PG_PASSWORD"
 
@@ -71,6 +72,7 @@ ensure_db() {
 
 ensure_db "$ACCOUNTS_DB"
 ensure_db "$TRANSACTIONS_DB"
+ensure_db "$AUTH_DB"
 
 # 4. Run Goose migrations
 echo "--> Applying Goose migrations for Accounts ($ACCOUNTS_DB)..."
@@ -80,6 +82,10 @@ goose -dir services/accounts/migrations postgres "$ACCOUNTS_DSN" up
 echo "--> Applying Goose migrations for Transactions ($TRANSACTIONS_DB)..."
 TX_DSN="postgres://$PG_USER:$PG_PASSWORD@$PG_HOST:$PG_PORT/$TRANSACTIONS_DB?sslmode=disable"
 goose -dir services/transactions/migrations postgres "$TX_DSN" up
+
+echo "--> Applying Goose migrations for Auth ($AUTH_DB)..."
+AUTH_DSN="postgres://$PG_USER:$PG_PASSWORD@$PG_HOST:$PG_PORT/$AUTH_DB?sslmode=disable"
+goose -dir services/auth/migrations postgres "$AUTH_DSN" up
 
 echo "=========================================================="
 echo " [TEST-INIT] Test stand successfully initialized!"

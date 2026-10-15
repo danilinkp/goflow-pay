@@ -21,7 +21,7 @@ func NewGetAccountsCmd(httpClient *client.Client) *cobra.Command {
 				return err
 			}
 
-			url := "/api/v1/companies/accounts"
+			url := "/api/v2/accounts"
 			if companyIDFlag != "" {
 				if creds.Role != "admin" {
 					return fmt.Errorf("only admin can query other companies")
@@ -29,17 +29,20 @@ func NewGetAccountsCmd(httpClient *client.Client) *cobra.Command {
 				url += "?company_id=" + companyIDFlag
 			}
 
-			var resp []accountResponse
+			var resp struct {
+				Items []accountResponse `json:"items"`
+				Total int               `json:"total"`
+			}
 			if err = httpClient.Get(context.Background(), url, &resp); err != nil {
 				return fmt.Errorf("failed to get accounts: %w", err)
 			}
 
-			if len(resp) == 0 {
+			if len(resp.Items) == 0 {
 				fmt.Println("No accounts found")
 				return nil
 			}
 
-			for _, a := range resp {
+			for _, a := range resp.Items {
 				fmt.Printf("ID: %s | Balance: %d | Currency: %s | Status: %s\n",
 					a.AccountId, a.Balance, a.Currency, a.Status)
 			}

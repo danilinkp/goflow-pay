@@ -77,7 +77,7 @@ type Outbox struct {
 }
 
 type BankGateway struct {
-	FailureRate float64 `yaml:"failure_rate" env-default:"0.1"`
+	FailureRate float64 `yaml:"failure_rate" env:"BANK_GATEWAY_FAILURE_RATE"`
 }
 
 func MustLoad() *Config {

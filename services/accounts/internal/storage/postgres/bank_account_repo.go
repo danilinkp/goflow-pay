@@ -87,3 +87,16 @@ func (r *BankAccountRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUI
 
 	return res, nil
 }
+
+func (r *BankAccountRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	op := "BankAccountRepo.Delete"
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+	cmd, err := conn.Exec(ctx, "DELETE FROM bank_accounts WHERE bank_account_id = $1", id)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return fmt.Errorf("%s: %w", op, domain.ErrBankAccountNotFound)
+	}
+	return nil
+}

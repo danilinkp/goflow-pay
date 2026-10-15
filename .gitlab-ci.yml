@@ -1,6 +1,8 @@
 stages:
   - lint
-  - test
+  - unit-test
+  - integration-test
+  - e2e-test
   - security
   - build
 
@@ -84,21 +86,21 @@ lint-helm:
         - deploy/helm/**/*
         - .gitlab-ci.yml
 
-test-go:
+# ==============================================================================
+# Пирамида тестирования (ЛР №2: Модульные -> Интеграционные -> Сквозные E2E)
+# ==============================================================================
+
+# Уровень 1: Модульные тесты (Лондонская и Классическая школы, solitary/mock)
+unit-tests:
   extends: .go-cache
-  stage: test
+  stage: unit-test
   image: golang:1.25
   script:
-    - go test ./services/accounts/internal/domain/...
-    - go test ./services/accounts/internal/services/...
-    - go test ./services/notifications/internal/service/...
-    - go test ./services/auth/internal/domain/...
-    - go test ./services/auth/internal/services/...
-    - go test ./services/transactions/internal/domain/...
-    - go test ./services/transactions/internal/service/...
+    - echo "=== Запуск быстрых модульных тестов (London + Classic) ==="
+    - make test
 
 test-frontend:
-  stage: test
+  stage: unit-test
   image: node:20-alpine
   script:
     - cd frontend
@@ -108,6 +110,44 @@ test-frontend:
     - changes:
         - frontend/**/*
         - .gitlab-ci.yml
+
+# Уровень 2: Интеграционные тесты (AccountService + Real PostgreSQL)
+integration-tests:
+  stage: integration-test
+  image: docker:26
+  needs: [unit-tests]
+  script:
+    - echo "=== Запуск тестовой инфраструктуры БД (PostgreSQL + Redis) ==="
+    - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
+    - echo "=== Выполнение интеграционных тестов бизнес-логики с PostgreSQL ==="
+    - docker compose -f docker-compose.test.yml run --rm test-runner make test-integration
+  after_script:
+    - echo "=== Очистка тестового стенда (Teardown) ==="
+    - docker compose -f docker-compose.test.yml down -v
+
+# Уровень 3: Сквозные тесты (E2E Black-Box через Gateway) + Захват трафика в PCAP (п. 5 методички)
+e2e-tests:
+  stage: e2e-test
+  image: docker:26
+  needs: [integration-tests]
+  script:
+    - echo "=== Запуск тестовой инфраструктуры БД (PostgreSQL + Redis) ==="
+    - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
+    - echo "=== Запуск сквозного сценария перевода и финансовой выписки с захватом сетевого трафика ==="
+    - docker compose -f docker-compose.test.yml run --rm test-runner make capture-traffic
+  after_script:
+    - echo "=== Очистка тестового стенда (Teardown) ==="
+    - docker compose -f docker-compose.test.yml down -v
+  artifacts:
+    name: "traffic-capture-$CI_COMMIT_SHORT_SHA"
+    when: always
+    paths:
+      - reports/traffic_capture.pcap
+    expire_in: 1 week
+
+# ==============================================================================
+# Безопасность и сборка
+# ==============================================================================
 
 security-gitleaks:
   stage: security

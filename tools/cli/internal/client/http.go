@@ -30,18 +30,26 @@ func (c *Client) SetToken(token string) {
 }
 
 func (c *Client) Post(ctx context.Context, path string, body any, result any) error {
-	return c.do(ctx, http.MethodPost, path, body, result)
+	return c.doWithHeaders(ctx, http.MethodPost, path, nil, body, result)
+}
+
+func (c *Client) PostWithHeaders(ctx context.Context, path string, headers map[string]string, body any, result any) error {
+	return c.doWithHeaders(ctx, http.MethodPost, path, headers, body, result)
 }
 
 func (c *Client) Get(ctx context.Context, path string, result any) error {
-	return c.do(ctx, http.MethodGet, path, nil, result)
+	return c.doWithHeaders(ctx, http.MethodGet, path, nil, nil, result)
 }
 
 func (c *Client) Delete(ctx context.Context, path string, result any) error {
-	return c.do(ctx, http.MethodDelete, path, nil, result)
+	return c.doWithHeaders(ctx, http.MethodDelete, path, nil, nil, result)
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body any, result any) error {
+	return c.doWithHeaders(ctx, method, path, nil, body, result)
+}
+
+func (c *Client) doWithHeaders(ctx context.Context, method, path string, headers map[string]string, body any, result any) error {
 	var bodyReader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -59,6 +67,9 @@ func (c *Client) do(ctx context.Context, method, path string, body any, result a
 	req.Header.Set("Content-Type", "application/json")
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 
 	resp, err := c.httpClient.Do(req)

@@ -544,6 +544,134 @@ func (x *GetTransactionResponse) GetTransaction() *Transaction {
 	return nil
 }
 
+type ListTransactionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountIds    []string               `protobuf:"bytes,1,rep,name=account_ids,json=accountIds,proto3" json:"account_ids,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	Currency      Currency               `protobuf:"varint,3,opt,name=currency,proto3,enum=transactions.v1.Currency" json:"currency,omitempty"`
+	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTransactionsRequest) Reset() {
+	*x = ListTransactionsRequest{}
+	mi := &file_transactions_v1_transactions_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTransactionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTransactionsRequest) ProtoMessage() {}
+
+func (x *ListTransactionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_transactions_v1_transactions_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTransactionsRequest.ProtoReflect.Descriptor instead.
+func (*ListTransactionsRequest) Descriptor() ([]byte, []int) {
+	return file_transactions_v1_transactions_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListTransactionsRequest) GetAccountIds() []string {
+	if x != nil {
+		return x.AccountIds
+	}
+	return nil
+}
+
+func (x *ListTransactionsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListTransactionsRequest) GetCurrency() Currency {
+	if x != nil {
+		return x.Currency
+	}
+	return Currency_CURRENCY_UNSPECIFIED
+}
+
+func (x *ListTransactionsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListTransactionsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type ListTransactionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Transactions  []*Transaction         `protobuf:"bytes,1,rep,name=transactions,proto3" json:"transactions,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTransactionsResponse) Reset() {
+	*x = ListTransactionsResponse{}
+	mi := &file_transactions_v1_transactions_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTransactionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTransactionsResponse) ProtoMessage() {}
+
+func (x *ListTransactionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_transactions_v1_transactions_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTransactionsResponse.ProtoReflect.Descriptor instead.
+func (*ListTransactionsResponse) Descriptor() ([]byte, []int) {
+	return file_transactions_v1_transactions_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListTransactionsResponse) GetTransactions() []*Transaction {
+	if x != nil {
+		return x.Transactions
+	}
+	return nil
+}
+
+func (x *ListTransactionsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 var File_transactions_v1_transactions_proto protoreflect.FileDescriptor
 
 const file_transactions_v1_transactions_proto_rawDesc = "" +
@@ -577,7 +705,17 @@ const file_transactions_v1_transactions_proto_rawDesc = "" +
 	"\x15GetTransactionRequest\x12\x13\n" +
 	"\x05tx_id\x18\x01 \x01(\tR\x04txId\"X\n" +
 	"\x16GetTransactionResponse\x12>\n" +
-	"\vtransaction\x18\x01 \x01(\v2\x1c.transactions.v1.TransactionR\vtransaction*l\n" +
+	"\vtransaction\x18\x01 \x01(\v2\x1c.transactions.v1.TransactionR\vtransaction\"\xb7\x01\n" +
+	"\x17ListTransactionsRequest\x12\x1f\n" +
+	"\vaccount_ids\x18\x01 \x03(\tR\n" +
+	"accountIds\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x125\n" +
+	"\bcurrency\x18\x03 \x01(\x0e2\x19.transactions.v1.CurrencyR\bcurrency\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x05 \x01(\x05R\x06offset\"r\n" +
+	"\x18ListTransactionsResponse\x12@\n" +
+	"\ftransactions\x18\x01 \x03(\v2\x1c.transactions.v1.TransactionR\ftransactions\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total*l\n" +
 	"\bCurrency\x12\x18\n" +
 	"\x14CURRENCY_UNSPECIFIED\x10\x00\x12\x10\n" +
 	"\fCURRENCY_EUR\x10\x01\x12\x10\n" +
@@ -589,11 +727,12 @@ const file_transactions_v1_transactions_proto_rawDesc = "" +
 	"\x1aTRANSACTION_STATUS_PENDING\x10\x01\x12\x1e\n" +
 	"\x1aTRANSACTION_STATUS_SUCCESS\x10\x02\x12\x1d\n" +
 	"\x19TRANSACTION_STATUS_FAILED\x10\x03\x12!\n" +
-	"\x1dTRANSACTION_STATUS_PROCESSING\x10\x042\xb7\x02\n" +
+	"\x1dTRANSACTION_STATUS_PROCESSING\x10\x042\xa0\x03\n" +
 	"\x12TransactionService\x12O\n" +
 	"\bTransfer\x12 .transactions.v1.TransferRequest\x1a!.transactions.v1.TransferResponse\x12m\n" +
 	"\x12GetAllTransactions\x12*.transactions.v1.GetAllTransactionsRequest\x1a+.transactions.v1.GetAllTransactionsResponse\x12a\n" +
-	"\x0eGetTransaction\x12&.transactions.v1.GetTransactionRequest\x1a'.transactions.v1.GetTransactionResponseB\xb7\x01\n" +
+	"\x0eGetTransaction\x12&.transactions.v1.GetTransactionRequest\x1a'.transactions.v1.GetTransactionResponse\x12g\n" +
+	"\x10ListTransactions\x12(.transactions.v1.ListTransactionsRequest\x1a).transactions.v1.ListTransactionsResponseB\xb7\x01\n" +
 	"\x13com.transactions.v1B\x11TransactionsProtoP\x01Z0shared/pkg/gen/go/transactions/v1;transactionsv1\xa2\x02\x03TXX\xaa\x02\x0fTransactions.V1\xca\x02\x0fTransactions\\V1\xe2\x02\x1bTransactions\\V1\\GPBMetadata\xea\x02\x10Transactions::V1b\x06proto3"
 
 var (
@@ -609,7 +748,7 @@ func file_transactions_v1_transactions_proto_rawDescGZIP() []byte {
 }
 
 var file_transactions_v1_transactions_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_transactions_v1_transactions_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_transactions_v1_transactions_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_transactions_v1_transactions_proto_goTypes = []any{
 	(Currency)(0),                      // 0: transactions.v1.Currency
 	(TransactionStatus)(0),             // 1: transactions.v1.TransactionStatus
@@ -620,27 +759,33 @@ var file_transactions_v1_transactions_proto_goTypes = []any{
 	(*GetAllTransactionsResponse)(nil), // 6: transactions.v1.GetAllTransactionsResponse
 	(*GetTransactionRequest)(nil),      // 7: transactions.v1.GetTransactionRequest
 	(*GetTransactionResponse)(nil),     // 8: transactions.v1.GetTransactionResponse
-	(*timestamppb.Timestamp)(nil),      // 9: google.protobuf.Timestamp
+	(*ListTransactionsRequest)(nil),    // 9: transactions.v1.ListTransactionsRequest
+	(*ListTransactionsResponse)(nil),   // 10: transactions.v1.ListTransactionsResponse
+	(*timestamppb.Timestamp)(nil),      // 11: google.protobuf.Timestamp
 }
 var file_transactions_v1_transactions_proto_depIdxs = []int32{
 	0,  // 0: transactions.v1.Transaction.currency:type_name -> transactions.v1.Currency
 	1,  // 1: transactions.v1.Transaction.transaction_status:type_name -> transactions.v1.TransactionStatus
-	9,  // 2: transactions.v1.Transaction.created_at:type_name -> google.protobuf.Timestamp
+	11, // 2: transactions.v1.Transaction.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: transactions.v1.TransferRequest.currency:type_name -> transactions.v1.Currency
 	2,  // 4: transactions.v1.TransferResponse.transaction:type_name -> transactions.v1.Transaction
 	2,  // 5: transactions.v1.GetAllTransactionsResponse.transactions:type_name -> transactions.v1.Transaction
 	2,  // 6: transactions.v1.GetTransactionResponse.transaction:type_name -> transactions.v1.Transaction
-	3,  // 7: transactions.v1.TransactionService.Transfer:input_type -> transactions.v1.TransferRequest
-	5,  // 8: transactions.v1.TransactionService.GetAllTransactions:input_type -> transactions.v1.GetAllTransactionsRequest
-	7,  // 9: transactions.v1.TransactionService.GetTransaction:input_type -> transactions.v1.GetTransactionRequest
-	4,  // 10: transactions.v1.TransactionService.Transfer:output_type -> transactions.v1.TransferResponse
-	6,  // 11: transactions.v1.TransactionService.GetAllTransactions:output_type -> transactions.v1.GetAllTransactionsResponse
-	8,  // 12: transactions.v1.TransactionService.GetTransaction:output_type -> transactions.v1.GetTransactionResponse
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	0,  // 7: transactions.v1.ListTransactionsRequest.currency:type_name -> transactions.v1.Currency
+	2,  // 8: transactions.v1.ListTransactionsResponse.transactions:type_name -> transactions.v1.Transaction
+	3,  // 9: transactions.v1.TransactionService.Transfer:input_type -> transactions.v1.TransferRequest
+	5,  // 10: transactions.v1.TransactionService.GetAllTransactions:input_type -> transactions.v1.GetAllTransactionsRequest
+	7,  // 11: transactions.v1.TransactionService.GetTransaction:input_type -> transactions.v1.GetTransactionRequest
+	9,  // 12: transactions.v1.TransactionService.ListTransactions:input_type -> transactions.v1.ListTransactionsRequest
+	4,  // 13: transactions.v1.TransactionService.Transfer:output_type -> transactions.v1.TransferResponse
+	6,  // 14: transactions.v1.TransactionService.GetAllTransactions:output_type -> transactions.v1.GetAllTransactionsResponse
+	8,  // 15: transactions.v1.TransactionService.GetTransaction:output_type -> transactions.v1.GetTransactionResponse
+	10, // 16: transactions.v1.TransactionService.ListTransactions:output_type -> transactions.v1.ListTransactionsResponse
+	13, // [13:17] is the sub-list for method output_type
+	9,  // [9:13] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_transactions_v1_transactions_proto_init() }
@@ -654,7 +799,7 @@ func file_transactions_v1_transactions_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_transactions_v1_transactions_proto_rawDesc), len(file_transactions_v1_transactions_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

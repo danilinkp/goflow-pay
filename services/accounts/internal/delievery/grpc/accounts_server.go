@@ -36,6 +36,10 @@ type AccountProvider interface {
 	GetAccounts(ctx context.Context, companyID uuid.UUID) ([]*entities.Account, error)
 	GetBankAccounts(ctx context.Context, companyID uuid.UUID) ([]*entities.BankAccount, error)
 	GenerateStatement(ctx context.Context, accountId, initiatorId, companyId uuid.UUID, periodFrom, periodTo time.Time) (*entities.Statement, error)
+	GetAccount(ctx context.Context, accountId uuid.UUID) (*entities.Account, error)
+	UpdateAccountStatus(ctx context.Context, accountId uuid.UUID, status entities.AccountStatus) (*entities.Account, error)
+	GetBankAccount(ctx context.Context, bankAccountId uuid.UUID) (*entities.BankAccount, error)
+	DeleteBankAccount(ctx context.Context, bankAccountId, companyId uuid.UUID) error
 }
 
 type AccountServer struct {
@@ -484,6 +488,81 @@ func mapStatementToProto(statement *entities.Statement) *accountsv1.Statement {
 		Currency:       currencyToProto(statement.Currency()),
 		Entries:        entries,
 	}
+}
+
+func (s *AccountServer) GetAccount(ctx context.Context, req *accountsv1.GetAccountRequest) (*accountsv1.GetAccountResponse, error) {
+	accId, err := uuid.Parse(req.GetAccountId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
+	}
+
+	acc, err := s.svc.GetAccount(ctx, accId)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &accountsv1.GetAccountResponse{
+		Account: mapAccountToProto(acc),
+	}, nil
+}
+
+func (s *AccountServer) UpdateAccountStatus(ctx context.Context, req *accountsv1.UpdateAccountStatusRequest) (*accountsv1.UpdateAccountStatusResponse, error) {
+	accId, err := uuid.Parse(req.GetAccountId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid account_id")
+	}
+
+	var domainStatus entities.AccountStatus
+	switch req.GetStatus() {
+	case accountsv1.AccountStatus_ACCOUNT_STATUS_ACTIVE:
+		domainStatus = entities.ActiveStatus
+	case accountsv1.AccountStatus_ACCOUNT_STATUS_INACTIVE:
+		domainStatus = entities.InactiveStatus
+	default:
+		return nil, status.Error(codes.InvalidArgument, "invalid status")
+	}
+
+	acc, err := s.svc.UpdateAccountStatus(ctx, accId, domainStatus)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &accountsv1.UpdateAccountStatusResponse{
+		Account: mapAccountToProto(acc),
+	}, nil
+}
+
+func (s *AccountServer) GetBankAccount(ctx context.Context, req *accountsv1.GetBankAccountRequest) (*accountsv1.GetBankAccountResponse, error) {
+	baId, err := uuid.Parse(req.GetBankAccountId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid bank_account_id")
+	}
+
+	ba, err := s.svc.GetBankAccount(ctx, baId)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &accountsv1.GetBankAccountResponse{
+		BankAccount: mapBankAccountToProto(ba),
+	}, nil
+}
+
+func (s *AccountServer) DeleteBankAccount(ctx context.Context, req *accountsv1.DeleteBankAccountRequest) (*accountsv1.DeleteBankAccountResponse, error) {
+	baId, err := uuid.Parse(req.GetBankAccountId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid bank_account_id")
+	}
+	companyId, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid company_id")
+	}
+
+	if err := s.svc.DeleteBankAccount(ctx, baId, companyId); err != nil {
+		return nil, mapError(err)
+	}
+
+	return &accountsv1.DeleteBankAccountResponse{}, nil
 }
 
 func mapError(err error) error {

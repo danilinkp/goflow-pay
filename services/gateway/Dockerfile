@@ -21,6 +21,7 @@ FROM alpine:3.19
 WORKDIR /app
 
 COPY --from=builder /app/services/gateway/gateway_server .
+COPY docs/ ./docs/
 
 EXPOSE 8080
 

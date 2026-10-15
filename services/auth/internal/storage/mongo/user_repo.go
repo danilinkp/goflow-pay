@@ -112,3 +112,15 @@ func (r *UserRepo) GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*
 
 	return res, nil
 }
+
+func (r *UserRepo) Delete(ctx context.Context, userId uuid.UUID) error {
+	op := "UserRepo.Delete"
+	res, err := r.collection.DeleteOne(ctx, bson.M{"user_id": userId})
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.DeletedCount == 0 {
+		return fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
+	}
+	return nil
+}
