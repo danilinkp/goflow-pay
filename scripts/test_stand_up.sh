@@ -23,7 +23,11 @@ export BOOTSTRAP_TOKEN="test-bootstrap-token"
 LOG_DIR="/tmp/goflow_logs"
 mkdir -p config/test bin "$LOG_DIR"
 
-# 2. Compile binaries if needed
+# 2. Ensure test databases and migrations
+echo "--> Initializing test databases and Goose migrations..."
+./scripts/test_init.sh
+
+# 3. Compile binaries if needed
 echo "--> Ensuring service binaries are compiled in ./bin..."
 go build -buildvcs=false -o ./bin/auth ./services/auth/cmd/auth_server
 go build -buildvcs=false -o ./bin/accounts ./services/accounts/cmd/account_server

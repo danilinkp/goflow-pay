@@ -2,8 +2,8 @@ env: "test"
 storage:
   type: "postgres"
   postgres:
-    host: "localhost"
-    port: "5439"
+    host: "postgres-test"
+    port: "5432"
     name: "account_test"
     ssl_mode: "disable"
     connect_timeout: 5s

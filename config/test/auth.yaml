@@ -2,15 +2,15 @@ env: "test"
 storage:
   type: postgres
   postgres:
-    host: "localhost"
-    port: "5439"
+    host: "postgres-test"
+    port: "5432"
     name: "auth_test"
     ssl_mode: "disable"
     connect_timeout: 5s
     max_retries_time: 2s
 redis:
-  host: "localhost"
-  port: 6389
+  host: "redis-test"
+  port: 6379
   password: ""
   db: 0
 grpc:

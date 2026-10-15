@@ -1,7 +1,8 @@
+name: goflow-test
+
 services:
   postgres-test:
     image: postgres:16-alpine
-    container_name: goflow-postgres-test
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -21,7 +22,6 @@ services:
 
   redis-test:
     image: redis:7-alpine
-    container_name: goflow-redis-test
     ports:
       - "6389:6379"
     healthcheck:
@@ -37,7 +37,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
-    container_name: goflow-test-runner
     depends_on:
       postgres-test:
         condition: service_healthy

@@ -34,6 +34,7 @@ integration-tests:
   image: docker:26
   needs: [unit-tests]
   script:
+    - docker compose -f docker-compose.test.yml down -v || true
     - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
     - docker compose -f docker-compose.test.yml run --rm test-runner make test-integration
   after_script:
@@ -45,6 +46,7 @@ e2e-tests:
   image: docker:26
   needs: [integration-tests]
   script:
+    - docker compose -f docker-compose.test.yml down -v || true
     - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
     - docker compose -f docker-compose.test.yml run --rm test-runner make capture-traffic
   after_script:

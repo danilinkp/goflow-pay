@@ -68,9 +68,10 @@ echo "--> Flushing Redis cache and user sessions..."
 if command -v redis-cli > /dev/null 2>&1; then
     redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" FLUSHALL || true
     echo "    Redis flushed via local redis-cli."
-elif command -v docker > /dev/null 2>&1 && docker ps -q -f name=goflow-redis-test | grep -q .; then
-    docker exec goflow-redis-test redis-cli FLUSHALL || true
-    echo "    Redis flushed via docker exec."
+elif command -v docker > /dev/null 2>&1 && docker ps -q -f name=redis-test | grep -q .; then
+    REDIS_CID=$(docker ps -q -f name=redis-test | head -n 1)
+    docker exec "$REDIS_CID" redis-cli FLUSHALL || true
+    echo "    Redis flushed via docker exec ($REDIS_CID)."
 else
     echo "    redis-cli / docker not available on host, skipping redis flush."
 fi

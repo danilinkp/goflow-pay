@@ -131,6 +131,8 @@ test-docker:
 
 .PHONY: test-integration
 test-integration:
+	@echo "=== Применение миграций и подготовка БД ==="
+	@./scripts/test_init.sh
 	@echo "=== Запуск Интеграционных тестов (AccountService + Real PostgreSQL) ==="
 	go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration"
 
