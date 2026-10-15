@@ -36,7 +36,7 @@ integration-tests:
   script:
     - docker compose -f docker-compose.test.yml down -v || true
     - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
-    - docker compose -f docker-compose.test.yml run --rm test-runner make test-integration
+    - docker compose -f docker-compose.test.yml run --rm --build test-runner make test-integration
   after_script:
     - docker compose -f docker-compose.test.yml down -v
 
@@ -46,10 +46,13 @@ e2e-tests:
   image: docker:26
   needs: [integration-tests]
   script:
+    - mkdir -p reports
     - docker compose -f docker-compose.test.yml down -v || true
     - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
-    - docker compose -f docker-compose.test.yml run --rm test-runner make capture-traffic
+    - docker compose -f docker-compose.test.yml run --name test-runner-e2e test-runner make capture-traffic
+    - docker cp test-runner-e2e:/app/reports/traffic_capture.pcap reports/traffic_capture.pcap
   after_script:
+    - docker rm -f test-runner-e2e || true
     - docker compose -f docker-compose.test.yml down -v
   artifacts:
     name: "traffic-capture-$CI_COMMIT_SHORT_SHA"

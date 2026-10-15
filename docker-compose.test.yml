@@ -9,8 +9,6 @@ services:
       POSTGRES_DB: postgres
     ports:
       - "5439:5432"
-    volumes:
-      - ./scripts/init-test-dbs.sql:/docker-entrypoint-initdb.d/init-test-dbs.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 2s
@@ -52,8 +50,6 @@ services:
       - TRANSACTIONS_DB_NAME=transaction_test
       - REDIS_HOST=redis-test
       - REDIS_PORT=6379
-    volumes:
-      - .:/app
     working_dir: /app
     networks:
       - goflow_test_network
