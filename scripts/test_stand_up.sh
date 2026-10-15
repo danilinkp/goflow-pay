@@ -23,11 +23,19 @@ export BOOTSTRAP_TOKEN="test-bootstrap-token"
 LOG_DIR="/tmp/goflow_logs"
 mkdir -p config/test bin "$LOG_DIR"
 
-# 2. Ensure test databases and migrations
+# 2. Ensure test JWT RSA keys exist
+if [ ! -s "$JWT_PRIVATE_KEY_PATH" ] || [ ! -s "$JWT_PUBLIC_KEY_PATH" ]; then
+    echo "--> Generating test JWT RSA keys in certs/..."
+    mkdir -p "$(dirname "$JWT_PRIVATE_KEY_PATH")"
+    openssl genpkey -algorithm RSA -out "$JWT_PRIVATE_KEY_PATH" -pkeyopt rsa_keygen_bits:2048 2>/dev/null
+    openssl rsa -pubout -in "$JWT_PRIVATE_KEY_PATH" -out "$JWT_PUBLIC_KEY_PATH" 2>/dev/null
+fi
+
+# 3. Ensure test databases and migrations
 echo "--> Initializing test databases and Goose migrations..."
 ./scripts/test_init.sh
 
-# 3. Compile binaries if needed
+# 4. Compile binaries if needed
 echo "--> Ensuring service binaries are compiled in ./bin..."
 go build -buildvcs=false -o ./bin/auth ./services/auth/cmd/auth_server
 go build -buildvcs=false -o ./bin/accounts ./services/accounts/cmd/account_server

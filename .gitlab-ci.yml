@@ -40,23 +40,14 @@ integration-tests:
   after_script:
     - docker compose -f docker-compose.test.yml down -v
 
-# 3. Сквозное системное тестирование (E2E через Gateway + перехват сетевого трафика)
+# 3. Сквозное системное тестирование (E2E через Gateway HTTP API)
 e2e-tests:
   stage: e2e-test
   image: docker:26
   needs: [integration-tests]
   script:
-    - mkdir -p reports
     - docker compose -f docker-compose.test.yml down -v || true
     - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
-    - docker compose -f docker-compose.test.yml run --name test-runner-e2e test-runner make capture-traffic
-    - docker cp test-runner-e2e:/app/reports/traffic_capture.pcap reports/traffic_capture.pcap
+    - docker compose -f docker-compose.test.yml run --rm --build test-runner make test-e2e
   after_script:
-    - docker rm -f test-runner-e2e || true
     - docker compose -f docker-compose.test.yml down -v
-  artifacts:
-    name: "traffic-capture-$CI_COMMIT_SHORT_SHA"
-    when: always
-    paths:
-      - reports/traffic_capture.pcap
-    expire_in: 1 week
