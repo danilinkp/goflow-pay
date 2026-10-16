@@ -116,10 +116,29 @@ generate-report:
     # 2. Подтягиваем историю для графиков тренда (Требование №9)
     - mkdir -p reports/allure-results/history
     - test -d reports/allure-report/history && cp -r reports/allure-report/history/* reports/allure-results/history/ 2>/dev/null || true
-    # 3. Метаданные сборки
-    - echo "{\"name\":\"GitLab CI\",\"type\":\"gitlab\",\"buildOrder\":${CI_PIPELINE_IID:-1},\"buildName\":\"Pipeline ${CI_PIPELINE_IID:-1}\",\"reportName\":\"GoFlow Pay Allure Report\"}" > reports/allure-results/executor.json
-    # 4. Генерация итогового HTML-отчета
-    - allure generate reports/allure-results -o reports/allure-report --clean
+    # 3. Метаданные сборки с кликабельными ссылками на пайплайн и отчёт
+    - |
+      cat <<EOF > reports/allure-results/executor.json
+      {
+        "name": "GitLab CI",
+        "type": "gitlab",
+        "url": "${CI_PROJECT_URL}",
+        "buildOrder": ${CI_PIPELINE_IID:-1},
+        "buildName": "Pipeline #${CI_PIPELINE_IID:-1}",
+        "buildUrl": "${CI_PIPELINE_URL}",
+        "reportUrl": "${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/reports/allure-report/index.html",
+        "reportName": "GoFlow Pay Allure Report"
+      }
+      EOF
+    # 4. Обновление накопительной истории трендов
+    - allure generate reports/allure-results -o reports/allure-cache --clean
+    - mkdir -p reports/allure-report/history
+    - cp -r reports/allure-cache/history/* reports/allure-results/history/ 2>/dev/null || true
+    - cp -r reports/allure-cache/history reports/allure-report/
+    # 5. Сборка автономного Single-Page HTML (открывается в браузере в 1 клик без локальных веб-серверов)
+    - allure generate reports/allure-results -o reports/allure-report --clean --single-file
+    - cp -r reports/allure-cache/history reports/allure-report/
+    - rm -rf reports/allure-cache
   artifacts:
     name: "allure-report-$CI_COMMIT_SHORT_SHA"
     when: always
