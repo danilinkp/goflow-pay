@@ -115,9 +115,9 @@ generate-report:
     - ./scripts/mark_skipped_tests.sh reports/allure-results
     # 2. Подтягиваем историю для графиков тренда (Требование №9)
     - mkdir -p reports/allure-results/history
-    - cp -r reports/allure-report/history/* reports/allure-results/history/ || true
+    - test -d reports/allure-report/history && cp -r reports/allure-report/history/* reports/allure-results/history/ 2>/dev/null || true
     # 3. Метаданные сборки
-    - printf '{"name":"GitLab CI","type":"gitlab","buildOrder":%d,"buildName":"Pipeline #%s","reportName":"GoFlow Pay Allure Report"}\n' "$CI_PIPELINE_IID" "$CI_PIPELINE_IID" > reports/allure-results/executor.json
+    - echo "{\"name\":\"GitLab CI\",\"type\":\"gitlab\",\"buildOrder\":${CI_PIPELINE_IID:-1},\"buildName\":\"Pipeline ${CI_PIPELINE_IID:-1}\",\"reportName\":\"GoFlow Pay Allure Report\"}" > reports/allure-results/executor.json
     # 4. Генерация итогового HTML-отчета
     - allure generate reports/allure-results -o reports/allure-report --clean
   artifacts:
