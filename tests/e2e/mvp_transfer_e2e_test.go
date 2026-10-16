@@ -163,6 +163,10 @@ type statementResponse struct {
 
 func TestE2E_CompanyTransferAndStatementFlow(t *testing.T) {
 	allure.Wrap(t, func(a *allure.Context) {
+		if os.Getenv("SKIP_E2E_TESTS") == "true" {
+			t.Skip("Этап сквозного E2E тестирования пропущен: сбой на предыдущем этапе пирамиды тестирования")
+			return
+		}
 		baseURL := getGatewayURL()
 		clientA := newHTTPClient(baseURL)
 		clientB := newHTTPClient(baseURL)

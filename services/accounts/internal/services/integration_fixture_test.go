@@ -46,7 +46,7 @@ func getTestPostgresDSN() string {
 		if os.Getenv("TEST_ENV") == "docker" {
 			pgHost = "postgres-test"
 		} else {
-			pgHost = "localhost"
+			pgHost = "127.0.0.1"
 		}
 	}
 	pgPort := os.Getenv("PG_PORT")
@@ -75,6 +75,10 @@ func getTestPostgresDSN() string {
 
 func setupIntegrationAccountService(t *testing.T, now ...func() time.Time) (*services.AccountService, *pgxpool.Pool) {
 	t.Helper()
+	if os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
+		t.Skip("Этап интеграционного тестирования пропущен: сбой на предыдущем этапе пирамиды тестирования")
+		return nil, nil
+	}
 	ctx := context.Background()
 
 	dsn := getTestPostgresDSN()

@@ -8,9 +8,9 @@ if [ "${TEST_ENV:-}" = "docker" ]; then
     REDIS_HOST="${REDIS_HOST:-redis-test}"
     REDIS_PORT="${REDIS_PORT:-6379}"
 else
-    PG_HOST="${PG_HOST:-localhost}"
+    PG_HOST="${PG_HOST:-127.0.0.1}"
     PG_PORT="${PG_PORT:-5439}"
-    REDIS_HOST="${REDIS_HOST:-localhost}"
+    REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
     REDIS_PORT="${REDIS_PORT:-6389}"
 fi
 

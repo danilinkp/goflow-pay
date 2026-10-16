@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     postgresql-client \
     redis \
     tcpdump \
-    openssl
+    openssl \
+    python3
 
 # Install Goose for database schema migrations
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest

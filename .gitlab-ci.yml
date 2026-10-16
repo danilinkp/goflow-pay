@@ -1,7 +1,9 @@
 stages:
+  - build-test-image
   - unit-test
   - integration-test
   - e2e-test
+  - report
 
 default:
   tags:
@@ -10,44 +12,111 @@ default:
 variables:
   GOPATH: $CI_PROJECT_DIR/.go
 
-.go-cache:
-  cache:
-    key: go-$CI_COMMIT_REF_SLUG
-    paths:
-      - .go/pkg/mod/
-
 # ==============================================================================
-# Пирамида тестирования (ЛР №2: Модульные -> Интеграционные -> Сквозные E2E)
+# 1. Сборка изолированного тестового контейнера (Требование №1 ТЗ)
 # ==============================================================================
-
-# 1. Модульное тестирование (Лондонская и Классическая школы, solitary/mock)
-unit-tests:
-  extends: .go-cache
-  stage: unit-test
-  image: golang:1.25
+build-test-image:
+  stage: build-test-image
+  image: docker:26
   script:
-    - make test
+    - docker build -f Dockerfile.test -t goflow-test-runner:ci .
 
-# 2. Интеграционное тестирование (БД PostgreSQL + транзакции + outbox)
+# ==============================================================================
+# 2. Модульное тестирование (Требование №5: Порядок unit -> integration -> e2e)
+# ==============================================================================
+unit-tests:
+  stage: unit-test
+  image: docker:26
+  needs: [build-test-image]
+  script:
+    - mkdir -p reports/allure-results
+    - docker run --name unit-runner -e ALLURE_RESULTS_DIR=/app/reports/allure-results goflow-test-runner:ci make test
+  after_script:
+    - docker cp unit-runner:/app/reports/allure-results/. reports/allure-results/ || true
+    - docker rm -f unit-runner || true
+  artifacts:
+    when: always
+    paths:
+      - reports/allure-results/
+    expire_in: 1 day
+
+# ==============================================================================
+# 3. Интеграционное тестирование (Требования №2, 3, 4, 10, 11, 12, 14, 15)
+# ==============================================================================
 integration-tests:
   stage: integration-test
   image: docker:26
   needs: [unit-tests]
   script:
+    - mkdir -p reports/allure-results
     - docker compose -f docker-compose.test.yml down -v || true
     - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
-    - docker compose -f docker-compose.test.yml run --rm --build test-runner make test-integration
+    - docker compose -f docker-compose.test.yml run --name integ-runner test-runner sh -c "ALLURE_RESULTS_DIR=/app/reports/allure-results make test-integration"
   after_script:
+    - docker cp integ-runner:/app/reports/allure-results/. reports/allure-results/ || true
+    - docker rm -f integ-runner || true
     - docker compose -f docker-compose.test.yml down -v
+  artifacts:
+    when: always
+    paths:
+      - reports/allure-results/
+    expire_in: 1 day
 
-# 3. Сквозное системное тестирование (E2E через Gateway HTTP API)
+# ==============================================================================
+# 4. Сквозное системное тестирование E2E (Требования №5, 6, 10, 11, 12)
+# ==============================================================================
 e2e-tests:
   stage: e2e-test
   image: docker:26
   needs: [integration-tests]
   script:
+    - mkdir -p reports/allure-results
     - docker compose -f docker-compose.test.yml down -v || true
     - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
-    - docker compose -f docker-compose.test.yml run --rm --build test-runner make test-e2e
+    - docker compose -f docker-compose.test.yml run --name e2e-runner test-runner sh -c "ALLURE_RESULTS_DIR=/app/reports/allure-results make test-e2e"
   after_script:
+    - docker cp e2e-runner:/app/reports/allure-results/. reports/allure-results/ || true
+    - docker rm -f e2e-runner || true
     - docker compose -f docker-compose.test.yml down -v
+  artifacts:
+    when: always
+    paths:
+      - reports/allure-results/
+    expire_in: 1 day
+
+# ==============================================================================
+# 5. Автоматическая генерация Allure-отчёта с трендами (Требования №8, 9)
+# ==============================================================================
+generate-report:
+  stage: report
+  image: frankescobar/allure-docker-service:latest
+  when: always
+  needs:
+    - job: unit-tests
+      artifacts: true
+    - job: integration-tests
+      artifacts: true
+      optional: true
+    - job: e2e-tests
+      artifacts: true
+      optional: true
+  cache:
+    key: allure-history-trend
+    paths:
+      - reports/allure-report/history/
+  script:
+    # 1. Помечаем непрошедшие этапы как skipped (Требование №8)
+    - ./scripts/mark_skipped_tests.sh reports/allure-results
+    # 2. Подтягиваем историю для графиков тренда (Требование №9)
+    - mkdir -p reports/allure-results/history
+    - cp -r reports/allure-report/history/* reports/allure-results/history/ || true
+    # 3. Метаданные сборки
+    - printf '{"name":"GitLab CI","type":"gitlab","buildOrder":%d,"buildName":"Pipeline #%s","reportName":"GoFlow Pay Allure Report"}\n' "$CI_PIPELINE_IID" "$CI_PIPELINE_IID" > reports/allure-results/executor.json
+    # 4. Генерация итогового HTML-отчета
+    - allure generate reports/allure-results -o reports/allure-report --clean
+  artifacts:
+    name: "allure-report-$CI_COMMIT_SHORT_SHA"
+    when: always
+    paths:
+      - reports/allure-report/
+    expire_in: 1 week

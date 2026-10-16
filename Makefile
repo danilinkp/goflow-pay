@@ -60,25 +60,8 @@ test-coverage-open: test-coverage-html
 
 .PHONY: test-report
 test-report:
-	@echo "=== Обеспечение готовности тестовых БД (PostgreSQL + Redis) ==="
-	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
-	@./scripts/test_init.sh > /dev/null 2>&1 || true
-	@rm -rf $(ALLURE_RESULTS) $(ALLURE_REPORT)
-	@mkdir -p $(ALLURE_RESULTS)
-	@for i in 1 2 3 4; do \
-		echo "=== Прогон $$i из 4 (Unit + Integration + E2E) ==="; \
-		rm -f $(ALLURE_RESULTS)/*-result.json $(ALLURE_RESULTS)/*-container.json; \
-		[ -d $(ALLURE_REPORT)/history ] && cp -r $(ALLURE_REPORT)/history $(ALLURE_RESULTS)/; \
-		printf '{"name":"Local Runner","type":"standalone","buildOrder":%d,"buildName":"Запуск #%d","reportName":"GoFlow Allure Report"}\n' $$i $$i > $(ALLURE_RESULTS)/executor.json; \
-		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 ./services/transactions/internal/service/... > /dev/null 2>&1; \
-		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -run TestAccountService_Classic ./services/accounts/internal/services/... > /dev/null 2>&1; \
-		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /dev/null 2>&1; \
-		./scripts/test_stand_up.sh > /dev/null 2>&1; \
-		ALLURE_RESULTS_DIR=$(abspath $(ALLURE_RESULTS)) go test -count=1 -tags=e2e ./tests/e2e/... > /dev/null 2>&1; \
-		./scripts/test_stand_down.sh > /dev/null 2>&1; \
-		npx -y allure-commandline generate $(ALLURE_RESULTS) -o $(ALLURE_REPORT) --clean > /dev/null; \
-	done
-	@echo "=== Allure-отчет (Unit + Integration + E2E с историей запусков) успешно создан в: $(ALLURE_REPORT) ==="
+	@echo "=== Генерация Allure-отчета с пирамидой тестирования и проверкой Requirement 8 ==="
+	@./scripts/generate_allure_report.sh
 
 
 .PHONY: test-report-open
