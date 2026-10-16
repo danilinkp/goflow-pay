@@ -52,7 +52,7 @@ func TestAccountService_GenerateStatement_Integration(t *testing.T) {
 		periodFrom := now.Add(-24 * time.Hour)
 		periodTo := now.Add(24 * time.Hour)
 
-		// Arrange (п. 17b методички: один раз в начале теста)
+		// Arrange
 		a.Step("Arrange: подготовка счетов и генерация реальной цепочки операций в PostgreSQL", func(a *allure.Context) {
 			insertTestAccount(t, ctx, pool, targetAcc)
 			insertTestAccount(t, ctx, pool, counterpartyAcc)
