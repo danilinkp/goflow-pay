@@ -129,6 +129,77 @@ capture-traffic:
 	@echo "=== Захват сетевого трафика E2E-тестирования в reports/traffic_capture.pcap ==="
 	@./scripts/capture_traffic.sh
 
+# ==============================================================================
+# Проверка требований ЛР №2 (№14 и №15)
+# ==============================================================================
+.PHONY: test-req14
+test-req14:
+	@echo "======================================================================"
+	@echo " [ТРЕБОВАНИЕ 14] Проверка идемпотентности и повторяемости тестов"
+	@echo " Запуск интеграционных тестов 3 раза подряд на одном окружении..."
+	@echo "======================================================================"
+	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
+	@./scripts/test_init.sh
+	@for i in 1 2 3; do \
+		echo ""; \
+		echo "--> [Прогон $$i / 3] Выполнение интеграционных тестов..."; \
+		go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" || exit 1; \
+		echo "--> [Прогон $$i / 3] УСПЕШНО пройден!"; \
+	done
+	@echo ""
+	@echo "======================================================================"
+	@echo " [ТРЕБОВАНИЕ 14 ВЫПОЛНЕНО]: Интеграционные тесты успешно выполнены"
+	@echo " 3 раза подряд без деградации или поломки тестового окружения!"
+	@echo "======================================================================"
+
+.PHONY: test-req15
+test-req15:
+	@echo "======================================================================"
+	@echo " [ТРЕБОВАНИЕ 15] Проверка конкурентной изоляции тестов"
+	@echo " Одновременный запуск 4 параллельных разработчиков в общей БД..."
+	@echo "======================================================================"
+	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
+	@./scripts/test_init.sh
+	@mkdir -p /tmp/req15_logs
+	@( \
+		echo "--> Запуск потока разработчика #1..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev1.log 2>&1 & PID1=$$!; \
+		echo "--> Запуск потока разработчика #2..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev2.log 2>&1 & PID2=$$!; \
+		echo "--> Запуск потока разработчика #3..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev3.log 2>&1 & PID3=$$!; \
+		echo "--> Запуск потока разработчика #4..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev4.log 2>&1 & PID4=$$!; \
+		FAIL=0; \
+		wait $$PID1 || FAIL=1; \
+		wait $$PID2 || FAIL=1; \
+		wait $$PID3 || FAIL=1; \
+		wait $$PID4 || FAIL=1; \
+		if [ $$FAIL -ne 0 ]; then \
+			echo "ОШИБКА: Один или несколько параллельных прогонов упали!"; \
+			tail -n 20 /tmp/req15_logs/*.log; \
+			exit 1; \
+		fi \
+	)
+	@echo ""
+	@echo "Логи параллельных прогонов:"
+	@head -n 2 /tmp/req15_logs/dev1.log | sed 's/^/  [Dev 1] /'
+	@tail -n 1 /tmp/req15_logs/dev1.log | sed 's/^/  [Dev 1] /'
+	@head -n 2 /tmp/req15_logs/dev2.log | sed 's/^/  [Dev 2] /'
+	@tail -n 1 /tmp/req15_logs/dev2.log | sed 's/^/  [Dev 2] /'
+	@head -n 2 /tmp/req15_logs/dev3.log | sed 's/^/  [Dev 3] /'
+	@tail -n 1 /tmp/req15_logs/dev3.log | sed 's/^/  [Dev 3] /'
+	@head -n 2 /tmp/req15_logs/dev4.log | sed 's/^/  [Dev 4] /'
+	@tail -n 1 /tmp/req15_logs/dev4.log | sed 's/^/  [Dev 4] /'
+	@echo ""
+	@echo "======================================================================"
+	@echo " [ТРЕБОВАНИЕ 15 ВЫПОЛНЕНО]: Все 4 параллельных разработчика успешно"
+	@echo " завершили прогон тестов без конфликтов и взаимных блокировок!"
+	@echo "======================================================================"
+
+.PHONY: test-reqs
+test-reqs: test-req14 test-req15
+
 # ЛР №3 WEB:
 .PHONY: generate-api
 generate-api:
