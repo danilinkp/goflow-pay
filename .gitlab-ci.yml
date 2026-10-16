@@ -33,6 +33,7 @@ unit-tests:
     - docker run --name unit-runner -e ALLURE_RESULTS_DIR=/app/reports/allure-results goflow-test-runner:ci make test
   after_script:
     - docker cp unit-runner:/app/reports/allure-results/. reports/allure-results/ || true
+    - chmod -R 777 reports/allure-results || true
     - docker rm -f unit-runner || true
   artifacts:
     when: always
@@ -54,6 +55,7 @@ integration-tests:
     - docker compose -f docker-compose.test.yml run --name integ-runner test-runner sh -c "ALLURE_RESULTS_DIR=/app/reports/allure-results make test-integration"
   after_script:
     - docker cp integ-runner:/app/reports/allure-results/. reports/allure-results/ || true
+    - chmod -R 777 reports/allure-results || true
     - docker rm -f integ-runner || true
     - docker compose -f docker-compose.test.yml down -v
   artifacts:
@@ -76,6 +78,7 @@ e2e-tests:
     - docker compose -f docker-compose.test.yml run --name e2e-runner test-runner sh -c "ALLURE_RESULTS_DIR=/app/reports/allure-results make test-e2e"
   after_script:
     - docker cp e2e-runner:/app/reports/allure-results/. reports/allure-results/ || true
+    - chmod -R 777 reports/allure-results || true
     - docker rm -f e2e-runner || true
     - docker compose -f docker-compose.test.yml down -v
   artifacts:
@@ -89,7 +92,9 @@ e2e-tests:
 # ==============================================================================
 generate-report:
   stage: report
-  image: frankescobar/allure-docker-service:latest
+  image:
+    name: frankescobar/allure-docker-service:latest
+    entrypoint: [""]
   when: always
   needs:
     - job: unit-tests
@@ -106,6 +111,7 @@ generate-report:
       - reports/allure-report/history/
   script:
     # 1. Помечаем непрошедшие этапы как skipped (Требование №8)
+    - chmod -R 777 reports/allure-results 2>/dev/null || true
     - ./scripts/mark_skipped_tests.sh reports/allure-results
     # 2. Подтягиваем историю для графиков тренда (Требование №9)
     - mkdir -p reports/allure-results/history

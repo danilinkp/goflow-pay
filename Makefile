@@ -104,7 +104,7 @@ test-env-down:
 
 .PHONY: test-clean
 test-clean:
-	@echo "=== Очистка состояния БД и кеша (Teardown / Rollback) ==="
+	@echo "=== Очистка состояния БД и кеша ==="
 	./scripts/test_teardown.sh
 
 .PHONY: test-docker
@@ -116,7 +116,7 @@ test-docker:
 test-integration:
 	@echo "=== Применение миграций и подготовка БД ==="
 	@./scripts/test_init.sh
-	@echo "=== Запуск Интеграционных тестов (AccountService + Real PostgreSQL) ==="
+	@echo "=== Запуск Интеграционных тестов ==="
 	go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration"
 
 .PHONY: test-e2e
@@ -129,7 +129,7 @@ capture-traffic:
 	@echo "=== Захват сетевого трафика E2E-тестирования в reports/traffic_capture.pcap ==="
 	@./scripts/capture_traffic.sh
 
-# ЛР №3: Разработчик REST API (OpenAPI, Кодогенерация, Сборка Gateway)
+# ЛР №3 WEB:
 .PHONY: generate-api
 generate-api:
 	@echo "=== Кодогенерация REST API v2 из OpenAPI 3.1 (oapi-codegen) ==="

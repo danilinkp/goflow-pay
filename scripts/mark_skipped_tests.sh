@@ -18,8 +18,10 @@ mark_if_missing() {
 
     if [ -f /proc/sys/kernel/random/uuid ]; then
         UUID="$(cat /proc/sys/kernel/random/uuid)"
+    elif command -v uuidgen >/dev/null 2>&1; then
+        UUID="$(uuidgen)"
     else
-        UUID="skip-$(date +%s)-$RANDOM"
+        UUID="skip-$(date +%s)-$$"
     fi
 
     cat <<EOF > "$RESULTS_DIR/${UUID}-result.json"

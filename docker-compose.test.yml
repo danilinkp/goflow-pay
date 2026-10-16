@@ -32,6 +32,7 @@ services:
       - goflow_test_network
 
   test-runner:
+    image: goflow-test-runner:ci
     build:
       context: .
       dockerfile: Dockerfile.test
