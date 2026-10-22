@@ -129,13 +129,9 @@ capture-traffic:
 	@echo "=== Захват сетевого трафика E2E-тестирования в reports/traffic_capture.pcap ==="
 	@./scripts/capture_traffic.sh
 
-# ==============================================================================
-# Проверка требований ЛР №2 (№14 и №15)
-# ==============================================================================
-.PHONY: test-req14
-test-req14:
+.PHONY: test-int-seq
+test-int-seq:
 	@echo "======================================================================"
-	@echo " [ТРЕБОВАНИЕ 14] Проверка идемпотентности и повторяемости тестов"
 	@echo " Запуск интеграционных тестов 3 раза подряд на одном окружении..."
 	@echo "======================================================================"
 	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
@@ -146,16 +142,10 @@ test-req14:
 		go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" || exit 1; \
 		echo "--> [Прогон $$i / 3] УСПЕШНО пройден!"; \
 	done
-	@echo ""
-	@echo "======================================================================"
-	@echo " [ТРЕБОВАНИЕ 14 ВЫПОЛНЕНО]: Интеграционные тесты успешно выполнены"
-	@echo " 3 раза подряд без деградации или поломки тестового окружения!"
-	@echo "======================================================================"
 
-.PHONY: test-req15
-test-req15:
+.PHONY: test-int-paral
+test-int-paral:
 	@echo "======================================================================"
-	@echo " [ТРЕБОВАНИЕ 15] Проверка конкурентной изоляции тестов"
 	@echo " Одновременный запуск 4 параллельных разработчиков в общей БД..."
 	@echo "======================================================================"
 	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
@@ -191,14 +181,64 @@ test-req15:
 	@tail -n 1 /tmp/req15_logs/dev3.log | sed 's/^/  [Dev 3] /'
 	@head -n 2 /tmp/req15_logs/dev4.log | sed 's/^/  [Dev 4] /'
 	@tail -n 1 /tmp/req15_logs/dev4.log | sed 's/^/  [Dev 4] /'
+
+.PHONY: test-e2e-sequential
+test-e2e-sequential:
+	@echo "======================================================================"
+	@echo " [E2E SEQUENTIAL] Последовательный запуск E2E-тестов (3 прогона подряд)"
+	@echo "======================================================================"
+	@./scripts/test_stand_up.sh
+	@for i in 1 2 3; do \
+		echo ""; \
+		echo "--> [E2E Прогон $$i / 3] Запуск сквозного сценария..."; \
+		go test -v -count=1 -tags=e2e ./tests/e2e/... || { ./scripts/test_stand_down.sh; exit 1; }; \
+		echo "--> [E2E Прогон $$i / 3] УСПЕШНО пройден!"; \
+	done
+	@./scripts/test_stand_down.sh
 	@echo ""
 	@echo "======================================================================"
-	@echo " [ТРЕБОВАНИЕ 15 ВЫПОЛНЕНО]: Все 4 параллельных разработчика успешно"
-	@echo " завершили прогон тестов без конфликтов и взаимных блокировок!"
+	@echo " [E2E SEQUENTIAL ВЫПОЛНЕНО]: Все 3 последовательных прогона успешны!"
+	@echo "======================================================================"
+
+.PHONY: test-e2e-parallel
+test-e2e-parallel:
+	@echo "======================================================================"
+	@echo " [E2E PARALLEL] Одновременный запуск 3 параллельных E2E-тестов"
+	@echo "======================================================================"
+	@./scripts/test_stand_up.sh
+	@mkdir -p /tmp/e2e_parallel_logs
+	@( \
+		echo "--> Запуск параллельного E2E-клиента #1..."; \
+		go test -count=1 -tags=e2e ./tests/e2e/... > /tmp/e2e_parallel_logs/client1.log 2>&1 & PID1=$$!; \
+		echo "--> Запуск параллельного E2E-клиента #2..."; \
+		go test -count=1 -tags=e2e ./tests/e2e/... > /tmp/e2e_parallel_logs/client2.log 2>&1 & PID2=$$!; \
+		echo "--> Запуск параллельного E2E-клиента #3..."; \
+		go test -count=1 -tags=e2e ./tests/e2e/... > /tmp/e2e_parallel_logs/client3.log 2>&1 & PID3=$$!; \
+		FAIL=0; \
+		wait $$PID1 || FAIL=1; \
+		wait $$PID2 || FAIL=1; \
+		wait $$PID3 || FAIL=1; \
+		if [ $$FAIL -ne 0 ]; then \
+			echo "ОШИБКА: Один или несколько параллельных E2E-прогонов упали!"; \
+			tail -n 20 /tmp/e2e_parallel_logs/*.log; \
+			./scripts/test_stand_down.sh; \
+			exit 1; \
+		fi \
+	)
+	@./scripts/test_stand_down.sh
+	@echo ""
+	@echo "Логи параллельных E2E-клиентов:"
+	@tail -n 2 /tmp/e2e_parallel_logs/client1.log | sed 's/^/  [Client 1] /'
+	@tail -n 2 /tmp/e2e_parallel_logs/client2.log | sed 's/^/  [Client 2] /'
+	@tail -n 2 /tmp/e2e_parallel_logs/client3.log | sed 's/^/  [Client 3] /'
+	@echo ""
+	@echo "======================================================================"
+	@echo " [E2E PARALLEL ВЫПОЛНЕНО]: Все 3 параллельных E2E-клиента успешно"
+	@echo " завершили свои сценарии без взаимных коллизий!"
 	@echo "======================================================================"
 
 .PHONY: test-reqs
-test-reqs: test-req14 test-req15
+test-reqs: test-int-seq test-int-paral test-e2e-sequential test-e2e-parallel
 
 # ЛР №3 WEB:
 .PHONY: generate-api
@@ -223,3 +263,40 @@ build-gateway:
 .PHONY: run-gateway
 run-gateway:
 	cd services/gateway && go run ./cmd/gateway/main.go
+
+# ЛР3 ТИОПО: микробенчмарк map в Go 1.23 vs Go 1.25
+.PHONY: lr3-bench lr3-bench-smoke lr3-report
+lr3-bench:
+	./perf/lr3-bench/run.sh
+
+lr3-bench-smoke:
+	RUNS=1 WARMUP=1s DURATION=2s TEARDOWN=1s SIZES="1000 100000" ./perf/lr3-bench/run.sh
+
+lr3-report:
+	docker run --rm -v $(abspath $(DIR)):/data goflow-perf-analysis:local python /app/lr3_report.py /data
+
+# ЛР4 ТИОПО: нагрузочное тестирование
+.PHONY: lr4-smoke lr4-ramp lr4-stress lr4-soak lr4-soak-all lr4-mon-down lr4-report
+lr4-smoke:
+	./perf/lr4-load/run.sh smoke 0.1
+
+lr4-ramp:
+	./perf/lr4-load/run.sh ramp 0
+
+lr4-stress:
+	./perf/lr4-load/run.sh stress 0
+
+lr4-soak:
+	./perf/lr4-load/run.sh soak $(or $(ERROR_RATE),0)
+
+lr4-soak-all:
+	./perf/lr4-load/run.sh soak 0
+	SOAK_DURATION=15m ./perf/lr4-load/run.sh soak 0.1
+	SOAK_DURATION=15m ./perf/lr4-load/run.sh soak 0.2
+
+lr4-mon-down:
+	docker compose -p goflow-mon -f perf/lr4-load/compose.monitoring.yml down
+
+lr4-report:
+	docker run --rm --network goflow-load -v $(abspath $(DIR)):/data goflow-perf-analysis:local \
+		python /app/lr4_report.py /data --prometheus http://prometheus:9090

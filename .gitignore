@@ -9,3 +9,4 @@
 *values-secrets*.yaml
 /reports/
 allure-results/
+/perf/results/
