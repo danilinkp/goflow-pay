@@ -1,4 +1,4 @@
-FROM golang:alpine
+FROM golang:1.25.4-alpine
 
 RUN apk add --no-cache \
     bash \
@@ -14,11 +14,7 @@ RUN apk add --no-cache \
     python3
 
 # Install Goose for database schema migrations
-RUN go install github.com/pressly/goose/v3/cmd/goose@latest
-
-# Install gocov and gocov-html for reporting
-RUN go install github.com/axw/gocov/gocov@latest || true
-RUN go install github.com/matm/gocov-html/cmd/gocov-html@latest || true
+RUN go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
 
 WORKDIR /app
 
@@ -33,7 +29,8 @@ COPY shared/go.mod shared/go.sum* ./shared/
 COPY tools/cli/go.mod tools/cli/go.sum* ./tools/cli/
 COPY tests/e2e/go.mod tests/e2e/go.sum* ./tests/e2e/
 
-RUN go work sync || true
+# Bake every workspace dependency into the image so test runs need no module proxy
+RUN go mod download
 
 COPY . .
 

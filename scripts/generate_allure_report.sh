@@ -59,10 +59,10 @@ for i in $(seq 1 $ITERATIONS); do
     # --------------------------------------------------------------------------
     if [ "$UNIT_PASSED" = false ] || [ "$INTEG_PASSED" = false ]; then
         echo "  [SKIP] Этап 3 (E2E-тесты) пропущен из-за сбоя на предыдущем этапе."
-        SKIP_E2E_TESTS=true ALLURE_RESULTS_DIR="$ALLURE_RESULTS" go test -count=1 -tags=e2e ./tests/e2e/... > /dev/null 2>&1 || true
+        SKIP_E2E_TESTS=true ALLURE_RESULTS_DIR="$ALLURE_RESULTS" ./scripts/run_e2e_client.sh > /dev/null 2>&1 || true
     else
         ./scripts/test_stand_up.sh > /dev/null 2>&1 || true
-        if ! ALLURE_RESULTS_DIR="$ALLURE_RESULTS" go test -count=1 -tags=e2e ./tests/e2e/... > /dev/null 2>&1; then
+        if ! ALLURE_RESULTS_DIR="$ALLURE_RESULTS" ./scripts/run_e2e_client.sh > /dev/null 2>&1; then
             echo "  [FAIL] Этап 3 (E2E-тесты) завершился с ошибкой!"
         else
             echo "  [PASS] Этап 3 (E2E-тесты) успешно пройден."

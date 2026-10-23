@@ -119,15 +119,15 @@ test-integration:
 	@echo "=== Запуск Интеграционных тестов ==="
 	go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration"
 
+.PHONY: test-stand-build
+test-stand-build:
+	@echo "=== Сборка образов тестового стенда (test-runner, auth, accounts, transactions, gateway) ==="
+	docker compose -f docker-compose.test.yml build test-runner auth accounts transactions gateway
+
 .PHONY: test-e2e
 test-e2e:
 	@echo "=== Запуск Сквозного E2E тестирования (Black-Box через Gateway HTTP API) ==="
-	@./scripts/test_stand_up.sh && go test -v -count=1 -tags=e2e ./tests/e2e/... ; STATUS=$$? ; ./scripts/test_stand_down.sh ; exit $$STATUS
-
-.PHONY: capture-traffic
-capture-traffic:
-	@echo "=== Захват сетевого трафика E2E-тестирования в reports/traffic_capture.pcap ==="
-	@./scripts/capture_traffic.sh
+	@./scripts/test_stand_up.sh && ./scripts/run_e2e_client.sh ; STATUS=$$? ; ./scripts/test_stand_down.sh ; exit $$STATUS
 
 .PHONY: test-int-seq
 test-int-seq:
@@ -191,7 +191,7 @@ test-e2e-sequential:
 	@for i in 1 2 3; do \
 		echo ""; \
 		echo "--> [E2E Прогон $$i / 3] Запуск сквозного сценария..."; \
-		go test -v -count=1 -tags=e2e ./tests/e2e/... || { ./scripts/test_stand_down.sh; exit 1; }; \
+		./scripts/run_e2e_client.sh || { ./scripts/test_stand_down.sh; exit 1; }; \
 		echo "--> [E2E Прогон $$i / 3] УСПЕШНО пройден!"; \
 	done
 	@./scripts/test_stand_down.sh
@@ -209,11 +209,11 @@ test-e2e-parallel:
 	@mkdir -p /tmp/e2e_parallel_logs
 	@( \
 		echo "--> Запуск параллельного E2E-клиента #1..."; \
-		go test -count=1 -tags=e2e ./tests/e2e/... > /tmp/e2e_parallel_logs/client1.log 2>&1 & PID1=$$!; \
+		./scripts/run_e2e_client.sh > /tmp/e2e_parallel_logs/client1.log 2>&1 & PID1=$$!; \
 		echo "--> Запуск параллельного E2E-клиента #2..."; \
-		go test -count=1 -tags=e2e ./tests/e2e/... > /tmp/e2e_parallel_logs/client2.log 2>&1 & PID2=$$!; \
+		./scripts/run_e2e_client.sh > /tmp/e2e_parallel_logs/client2.log 2>&1 & PID2=$$!; \
 		echo "--> Запуск параллельного E2E-клиента #3..."; \
-		go test -count=1 -tags=e2e ./tests/e2e/... > /tmp/e2e_parallel_logs/client3.log 2>&1 & PID3=$$!; \
+		./scripts/run_e2e_client.sh > /tmp/e2e_parallel_logs/client3.log 2>&1 & PID3=$$!; \
 		FAIL=0; \
 		wait $$PID1 || FAIL=1; \
 		wait $$PID2 || FAIL=1; \

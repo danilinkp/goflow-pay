@@ -20,6 +20,7 @@ build-test-image:
   image: docker:26
   script:
     - docker build -f Dockerfile.test -t goflow-test-runner:ci .
+    - docker compose -f docker-compose.test.yml build auth accounts transactions gateway
 
 # ==============================================================================
 # 2. Модульное тестирование (Требование №5: Порядок unit -> integration -> e2e)
@@ -74,17 +75,17 @@ e2e-tests:
   script:
     - mkdir -p reports/allure-results
     - docker compose -f docker-compose.test.yml down -v || true
-    - docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
-    - docker compose -f docker-compose.test.yml run --name e2e-runner test-runner sh -c "ALLURE_RESULTS_DIR=/app/reports/allure-results make test-e2e"
+    - docker compose -f docker-compose.test.yml up -d --wait gateway
+    - ALLURE_RESULTS_DIR=reports/allure-results ./scripts/run_e2e_client.sh
   after_script:
-    - docker cp e2e-runner:/app/reports/allure-results/. reports/allure-results/ || true
     - chmod -R 777 reports/allure-results || true
-    - docker rm -f e2e-runner || true
+    - docker compose -f docker-compose.test.yml logs --no-color stand-init auth accounts transactions gateway > reports/e2e-stand.log 2>&1 || true
     - docker compose -f docker-compose.test.yml down -v
   artifacts:
     when: always
     paths:
       - reports/allure-results/
+      - reports/e2e-stand.log
     expire_in: 1 day
 
 # ==============================================================================

@@ -21,7 +21,7 @@ import (
 func getGatewayURL() string {
 	url := os.Getenv("GATEWAY_URL")
 	if url == "" {
-		return "http://127.0.0.1:8080"
+		return "http://127.0.0.1:18080"
 	}
 	return url
 }

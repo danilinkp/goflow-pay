@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-if [ -f /tmp/goflow_test_stand.pids ]; then
-    echo "--> Stopping test stand microservices..."
-    PIDS=$(cat /tmp/goflow_test_stand.pids)
-    kill $PIDS 2>/dev/null || true
-    rm -f /tmp/goflow_test_stand.pids
-fi
+COMPOSE="docker compose -f docker-compose.test.yml"
 
-# Cleanup database state
-./scripts/test_teardown.sh > /dev/null 2>&1 || true
+echo "--> Stopping test stand containers..."
+$COMPOSE rm -sf gateway transactions accounts auth > /dev/null 2>&1 || true
+
+# Teardown runs inside a container so the host needs neither psql nor redis-cli
+$COMPOSE run --rm --no-deps stand-init ./scripts/test_teardown.sh > /dev/null 2>&1 || true
+$COMPOSE rm -sf stand-init > /dev/null 2>&1 || true
