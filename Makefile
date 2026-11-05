@@ -129,6 +129,19 @@ test-e2e:
 	@echo "=== Запуск Сквозного E2E тестирования (Black-Box через Gateway HTTP API) ==="
 	@./scripts/test_stand_up.sh && ./scripts/run_e2e_client.sh ; STATUS=$$? ; ./scripts/test_stand_down.sh ; exit $$STATUS
 
+.PHONY: test-stand-up
+test-stand-up:
+	@./scripts/test_stand_up.sh
+
+.PHONY: test-e2e-run
+test-e2e-run:
+	@echo "=== Запуск E2E-клиента против уже поднятого стенда ==="
+	@./scripts/run_e2e_client.sh
+
+.PHONY: test-stand-down
+test-stand-down:
+	@./scripts/test_stand_down.sh
+
 .PHONY: test-int-seq
 test-int-seq:
 	@echo "======================================================================"
