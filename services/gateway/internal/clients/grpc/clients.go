@@ -46,6 +46,14 @@ func InitClients(authAddr, accAddr, txAddr string) (*Clients, error) {
 	}, nil
 }
 
+func (c *Clients) Conns() map[string]*grpc.ClientConn {
+	return map[string]*grpc.ClientConn{
+		"auth":         c.conns[0],
+		"accounts":     c.conns[1],
+		"transactions": c.conns[2],
+	}
+}
+
 func (c *Clients) Close() {
 	for _, conn := range c.conns {
 		_ = conn.Close()

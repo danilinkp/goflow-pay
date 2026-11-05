@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GoFlow Pay</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color: #1d2433; }
+    header { background: #1d2433; color: #fff; padding: 32px 24px; }
+    header h1 { margin: 0 0 8px; }
+    header p { margin: 0; opacity: .8; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    figure { margin: 0; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    figure img { width: 100%; height: auto; display: block; }
+    figcaption { margin-top: 8px; font-weight: 600; }
+    a { color: #2b59c3; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Добро пожаловать в GoFlow Pay</h1>
+  <p>Платёжная система для B2B-переводов между компаниями. Здесь скоро появится новое SPA-приложение.</p>
+</header>
+<main>
+  <p>
+    Текущая версия интерфейса доступна по адресу <a href="/legacy/">/legacy</a>,
+    документация проекта — <a href="/documentation">/documentation</a>,
+    служебные ссылки — <a href="/management">/management</a>.
+  </p>
+  <h2>Эскизы будущего приложения</h2>
+  <div class="grid">
+    <figure>
+      <img src="/img/auth_wireframe.svg" alt="Экран входа и регистрации">
+      <figcaption>Вход и регистрация</figcaption>
+    </figure>
+    <figure>
+      <img src="/img/dashboard.svg" alt="Дашборд счетов">
+      <figcaption>Дашборд счетов</figcaption>
+    </figure>
+    <figure>
+      <img src="/img/payments-wireframe.svg" alt="Привязка банка">
+      <figcaption>Привязка банка</figcaption>
+    </figure>
+    <figure>
+      <img src="/img/transactions.svg" alt="История и создание транзакций">
+      <figcaption>История и создание транзакций</figcaption>
+    </figure>
+  </div>
+</main>
+</body>
+</html>

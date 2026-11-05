@@ -318,3 +318,14 @@ lr4-soak-all:
 
 lr4-load:
 	./perf/lr4-load/load.sh $(abspath $(DIR))
+
+# Web ЛР4: стенд за NGINX и HTTP-проверки маршрутов
+.PHONY: web-up web-down web-check
+web-up:
+	docker compose up -d --build --wait nginx
+
+web-down:
+	docker compose down
+
+web-check:
+	@set -a; [ -f .env ] && . ./.env; set +a; ./scripts/check_routes.sh

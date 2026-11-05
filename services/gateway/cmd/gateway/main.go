@@ -51,9 +51,10 @@ func main() {
 	systemHandler := handlers.NewSystemHandler(clients.Auth, cfg.BootstrapToken)
 	accountHandler := handlers.NewAccountHandler(clients.Account)
 	transactionHandler := handlers.NewTransactionHandler(clients.Transaction)
+	healthHandler := handlers.NewHealthHandler(clients.Conns())
 	v2Server := v2.NewServer(clients.Auth, clients.Account, clients.Transaction)
 
-	engine := router.NewRouter(validator, authHandler, clients.Auth, systemHandler, accountHandler, transactionHandler, v2Server)
+	engine := router.NewRouter(validator, authHandler, clients.Auth, systemHandler, accountHandler, transactionHandler, healthHandler, v2Server)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPServer.Address,

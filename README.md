@@ -279,3 +279,43 @@ erDiagram
   3. *Паттерн Transactional Outbox с брокером Apache Kafka:* событие сохраняется в локальную таблицу `outbox` той же ACID-транзакцией БД, что и сама транзакция перевода. Отдельный фоновый воркер надежно доставляет события из `outbox` в Kafka (гарантия at-least-once).
 * **Выбранное решение:** Реализовать **Transactional Outbox** в связке с **Apache Kafka**.
 * **Причины выбора:** Гарантированное устранение проблемы двойной записи (dual-write), изоляция сбоев (сервис транзакций успешно завершает перевод даже при временной недоступности Kafka или consumer-сервисов), соблюдение требования надежности RPO = 0.
+
+---
+
+## Развёртывание за NGINX (Web ЛР4)
+
+### Запуск
+
+```bash
+cp .env.example .env    # задать ADMIN_PASSWORD для /admin
+make web-up             # = docker compose up -d --build --wait nginx
+make web-check          # HTTP-проверки маршрутов
+make web-down
+```
+
+Стенд публикуется на `http://127.0.0.1` (адрес и порт задаются `NGINX_BIND` / `NGINX_PORT` в `.env`).
+Конфигурация: `nginx/conf.d/default.conf`, статика: `static/`.
+
+### Маршруты
+
+| Внешний путь         | Компонент                     | Путь на upstream               | Доступ                                    |
+|----------------------|-------------------------------|--------------------------------|-------------------------------------------|
+| `/`                  | NGINX, `static/index.html`    | —                              | публичный                                 |
+| `/img/*`             | NGINX, `static/img/`          | —                              | публичный                                 |
+| `/reserved/`         | NGINX, `static/` (alias)      | —                              | публичный                                 |
+| `/management`        | NGINX, `static/management.html` | —                            | публичный                                 |
+| `/documentation`     | NGINX, `README.md`            | —                              | публичный                                 |
+| `/api/v1/*`          | gateway:8080                  | `/api/v1/*` (префикс сохраняется) | JWT по правилам API                    |
+| `/api/v2/*`          | gateway:8080                  | `/api/v2/*` (префикс сохраняется) | JWT по правилам API                    |
+| `/api/v2/docs`       | swagger-ui:8080               | `/api/v2/docs`                 | публичный                                 |
+| `/legacy/`           | frontend:80 (React SPA ППО)   | `/` (префикс срезается)        | публичный, данные через `/api/v1` + JWT   |
+| `/admin/`            | adminer:8080                  | `/admin/`                      | только loopback/частные сети + Basic Auth + логин БД |
+| `/status`            | NGINX `stub_status`           | —                              | публичный                                 |
+| `/health`            | gateway:8080                  | `/health`                      | публичный, процесс gateway жив            |
+| `/ready`             | gateway:8080                  | `/ready`                       | публичный, gRPC-сервисы auth/accounts/transactions доступны (иначе 503) |
+
+Swagger UI сделан точными location `= /api/v2/docs` и `^~ /api/v2/docs/`. Под этим префиксом нет ни одной операции API,
+поэтому маршруты API он не перекрывает (это проверяется в `scripts/check_routes.sh`).
+
+В Adminer вход в БД: сервер `postgres-accounts` (или `postgres-auth`, `postgres-transactions`, `postgres-notifications`),
+пользователь и пароль PostgreSQL из `services/*/.env`.

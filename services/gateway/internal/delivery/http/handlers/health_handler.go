@@ -1,0 +1,66 @@
+package handlers
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+)
+
+const readinessTimeout = 2 * time.Second
+
+type HealthHandler struct {
+	deps map[string]*grpc.ClientConn
+}
+
+func NewHealthHandler(deps map[string]*grpc.ClientConn) *HealthHandler {
+	return &HealthHandler{deps: deps}
+}
+
+// Health reports only that the gateway process is alive and serving HTTP;
+// it must not depend on downstream services, otherwise an orchestrator would
+// restart a healthy gateway because of someone else's outage.
+func (h *HealthHandler) Health(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *HealthHandler) Ready(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), readinessTimeout)
+	defer cancel()
+
+	checks := make(map[string]string, len(h.deps))
+	ready := true
+	for name, conn := range h.deps {
+		state := waitReady(ctx, conn)
+		checks[name] = state.String()
+		if state != connectivity.Ready {
+			ready = false
+		}
+	}
+
+	if !ready {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "checks": checks})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ready", "checks": checks})
+}
+
+// grpc.NewClient connects lazily, so an idle connection has to be kicked
+// explicitly before its state says anything about the backend.
+func waitReady(ctx context.Context, conn *grpc.ClientConn) connectivity.State {
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			return state
+		}
+		if state == connectivity.Idle {
+			conn.Connect()
+		}
+		if !conn.WaitForStateChange(ctx, state) {
+			return conn.GetState()
+		}
+	}
+}

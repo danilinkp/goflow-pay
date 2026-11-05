@@ -19,6 +19,7 @@ func NewRouter(
 	systemHandler *handlers.SystemHandler,
 	accountHandler *handlers.AccountHandler,
 	txHandler *handlers.TransactionHandler,
+	healthHandler *handlers.HealthHandler,
 	v2Server *v2.Server,
 ) *gin.Engine {
 	r := gin.New()
@@ -39,6 +40,9 @@ func NewRouter(
 
 		c.Next()
 	})
+
+	r.GET("/health", healthHandler.Health)
+	r.GET("/ready", healthHandler.Ready)
 
 	// Swagger UI & OpenAPI Specification routes
 	registerSwagger(r)
