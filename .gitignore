@@ -10,3 +10,6 @@
 /reports/
 allure-results/
 /perf/results/
+
+/.antigravity/
+/*.pdf

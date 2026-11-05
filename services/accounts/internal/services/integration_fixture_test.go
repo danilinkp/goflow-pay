@@ -85,7 +85,6 @@ func setupIntegrationAccountService(t *testing.T, now ...func() time.Time) (*ser
 	pool, err := postgresPool.NewPool(ctx, dsn, 5*time.Second, 10*time.Second)
 	require.NoError(t, err, "failed to connect to test postgres")
 
-	// Pre-test cleanup: ensure isolated clean slate if explicitly requested
 	if os.Getenv("TRUNCATE_BEFORE_TEST") == "true" {
 		_ = testutils.ResetTestState(ctx, pool, nil)
 	}
