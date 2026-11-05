@@ -1,0 +1,24 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 5s
+
+  - name: ResultsDB
+    type: postgres
+    uid: resultsdb
+    access: proxy
+    url: results-db:5432
+    user: results
+    secureJsonData:
+      password: results
+    jsonData:
+      database: results
+      sslmode: disable
+      postgresVersion: 1600

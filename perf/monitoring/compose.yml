@@ -1,0 +1,96 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-remote-write-receiver"
+      - "--storage.tsdb.retention.time=30d"
+    ports:
+      - "9090:9090"
+    volumes:
+      - prom-data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    cpuset: ${CPUS_MON:-6,7}
+    mem_limit: 512m
+    networks:
+      - goflow-load
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    devices:
+      - /dev/kmsg
+    command:
+      - "--docker_only=true"
+      - "--housekeeping_interval=5s"
+      - "--store_container_labels=true"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    cpuset: ${CPUS_MON:-6,7}
+    mem_limit: 256m
+    networks:
+      - goflow-load
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    pid: host
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - /:/host:ro,rslave
+    cpuset: ${CPUS_MON:-6,7}
+    mem_limit: 64m
+    networks:
+      - goflow-load
+
+  results-db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: results
+      POSTGRES_USER: results
+      POSTGRES_PASSWORD: results
+    volumes:
+      - results-data:/var/lib/postgresql/data
+      - ./results-db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    cpuset: ${CPUS_MON:-6,7}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U results -d results"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    networks:
+      - goflow-load
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    cpuset: ${CPUS_MON:-6,7}
+    mem_limit: 256m
+    depends_on:
+      prometheus:
+        condition: service_started
+      results-db:
+        condition: service_healthy
+    networks:
+      - goflow-load
+
+volumes:
+  prom-data:
+  results-data:
+
+networks:
+  goflow-load:
+    external: true

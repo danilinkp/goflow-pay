@@ -278,18 +278,27 @@ run-gateway:
 	cd services/gateway && go run ./cmd/gateway/main.go
 
 # ЛР3 ТИОПО: микробенчмарк map в Go 1.23 vs Go 1.25
-.PHONY: lr3-bench lr3-bench-smoke lr3-report
+.PHONY: lr3-bench lr3-bench-smoke lr3-load
 lr3-bench:
 	./perf/lr3-bench/run.sh
 
 lr3-bench-smoke:
 	RUNS=1 WARMUP=1s DURATION=2s TEARDOWN=1s SIZES="1000 100000" ./perf/lr3-bench/run.sh
 
-lr3-report:
-	docker run --rm -v $(abspath $(DIR)):/data goflow-perf-analysis:local python /app/lr3_report.py /data
+lr3-load:
+	./perf/lr3-bench/load.sh $(abspath $(DIR))
+
+# Мониторинг и ResultsDB
+.PHONY: mon-up mon-down
+mon-up:
+	docker network inspect goflow-load >/dev/null 2>&1 || docker network create goflow-load
+	docker compose -p goflow-mon -f perf/monitoring/compose.yml up -d --wait
+
+mon-down:
+	docker compose -p goflow-mon -f perf/monitoring/compose.yml down
 
 # ЛР4 ТИОПО: нагрузочное тестирование
-.PHONY: lr4-smoke lr4-ramp lr4-stress lr4-soak lr4-soak-all lr4-mon-down lr4-report
+.PHONY: lr4-smoke lr4-ramp lr4-stress lr4-soak lr4-soak-all lr4-load
 lr4-smoke:
 	./perf/lr4-load/run.sh smoke 0.1
 
@@ -307,9 +316,5 @@ lr4-soak-all:
 	SOAK_DURATION=15m ./perf/lr4-load/run.sh soak 0.1
 	SOAK_DURATION=15m ./perf/lr4-load/run.sh soak 0.2
 
-lr4-mon-down:
-	docker compose -p goflow-mon -f perf/lr4-load/compose.monitoring.yml down
-
-lr4-report:
-	docker run --rm --network goflow-load -v $(abspath $(DIR)):/data goflow-perf-analysis:local \
-		python /app/lr4_report.py /data --prometheus http://prometheus:9090
+lr4-load:
+	./perf/lr4-load/load.sh $(abspath $(DIR))

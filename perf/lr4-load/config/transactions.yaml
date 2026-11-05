@@ -1,0 +1,26 @@
+env: "test"
+log:
+  level: "warn"
+  output: "stdout"
+storage:
+  type: "postgres"
+  postgres:
+    host: "postgres"
+    port: 5432
+    name: "transaction_test"
+    ssl_mode: "disable"
+    connect_timeout: 5s
+    max_retries_time: 2s
+grpc:
+  port: 50053
+  timeout: 5s
+grpc_client:
+  addr: "accounts:50052"
+kafka:
+  brokers: "kafka:9092"
+outbox:
+  interval: 1h
+  batch_size: 10
+recover:
+  interval: 1h
+  stale_after: 30s

@@ -1,0 +1,826 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 100,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "type": "row",
+      "title": "Нагрузка (Prometheus)",
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "type": "timeseries",
+      "title": "1. Число виртуальных пользователей (VUs)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "k6_vus{testid=\"$testid\"}",
+          "legendFormat": "VUs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "type": "timeseries",
+      "title": "2. Пропускная способность (RPS)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(k6_http_reqs_total{testid=\"$testid\"}[15s]))",
+          "legendFormat": "RPS",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "type": "timeseries",
+      "title": "3. Тренды латентности (k6 remote write)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "avg(k6_http_req_duration_p50{testid=\"$testid\"})",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(k6_http_req_duration_p75{testid=\"$testid\"})",
+          "legendFormat": "p75",
+          "refId": "B"
+        },
+        {
+          "expr": "avg(k6_http_req_duration_p90{testid=\"$testid\"})",
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "expr": "avg(k6_http_req_duration_p95{testid=\"$testid\"})",
+          "legendFormat": "p95",
+          "refId": "D"
+        },
+        {
+          "expr": "avg(k6_http_req_duration_p99{testid=\"$testid\"})",
+          "legendFormat": "p99",
+          "refId": "E"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "type": "timeseries",
+      "title": "4. Доля ошибок (Error rate)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(k6_http_reqs_total{testid=\"$testid\",expected_response=\"false\"}[15s])) or (0 * sum(rate(k6_http_reqs_total{testid=\"$testid\"}[15s])))) / sum(rate(k6_http_reqs_total{testid=\"$testid\"}[15s]))",
+          "legendFormat": "Error rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 200,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "type": "row",
+      "title": "Латентность за весь тест (ResultsDB)",
+      "collapsed": false
+    },
+    {
+      "id": 5,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "type": "barchart",
+      "title": "5. Распределение по перцентилям (normal / error)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "WITH percentiles_calc AS (\n  SELECT\n    percentile_cont(ARRAY[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999, 0.9999])\n      WITHIN GROUP (ORDER BY value) FILTER (WHERE kind = 'normal') AS norm_vals,\n    percentile_cont(ARRAY[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999, 0.9999])\n      WITHIN GROUP (ORDER BY value) FILTER (WHERE kind = 'error') AS err_vals\n  FROM lr4_samples\n  WHERE testid = '$testid' AND metric = 'http_req_duration'\n)\nSELECT\n  p AS \"Перцентиль\",\n  round((norm_vals[idx])::numeric, 2) AS \"normal\",\n  round((err_vals[idx])::numeric, 2) AS \"error\"\nFROM percentiles_calc\nCROSS JOIN unnest(ARRAY['p0', 'p10', 'p20', 'p30', 'p40', 'p50', 'p60', 'p70', 'p80', 'p90', 'p95', 'p99', 'p99.9', 'p99.99'])\n  WITH ORDINALITY AS u(p, idx)\nORDER BY idx;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "groupWidth": 0.8,
+            "barWidth": 0.9
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "normal"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Перцентиль",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "type": "barchart",
+      "title": "6. Гистограмма латентности (normal / error)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "WITH bounds AS (\n  SELECT\n    min_val,\n    max_val,\n    (max_val / NULLIF(min_val, 0) > 100 AND min_val > 0) AS is_log\n  FROM (\n    SELECT\n      GREATEST(percentile_cont(0.001) WITHIN GROUP (ORDER BY value), 0.001) AS min_val,\n      GREATEST(percentile_cont(0.999) WITHIN GROUP (ORDER BY value), 0.002) AS max_val\n    FROM lr4_samples\n    WHERE testid = '$testid' AND metric = 'http_req_duration'\n  ) b0\n),\nsamples_bucketed AS (\n  SELECT\n    kind,\n    CASE\n      WHEN b.is_log THEN\n        LEAST(100, GREATEST(1, width_bucket(ln(GREATEST(value, 1e-6)), ln(b.min_val), ln(b.max_val), 100)))\n      ELSE\n        LEAST(100, GREATEST(1, width_bucket(value, b.min_val, b.max_val, 100)))\n    END AS b_idx\n  FROM lr4_samples\n  CROSS JOIN bounds b\n  WHERE testid = '$testid' AND metric = 'http_req_duration'\n),\ncounts AS (\n  SELECT\n    b_idx,\n    count(*) FILTER (WHERE kind = 'normal') AS norm_cnt,\n    count(*) FILTER (WHERE kind = 'error') AS err_cnt\n  FROM samples_bucketed\n  GROUP BY b_idx\n),\nseries AS (\n  SELECT generate_series(1, 100) AS b_idx\n)\nSELECT\n  CASE\n    WHEN b.is_log THEN\n      (round(exp(ln(b.min_val) + (s.b_idx - 1) * (ln(b.max_val) - ln(b.min_val)) / 100.0)::numeric,\n             2 - floor(log(exp(ln(b.min_val) + (s.b_idx - 1) * (ln(b.max_val) - ln(b.min_val)) / 100.0)))::int))::text\n    ELSE\n      (round((b.min_val + (s.b_idx - 1) * (b.max_val - b.min_val) / 100.0)::numeric,\n             2 - floor(log(GREATEST(b.min_val + (s.b_idx - 1) * (b.max_val - b.min_val) / 100.0, 1e-6)))::int))::text\n  END AS \"Бин (мс)\",\n  COALESCE(c.norm_cnt, 0) AS \"normal\",\n  COALESCE(c.err_cnt, 0) AS \"error\"\nFROM series s\nCROSS JOIN bounds b\nLEFT JOIN counts c USING (b_idx)\nORDER BY s.b_idx;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "groupWidth": 0.8,
+            "barWidth": 0.9
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "normal"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Бин (мс)",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 0,
+        "y": 16
+      },
+      "type": "table",
+      "title": "7. Перцентили латентности по операциям",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  'Все запросы' AS \"Срез\",\n  round((percentile_cont(0.50) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p50 (мс)\",\n  round((percentile_cont(0.75) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p75 (мс)\",\n  round((percentile_cont(0.90) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p90 (мс)\",\n  round((percentile_cont(0.95) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p95 (мс)\",\n  round((percentile_cont(0.99) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p99 (мс)\",\n  round(min(value)::numeric, 2) AS \"min (мс)\",\n  round(max(value)::numeric, 2) AS \"max (мс)\",\n  round(avg(value)::numeric, 2) AS \"mean (мс)\",\n  count(*) AS \"Число запросов\"\nFROM lr4_samples\nWHERE testid = '$testid' AND metric = 'http_req_duration'\nUNION ALL\nSELECT\n  'Тип: ' || kind AS \"Срез\",\n  round((percentile_cont(0.50) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p50 (мс)\",\n  round((percentile_cont(0.75) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p75 (мс)\",\n  round((percentile_cont(0.90) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p90 (мс)\",\n  round((percentile_cont(0.95) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p95 (мс)\",\n  round((percentile_cont(0.99) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p99 (мс)\",\n  round(min(value)::numeric, 2) AS \"min (мс)\",\n  round(max(value)::numeric, 2) AS \"max (мс)\",\n  round(avg(value)::numeric, 2) AS \"mean (мс)\",\n  count(*) AS \"Число запросов\"\nFROM lr4_samples\nWHERE testid = '$testid' AND metric = 'http_req_duration'\nGROUP BY kind\nUNION ALL\nSELECT\n  'Эндпоинт: ' || name AS \"Срез\",\n  round((percentile_cont(0.50) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p50 (мс)\",\n  round((percentile_cont(0.75) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p75 (мс)\",\n  round((percentile_cont(0.90) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p90 (мс)\",\n  round((percentile_cont(0.95) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p95 (мс)\",\n  round((percentile_cont(0.99) WITHIN GROUP (ORDER BY value))::numeric, 2) AS \"p99 (мс)\",\n  round(min(value)::numeric, 2) AS \"min (мс)\",\n  round(max(value)::numeric, 2) AS \"max (мс)\",\n  round(avg(value)::numeric, 2) AS \"mean (мс)\",\n  count(*) AS \"Число запросов\"\nFROM lr4_samples\nWHERE testid = '$testid' AND metric = 'http_req_duration'\nGROUP BY name\nORDER BY \"Срез\";",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {}
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 14,
+        "y": 16
+      },
+      "type": "table",
+      "title": "8. Сводка по фазам нагрузки (phase)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "WITH per_phase_dur AS (\n  SELECT phase,\n         round(EXTRACT(EPOCH FROM (max(ts) - min(ts)))::numeric, 1) AS dur_s\n  FROM lr4_samples\n  WHERE testid = '$testid' AND metric = 'http_req_duration'\n  GROUP BY phase\n),\nper_phase_vus AS (\n  SELECT phase,\n         round(avg(value)::numeric, 0) AS avg_vus\n  FROM lr4_samples\n  WHERE testid = '$testid' AND metric = 'vus'\n  GROUP BY phase\n),\nper_sec_rps AS (\n  SELECT phase,\n         date_trunc('second', ts) as sec,\n         count(*) as rps\n  FROM lr4_samples\n  WHERE testid = '$testid' AND metric = 'http_req_duration'\n  GROUP BY phase, sec\n),\nper_phase_rps AS (\n  SELECT phase,\n         percentile_cont(0.5) WITHIN GROUP (ORDER BY rps) as median_rps\n  FROM per_sec_rps\n  GROUP BY phase\n),\nper_phase_lat AS (\n  SELECT phase,\n         round((percentile_cont(0.95) WITHIN GROUP (ORDER BY value))::numeric, 2) AS p95_ms,\n         round((percentile_cont(0.99) WITHIN GROUP (ORDER BY value))::numeric, 2) AS p99_ms,\n         round((100.0 * count(*) FILTER (WHERE NOT expected) / NULLIF(count(*), 0))::numeric, 2) AS error_rate_pct\n  FROM lr4_samples\n  WHERE testid = '$testid' AND metric = 'http_req_duration'\n  GROUP BY phase\n)\nSELECT\n  d.phase AS \"Фаза\",\n  d.dur_s AS \"Длительность (с)\",\n  COALESCE(v.avg_vus, 0) AS \"VU\",\n  COALESCE(r.median_rps, 0) AS \"Медианный RPS\",\n  l.p95_ms AS \"p95 (мс)\",\n  l.p99_ms AS \"p99 (мс)\",\n  COALESCE(l.error_rate_pct, 0) AS \"Error rate (%)\"\nFROM per_phase_dur d\nLEFT JOIN per_phase_vus v USING (phase)\nLEFT JOIN per_phase_rps r USING (phase)\nLEFT JOIN per_phase_lat l USING (phase)\nORDER BY d.phase;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {}
+      }
+    },
+    {
+      "id": 300,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "type": "row",
+      "title": "Пропускная способность (ResultsDB)",
+      "collapsed": false
+    },
+    {
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "type": "timeseries",
+      "title": "9. RPS и VU во времени",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('second', ts) AS time, count(*) AS value, 'RPS' AS metric\nFROM lr4_samples\nWHERE testid = '$testid' AND metric = 'http_req_duration'\nGROUP BY 1 ORDER BY 1;",
+          "refId": "A"
+        },
+        {
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('second', ts) AS time, avg(value) AS value, 'VU' AS metric\nFROM lr4_samples\nWHERE testid = '$testid' AND metric = 'vus'\nGROUP BY 1 ORDER BY 1;",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RPS"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VU"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "type": "table",
+      "title": "10. Распределение посекундного RPS",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "WITH sec_rps AS (\n  SELECT date_trunc('second', ts) AS s, count(*) AS rps\n  FROM lr4_samples\n  WHERE testid = '$testid' AND metric = 'http_req_duration'\n  GROUP BY 1\n)\nSELECT\n  percentile_cont(0.50) WITHIN GROUP (ORDER BY rps) AS \"p50\",\n  percentile_cont(0.75) WITHIN GROUP (ORDER BY rps) AS \"p75\",\n  percentile_cont(0.90) WITHIN GROUP (ORDER BY rps) AS \"p90\",\n  percentile_cont(0.95) WITHIN GROUP (ORDER BY rps) AS \"p95\",\n  percentile_cont(0.99) WITHIN GROUP (ORDER BY rps) AS \"p99\",\n  min(rps) AS \"min\",\n  max(rps) AS \"max\",\n  round(avg(rps)::numeric, 2) AS \"mean\"\nFROM sec_rps;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {}
+      }
+    },
+    {
+      "id": 11,
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "type": "table",
+      "title": "11. Сводка запросов и ошибок",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  count(*) AS \"Всего запросов\",\n  count(*) FILTER (WHERE expected) AS \"Успешных / ожидаемых\",\n  count(*) FILTER (WHERE NOT expected) AS \"Неожиданных отказов\",\n  count(*) FILTER (WHERE kind = 'error') AS \"Ожидаемых ошибок\",\n  count(*) FILTER (WHERE status = 500 AND variant = 'overdraft') AS \"500 на overdraft (дефект)\",\n  count(*) FILTER (WHERE status = 500 AND (variant IS NULL OR variant != 'overdraft')) AS \"500 на прочих\"\nFROM lr4_samples\nWHERE testid = '$testid' AND metric = 'http_req_duration';",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {}
+      }
+    },
+    {
+      "id": 400,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "type": "row",
+      "title": "Ресурсы (Prometheus)",
+      "collapsed": false
+    },
+    {
+      "id": 12,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 40
+      },
+      "type": "timeseries",
+      "title": "12. CPU по компонентам (ядер)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 40
+      },
+      "type": "timeseries",
+      "title": "13. Память (RAM) по компонентам (байты)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(container_memory_working_set_bytes{container_label_com_docker_compose_service!=\"\"}, \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 40
+      },
+      "type": "timeseries",
+      "title": "14. Дисковые операции (I/O) (Bps)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_blkio_device_usage_total{operation=\"Read\",container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1 read\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}} read",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_blkio_device_usage_total{operation=\"Write\",container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1 write\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}} write",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 46
+      },
+      "type": "timeseries",
+      "title": "15. Сетевой трафик (Network) (Bps)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_network_receive_bytes_total{container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1 rx\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}} rx",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1 tx\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}} tx",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 16,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 46
+      },
+      "type": "timeseries",
+      "title": "16. PostgreSQL TPS",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(pg_stat_database_xact_commit[15s]))",
+          "legendFormat": "TPS",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 17,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      },
+      "type": "table",
+      "title": "17. Ресурсы компонентов (min / max / среднее)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "min_over_time((sum by (svc) (label_replace(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - CPU min (ядер)",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "avg_over_time((sum by (svc) (label_replace(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - CPU avg (ядер)",
+          "refId": "B",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "max_over_time((sum by (svc) (label_replace(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service!=\"\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - CPU max (ядер)",
+          "refId": "C",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "min_over_time((sum by (svc) (label_replace(container_memory_working_set_bytes{container_label_com_docker_compose_service!=\"\"}, \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s]) / (1024*1024)",
+          "legendFormat": "{{svc}} - RAM min (МБ)",
+          "refId": "D",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "avg_over_time((sum by (svc) (label_replace(container_memory_working_set_bytes{container_label_com_docker_compose_service!=\"\"}, \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s]) / (1024*1024)",
+          "legendFormat": "{{svc}} - RAM avg (МБ)",
+          "refId": "E",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "max_over_time((sum by (svc) (label_replace(container_memory_working_set_bytes{container_label_com_docker_compose_service!=\"\"}, \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s]) / (1024*1024)",
+          "legendFormat": "{{svc}} - RAM max (МБ)",
+          "refId": "F",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "min_over_time((sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_service!=\"\",operation=\"Read\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - Disk Read min (Bps)",
+          "refId": "G",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "avg_over_time((sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_service!=\"\",operation=\"Read\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - Disk Read avg (Bps)",
+          "refId": "H",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "max_over_time((sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_service!=\"\",operation=\"Read\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - Disk Read max (Bps)",
+          "refId": "I",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "min_over_time((sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_service!=\"\",operation=\"Write\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - Disk Write min (Bps)",
+          "refId": "J",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "avg_over_time((sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_service!=\"\",operation=\"Write\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - Disk Write avg (Bps)",
+          "refId": "K",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "max_over_time((sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_service!=\"\",operation=\"Write\"}[15s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\")))[$__range:5s])",
+          "legendFormat": "{{svc}} - Disk Write max (Bps)",
+          "refId": "L",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "svc",
+            "mode": "outer"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {}
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "lr4",
+    "load"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "testid",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "resultsdb"
+        },
+        "definition": "SELECT DISTINCT testid FROM lr4_runs ORDER BY testid DESC",
+        "query": "SELECT DISTINCT testid FROM lr4_runs ORDER BY testid DESC",
+        "refresh": 1,
+        "label": "Прогон (testid)"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "title": "ЛР4: нагрузочное тестирование GoFlow",
+  "uid": "lr4-load",
+  "version": 3
+}
