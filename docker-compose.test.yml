@@ -171,8 +171,21 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
+    # The only service on both networks: the sole entry point for the e2e client
     networks:
       - goflow_test_network
+      - goflow_test_client_network
+
+  # Black-box client: sees only gateway, never the services or databases behind it
+  e2e-client:
+    image: goflow-test-e2e-client:ci
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    environment:
+      - GATEWAY_URL=http://gateway:8080
+    networks:
+      - goflow_test_client_network
 
 volumes:
   stand-data:
@@ -180,4 +193,7 @@ volumes:
 networks:
   goflow_test_network:
     name: goflow_test_network
+    driver: bridge
+  goflow_test_client_network:
+    name: goflow_test_client_network
     driver: bridge

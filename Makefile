@@ -121,8 +121,8 @@ test-integration:
 
 .PHONY: test-stand-build
 test-stand-build:
-	@echo "=== Сборка образов тестового стенда (test-runner, auth, accounts, transactions, gateway) ==="
-	docker compose -f docker-compose.test.yml build test-runner auth accounts transactions gateway
+	@echo "=== Сборка образов тестового стенда (test-runner, e2e-client, auth, accounts, transactions, gateway) ==="
+	docker compose -f docker-compose.test.yml build test-runner e2e-client auth accounts transactions gateway
 
 .PHONY: test-e2e
 test-e2e:

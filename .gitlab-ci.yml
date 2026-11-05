@@ -20,7 +20,7 @@ build-test-image:
   image: docker:26
   script:
     - docker build -f Dockerfile.test -t goflow-test-runner:ci .
-    - docker compose -f docker-compose.test.yml build auth accounts transactions gateway
+    - docker compose -f docker-compose.test.yml build e2e-client auth accounts transactions gateway
 
 # ==============================================================================
 # 2. Модульное тестирование (Требование №5: Порядок unit -> integration -> e2e)
