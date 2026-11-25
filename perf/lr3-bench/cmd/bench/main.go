@@ -46,6 +46,7 @@ func main() {
 	durationFlag := flag.Duration("duration", 10*time.Second, "measurement duration")
 	teardownFlag := flag.Duration("teardown", 1*time.Second, "teardown duration")
 	runFlag := flag.Int("run", 1, "run index")
+	liveFlag := flag.Duration("live", 0, "interval of live histogram output to stdout, 0 disables it")
 	flag.Parse()
 
 	if *scenarioFlag == "" || *outFlag == "" {
@@ -63,6 +64,9 @@ func main() {
 	cfg.Warmup = *warmupFlag
 	cfg.Measure = *durationFlag
 	cfg.Teardown = *teardownFlag
+	if *liveFlag > 0 {
+		cfg.Live = harness.NewLive(os.Stdout, *liveFlag, cfg.Ops)
+	}
 
 	res := harness.Run(cfg)
 

@@ -11,13 +11,15 @@ import (
 )
 
 type Config struct {
-	Env        string      `yaml:"env" env:"ENV" env-default:"local"`
-	GRPCServer GRPCServer  `yaml:"grpc"`
-	Log        LogConfig   `yaml:"log"`
-	Storage    Storage     `yaml:"storage"`
-	Redis      RedisConfig `yaml:"redis"`
-	JWT        JWT         `yaml:"jwt"`
-	HashCost   int         `yaml:"hash_cost" env-default:"10"`
+	Env         string      `yaml:"env" env:"ENV" env-default:"local"`
+	ReadOnly    bool        `yaml:"read_only" env:"READ_ONLY" env-default:"false"`
+	MetricsAddr string      `yaml:"metrics_addr" env:"METRICS_ADDR" env-default:":9464"`
+	GRPCServer  GRPCServer  `yaml:"grpc"`
+	Log         LogConfig   `yaml:"log"`
+	Storage     Storage     `yaml:"storage"`
+	Redis       RedisConfig `yaml:"redis"`
+	JWT         JWT         `yaml:"jwt"`
+	HashCost    int         `yaml:"hash_cost" env-default:"10"`
 }
 
 type GRPCServer struct {
@@ -38,7 +40,7 @@ type Storage struct {
 }
 
 type PostgresDB struct {
-	Host           string        `yaml:"host"`
+	Host           string        `yaml:"host" env:"DATABASE_HOST"`
 	Port           string        `yaml:"port"`
 	User           string        `env:"DATABASE_USER"`
 	Password       string        `env:"DATABASE_PASSWORD"`

@@ -4,9 +4,6 @@ WORKDIR /app
 COPY shared/go.mod shared/go.sum ./shared/
 COPY services/notifications/go.mod services/notifications/go.sum ./services/notifications/
 
-WORKDIR /app/services/notifications
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
-
 WORKDIR /app
 COPY shared/ ./shared/
 COPY services/notifications/ ./services/notifications/

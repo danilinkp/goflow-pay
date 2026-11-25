@@ -33,6 +33,7 @@ type Config struct {
 	Teardown time.Duration
 	Ops      []string
 	Workers  []Worker
+	Live     *Live
 }
 
 type Result struct {
@@ -89,12 +90,16 @@ func Run(cfg Config) Result {
 					phase = PhaseTeardown
 				}
 
+				latency := t1.Sub(t0).Nanoseconds()
 				samples = append(samples, Sample{
 					StartNs:   offset.Nanoseconds(),
-					LatencyNs: t1.Sub(t0).Nanoseconds(),
+					LatencyNs: latency,
 					Op:        worker.Op,
 					Phase:     phase,
 				})
+				if cfg.Live != nil {
+					cfg.Live.record(worker.Op, phase, latency)
+				}
 			}
 			workerSamples[idx] = samples
 		}()
@@ -108,6 +113,12 @@ func Run(cfg Config) Result {
 
 	start = time.Now()
 	close(barrier)
+
+	liveStop := make(chan struct{})
+	liveDone := make(chan struct{})
+	if cfg.Live != nil {
+		go cfg.Live.stream(liveStop, liveDone)
+	}
 
 	go func() {
 		defer gcWg.Done()
@@ -133,6 +144,11 @@ func Run(cfg Config) Result {
 	gcWg.Wait()
 
 	totalDuration := time.Since(start)
+
+	if cfg.Live != nil {
+		close(liveStop)
+		<-liveDone
+	}
 
 	totalCount := 0
 	for _, s := range workerSamples {

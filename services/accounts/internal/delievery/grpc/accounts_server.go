@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	pgdb "shared/pkg/db/postgres"
 	accountsv1 "shared/pkg/gen/go/accounts/v1"
 	"strings"
 	"time"
@@ -567,6 +568,8 @@ func (s *AccountServer) DeleteBankAccount(ctx context.Context, req *accountsv1.D
 
 func mapError(err error) error {
 	switch {
+	case pgdb.IsReadOnlyViolation(err):
+		return status.Error(codes.Unavailable, pgdb.ErrReadOnlyInstance.Error())
 	case errors.Is(err, domain.ErrAccountNotFound),
 		errors.Is(err, domain.ErrBankAccountNotFound):
 		return status.Error(codes.NotFound, err.Error())

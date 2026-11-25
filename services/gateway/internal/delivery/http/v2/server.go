@@ -56,6 +56,10 @@ func handleGRPCError(c *gin.Context, err error) {
 		sendError(c, http.StatusUnauthorized, "UNAUTHORIZED", st.Message())
 	case codes.PermissionDenied:
 		sendError(c, http.StatusForbidden, "FORBIDDEN", st.Message())
+	case codes.Unavailable:
+		sendError(c, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", st.Message())
+	case codes.DeadlineExceeded:
+		sendError(c, http.StatusGatewayTimeout, "GATEWAY_TIMEOUT", st.Message())
 	default:
 		sendError(c, http.StatusInternalServerError, "INTERNAL_ERROR", st.Message())
 	}

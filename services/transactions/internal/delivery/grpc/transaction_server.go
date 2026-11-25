@@ -3,6 +3,7 @@ package transactionsgrpc
 import (
 	"context"
 	"errors"
+	pgdb "shared/pkg/db/postgres"
 	transactionsv1 "shared/pkg/gen/go/transactions/v1"
 	"transactions/internal/domain"
 	"transactions/internal/domain/entities"
@@ -193,6 +194,8 @@ func mapTransactionToProto(tx *entities.Transaction) *transactionsv1.Transaction
 
 func mapError(err error) error {
 	switch {
+	case pgdb.IsReadOnlyViolation(err):
+		return status.Error(codes.Unavailable, pgdb.ErrReadOnlyInstance.Error())
 	case errors.Is(err, domain.ErrTransactionNotFound):
 		return status.Error(codes.NotFound, "transaction not found")
 	case errors.Is(err, domain.ErrTransactionAlreadyExists):

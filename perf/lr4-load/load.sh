@@ -26,7 +26,7 @@ docker compose -p goflow-mon -f "${MON_COMPOSE}" exec -T results-db pg_isready -
 
 echo "--> Загрузка результатов ЛР4 (${TESTID}) в results-db"
 
-read -r SCENARIO ERROR_RATE START_TS END_TS BASE_DUR SPIKE_RAMP_DUR HOLD_DUR REC_DUR RAMP_STEP_DUR RAMP_START_VUS RAMP_STEP_VUS < <(python3 -c "
+read -r SCENARIO ERROR_RATE START_TS END_TS BASE_DUR SPIKE_RAMP_DUR HOLD_DUR REC_DUR RAMP_STAGE_DUR RAMP_START_VUS RAMP_STEP_VUS RAMP_STEPS < <(python3 -c "
 import json, re, sys
 
 def parse_dur(s):
@@ -50,9 +50,10 @@ print(d.get('scenario', 'smoke'),
       parse_dur(p.get('STRESS_SPIKE_RAMP', '30s')),
       parse_dur(p.get('STRESS_HOLD', '3m')),
       parse_dur(p.get('STRESS_RECOVERY', '10m')),
-      parse_dur(p.get('RAMP_STEP_DURATION', '60s')),
+      parse_dur(p.get('RAMP_TRANSITION_DURATION', '10s')) + parse_dur(p.get('RAMP_STEP_DURATION', '60s')),
       int(p.get('RAMP_START_VUS', 10)),
-      int(p.get('RAMP_STEP_VUS', 20)))
+      int(p.get('RAMP_STEP_VUS', 20)),
+      int(p.get('RAMP_STEPS', 15)))
 ")
 
 META_ESCAPED="$(sed "s/'/''/g" "${RUN_JSON}")"
@@ -94,7 +95,10 @@ SELECT
                 ELSE 'recovery'
             END
         WHEN '${SCENARIO}' = 'ramp' THEN
-            ((${RAMP_START_VUS} + floor(greatest(0.0, (s.timestamp / 1000.0) - b.load_start) / (10.0 + ${RAMP_STEP_DUR})) * ${RAMP_STEP_VUS})::text || ' VU')
+            CASE
+                WHEN (s.timestamp / 1000.0) - b.load_start >= ${RAMP_STEPS} * ${RAMP_STAGE_DUR} THEN 'ramp_down'
+                ELSE ((${RAMP_START_VUS} + floor(greatest(0.0, (s.timestamp / 1000.0) - b.load_start) / ${RAMP_STAGE_DUR}) * ${RAMP_STEP_VUS})::text || ' VU')
+            END
         ELSE '${SCENARIO}'
     END,
     NULLIF(s.status, '')::int,

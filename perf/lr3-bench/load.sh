@@ -10,6 +10,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 MON_COMPOSE="${REPO_ROOT}/perf/monitoring/compose.yml"
+SCHEMA_SQL="${REPO_ROOT}/perf/monitoring/results-db/schema.sql"
+AGG_SQL="${REPO_ROOT}/perf/monitoring/results-db/lr3_agg.sql"
 BENCH_ID="$(basename "${BENCH_DIR}")"
 
 docker compose -p goflow-mon -f "${MON_COMPOSE}" exec -T results-db pg_isready -U results -d results >/dev/null 2>&1 || {
@@ -30,6 +32,8 @@ if [[ ${#RUN_DIRS[@]} -eq 0 ]]; then
 fi
 
 {
+    echo "SET client_min_messages = warning;"
+    cat "${SCHEMA_SQL}"
     echo "BEGIN;"
     echo "DELETE FROM lr3_runs WHERE bench_id = '${BENCH_ID}';"
     echo "CREATE TEMP TABLE staging_samples (start_ns bigint, latency_ns bigint, op text, phase text) ON COMMIT DROP;"
@@ -66,6 +70,9 @@ fi
     echo "JOIN lr3_samples s ON s.run_id = r.id"
     echo "WHERE r.bench_id = '${BENCH_ID}' AND s.phase = 'measure'"
     echo "GROUP BY r.id, r.bench_id, r.version, r.scenario, r.size, r.run, s.op;"
+
+    echo "\\set bench '${BENCH_ID}'"
+    cat "${AGG_SQL}"
 
     echo "COMMIT;"
 } | docker compose -p goflow-mon -f "${MON_COMPOSE}" exec -T results-db psql -U results -d results -v ON_ERROR_STOP=1 >/dev/null

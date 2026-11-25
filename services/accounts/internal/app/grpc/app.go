@@ -7,6 +7,9 @@ import (
 	"log/slog"
 	"net"
 
+	"shared/pkg/metrics"
+	"shared/pkg/tracing"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"google.golang.org/grpc"
@@ -37,6 +40,8 @@ func NewAccountsApp(log *slog.Logger, accountsService accountsgrpc.AccountProvid
 	}
 
 	gRPCServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		tracing.UnaryServerInterceptor(),
+		metrics.UnaryServerInterceptor(),
 		recovery.UnaryServerInterceptor(recoveryOpts...),
 		logging.UnaryServerInterceptor(InterceptorLogger(log), loggingOpts...),
 	))
@@ -52,6 +57,9 @@ func NewAccountsApp(log *slog.Logger, accountsService accountsgrpc.AccountProvid
 
 func InterceptorLogger(l *slog.Logger) logging.Logger {
 	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
+		if id := tracing.TraceID(ctx); id != "" {
+			fields = append(fields, "trace_id", id)
+		}
 		l.Log(ctx, slog.Level(lvl), msg, fields...)
 	})
 }

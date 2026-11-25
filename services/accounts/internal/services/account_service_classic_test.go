@@ -464,6 +464,8 @@ func TestAccountService_Classic_GenerateStatement_CalculatesAggregates(t *testin
 					0,
 					pgxmock.AnyArg(),
 					pgxmock.AnyArg(),
+					pgxmock.AnyArg(),
+					pgxmock.AnyArg(),
 				).
 				WillReturnResult(pgxmock.NewResult("INSERT", 1))
 		})

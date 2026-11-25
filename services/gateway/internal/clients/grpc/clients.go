@@ -2,6 +2,9 @@ package grpc
 
 import (
 	"fmt"
+	"time"
+
+	"shared/pkg/tracing"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -14,9 +17,10 @@ type Clients struct {
 	conns       []*grpc.ClientConn
 }
 
-func InitClients(authAddr, accAddr, txAddr string) (*Clients, error) {
+func InitClients(authAddr, accAddr, txAddr string, timeout time.Duration) (*Clients, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptorWithTimeout(timeout)),
 	}
 
 	dial := func(addr string) (*grpc.ClientConn, error) {

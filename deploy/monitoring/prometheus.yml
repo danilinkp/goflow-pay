@@ -1,0 +1,145 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: gateway
+    static_configs:
+      - targets: ["gateway:8080"]
+        labels:
+          stack: main
+          role: rw
+      - targets: ["gateway-ro-1:8080"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["gateway-ro-2:8080"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["gateway-mirror:8080"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["gateway-mirror-ro-1:8080"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["gateway-mirror-ro-2:8080"]
+        labels:
+          stack: mirror
+          role: ro
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: instance
+        replacement: "$1"
+  - job_name: auth
+    static_configs:
+      - targets: ["auth:9464"]
+        labels:
+          stack: main
+          role: rw
+      - targets: ["auth-ro-1:9464"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["auth-ro-2:9464"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["auth-mirror:9464"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["auth-mirror-ro-1:9464"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["auth-mirror-ro-2:9464"]
+        labels:
+          stack: mirror
+          role: ro
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: instance
+        replacement: "$1"
+  - job_name: accounts
+    static_configs:
+      - targets: ["accounts:9464"]
+        labels:
+          stack: main
+          role: rw
+      - targets: ["accounts-ro-1:9464"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["accounts-ro-2:9464"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["accounts-mirror:9464"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["accounts-mirror-ro-1:9464"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["accounts-mirror-ro-2:9464"]
+        labels:
+          stack: mirror
+          role: ro
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: instance
+        replacement: "$1"
+  - job_name: transactions
+    static_configs:
+      - targets: ["transactions:9464"]
+        labels:
+          stack: main
+          role: rw
+      - targets: ["transactions-ro-1:9464"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["transactions-ro-2:9464"]
+        labels:
+          stack: main
+          role: ro
+      - targets: ["transactions-mirror:9464"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["transactions-mirror-ro-1:9464"]
+        labels:
+          stack: mirror
+          role: ro
+      - targets: ["transactions-mirror-ro-2:9464"]
+        labels:
+          stack: mirror
+          role: ro
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: instance
+        replacement: "$1"
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+        labels:
+          instance: nginx
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    metric_relabel_configs:
+      - source_labels: [container_label_com_docker_compose_service]
+        target_label: service
+      - regex: "container_label_.*"
+        action: labeldrop
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

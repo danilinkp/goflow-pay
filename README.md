@@ -288,7 +288,7 @@ erDiagram
 
 ```bash
 cp .env.example .env    # задать ADMIN_PASSWORD для /admin
-make web-up             # = docker compose up -d --build --wait nginx
+make web-up             # = docker compose up -d --build --wait
 make web-check          # HTTP-проверки маршрутов
 make web-down
 ```
@@ -305,17 +305,122 @@ make web-down
 | `/reserved/`         | NGINX, `static/` (alias)      | —                              | публичный                                 |
 | `/management`        | NGINX, `static/management.html` | —                            | публичный                                 |
 | `/documentation`     | NGINX, `README.md`            | —                              | публичный                                 |
-| `/api/v1/*`          | gateway:8080                  | `/api/v1/*` (префикс сохраняется) | JWT по правилам API                    |
-| `/api/v2/*`          | gateway:8080                  | `/api/v2/*` (префикс сохраняется) | JWT по правилам API                    |
+| `/api/v1/*`          | GET: gateway ×2, gateway-ro-1, gateway-ro-2; запись: gateway | `/api/v1/*` (префикс сохраняется) | JWT по правилам API                    |
+| `/api/v2/*`          | GET: gateway ×2, gateway-ro-1, gateway-ro-2; запись: gateway | `/api/v2/*` (префикс сохраняется) | JWT по правилам API                    |
 | `/api/v2/docs`       | swagger-ui:8080               | `/api/v2/docs`                 | публичный                                 |
 | `/legacy/`           | frontend:80 (React SPA ППО)   | `/` (префикс срезается)        | публичный, данные через `/api/v1` + JWT   |
 | `/admin/`            | adminer:8080                  | `/admin/`                      | только loopback/частные сети + Basic Auth + логин БД |
 | `/status`            | NGINX `stub_status`           | —                              | публичный                                 |
+| `/monitoring/`       | grafana:3000                  | `/monitoring/`                 | только loopback/частные сети; просмотр анонимно, правка под `GRAFANA_ADMIN_*` |
 | `/health`            | gateway:8080                  | `/health`                      | публичный, процесс gateway жив            |
 | `/ready`             | gateway:8080                  | `/ready`                       | публичный, gRPC-сервисы auth/accounts/transactions доступны (иначе 503) |
+| `/mirror/`           | NGINX, `static/` (sub_filter ссылок на `/mirror/...`) | — | публичный |
+| `/mirror/api/v1`, `/mirror/api/v2` | GET: gateway-mirror ×2, gateway-mirror-ro-1, gateway-mirror-ro-2 (реплики); запись: gateway (primary) | `/api/...` (префикс `/mirror` срезается) | JWT по правилам API |
+| `/mirror/api/v2/docs` | swagger-ui-mirror:8080       | `/mirror/api/v2/docs`          | публичный                                 |
+| `/mirror/legacy/`    | frontend-mirror:80 (SPA, API `/mirror/api/v1`) | `/`                  | публичный                                 |
+| `/mirror/health`, `/mirror/ready` | gateway-mirror:8080 | `/health`, `/ready`         | публичный                                 |
 
-Swagger UI сделан точными location `= /api/v2/docs` и `^~ /api/v2/docs/`. Под этим префиксом нет ни одной операции API,
+Swagger UI сделан location `= /api/v2/docs` и `/api/v2/docs/`. Под этим префиксом нет ни одной операции API,
 поэтому маршруты API он не перекрывает (это проверяется в `scripts/check_routes.sh`).
 
 В Adminer вход в БД: сервер `postgres-accounts` (или `postgres-auth`, `postgres-transactions`, `postgres-notifications`),
 пользователь и пароль PostgreSQL из `services/*/.env`.
+
+### Зеркало и репликация
+
+Каждая из баз auth, accounts, transactions реплицируется (streaming, асинхронно) в `postgres-*-replica`.
+Экземпляры `/mirror` читают с реплик под пользователем `readonly`, запись из `/mirror` nginx отправляет на основной gateway.
+После успешной записи через `/mirror` nginx ставит cookie `mirror_rw` на 5 с, и пока она жива, чтения зеркала идут на primary (read-your-writes).
+
+```bash
+make replication-status                                         # состояние и лаг репликации
+REPLICA_APPLY_DELAY=5s docker compose up -d postgres-auth-replica postgres-accounts-replica postgres-transactions-replica   # искусственная задержка
+```
+
+### Заголовки, кэширование и сжатие
+
+nginx собирается из `nginx/Dockerfile`: официальный образ плюс динамический модуль `headers-more`, без которого nginx не умеет
+задать своё значение заголовка `Server`. Во всех ответах `Server: GoFlow Pay`, версия nginx скрыта.
+
+| Ответ | Cache-Control | Кэш nginx |
+|-------|---------------|-----------|
+| хэшированные ассеты SPA (`/legacy/assets/*`, `/mirror/legacy/assets/*`) | `public, max-age=31536000, immutable` | да |
+| картинки и шрифты | `public, max-age=86400` | для проксируемых |
+| прочие css/js (Swagger UI) | `public, max-age=3600` | да |
+| HTML, README, спецификация OpenAPI | `no-cache` (ревалидация по ETag / Last-Modified) | для проксируемых |
+| `/api/*`, `/mirror/api/*`, `/admin/`, `/management`, `/monitoring/`, `/status`, `/health`, `/ready` | `no-store` | нет |
+
+Проксируемая статика (`/legacy/`, `/mirror/legacy/`, Swagger UI) хранится в `proxy_cache`, состояние видно в заголовке `X-Cache-Status`.
+gzip включён для HTML, CSS, JS, JSON, SVG, XML и YAML от 1 КБ, с `Vary: Accept-Encoding`. Проверки входят в `make web-check`.
+
+### Мониторинг
+
+`/monitoring/` открывает Grafana с дашбордом «GoFlow Pay»: балансировка 2:1:1 для основного стека и зеркала, записи по экземплярам,
+p95 и доля 5xx gateway, gRPC-вызовы и ошибки по экземплярам, доступность экземпляров, nginx, CPU и память контейнеров, логи.
+
+| Компонент | Что собирает |
+|-----------|--------------|
+| Prometheus | `/metrics` всех 24 экземпляров gateway/auth/accounts/transactions (gateway на `:8080`, gRPC-сервисы на `:9464`), nginx-exporter, cAdvisor |
+| Loki + Alloy | логи всех контейнеров проекта с метками `service`, `container`, `stack`, `level` |
+| cAdvisor | CPU и память каждого контейнера |
+
+Отчёт о нагрузочных тестах — дашборд «GoFlow Pay — нагрузочное тестирование» (`/monitoring/d/goflow-loadtest`):
+таблица всех прогонов, выводы и методика. Клик по прогону открывает дашборд «…: прогон» с его итогами и графиками
+на время этого прогона. k6 пишет метрики в Prometheus (remote write, задержки — нативными гистограммами), каждый прогон
+получает `testid`.
+
+В контейнерах сервисы пишут логи в JSON (`deploy/docker.env`: `ENV=dev`), Loki разбирает их по полям.
+
+Конфигурация: `deploy/monitoring/`. Пароль администратора Grafana задаётся `GRAFANA_ADMIN_PASSWORD` в `.env`.
+
+### Нагрузочное тестирование
+
+Сценарии k6 и отчёт: `perf/web-balance/` (`REPORT.md`).
+
+### Сервисная архитектура (Web ЛР6)
+
+Границы сервисов, владельцы данных, gRPC/Kafka-контракты, схема перевода, поведение при отказе и трассировка описаны в [docs/web-lr6.md](docs/web-lr6.md).
+
+```bash
+make web-load SCENARIO=steady              # 150 GET/с, 2 мин
+make web-load SCENARIO=mixed               # 150 GET/с + 15 POST/с
+RAMP_PEAK=2000 make web-load SCENARIO=ramp # рост нагрузки до RAMP_PEAK
+make web-load SCENARIO=ratelimit           # проверка limit_req
+```
+
+## Нагрузочное тестирование (ТИОПО ЛР4)
+
+1. Запустите мониторинг командой `make mon-up` и откройте
+   [«ЛР4: нагрузка GoFlow в реальном времени»](http://localhost:3000/d/lr4-live).
+2. В другом терминале запустите один из сценариев:
+
+   ```bash
+   LR4_GATEWAY_PORT=18081 make lr4-ramp      # 30 с, от 100 до 600 пользователей, +100 каждые 5 с
+   LR4_GATEWAY_PORT=18081 make lr4-stress    # перегруз и восстановление
+   LR4_GATEWAY_PORT=18081 make lr4-soak-all  # стабильная нагрузка с 0%, 10% и 20% ошибочных операций
+   ```
+
+Для поиска границы отказа запустите `LR4_GATEWAY_PORT=18081 make lr4-ramp-limit`.
+Этот профиль поднимает нагрузку с 90 до 450 виртуальных пользователей с шагом 20.
+На каждой ступени отводится 10 секунд на переход и 30 секунд на измерение,
+всего 12 минут 40 секунд по расписанию k6.
+
+Дашборд обновляется каждые 5 секунд и автоматически показывает последний прогон
+после появления его метрик k6. Для RPS и перцентилей во времени нужно дождаться
+нескольких отправок метрик. Скрипт также печатает ссылку на выбранный прогон.
+
+На кривой распределения по X отложена задержка запроса в миллисекундах.
+По Y показана доля запросов в процентах, уложившихся в эту задержку.
+После прогона скрипт печатает ссылку на те же графики с зафиксированными
+`testid` и временным диапазоном. Метрики для графиков хранятся в Prometheus
+30 дней. Исходные измерения k6 и сводка ресурсов сохраняются в
+`perf/results/lr4/<testid>/`.
+
+Команды ЛР4 поднимают собственный стенд Docker Compose `goflow-load` с чистой
+БД для каждого прогона. В примерах его шлюз доступен на порту `18081`, а стенд
+ЛР2 (`make test-stand-up`) использует порт `18080`.
+
+Для прогона с одним общим логическим CPU у сервисов GoFlow запустите
+`CPUS_APP=2 LR4_GATEWAY_PORT=18081 SOAK_DURATION=30s make lr4-soak`.
+`CPUS_APP` применяется к `gateway`, `auth`, `accounts` и `transactions`.
+Их же показывают графики CPU, RAM и сетевого трафика.

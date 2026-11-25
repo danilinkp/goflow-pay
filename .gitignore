@@ -13,3 +13,6 @@ allure-results/
 
 /.antigravity/
 /*.pdf
+
+/perf/web-balance/results/
+/.claude/

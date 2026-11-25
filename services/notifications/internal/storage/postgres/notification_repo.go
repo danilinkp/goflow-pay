@@ -71,3 +71,8 @@ func (r *NotificationRepo) GetById(ctx context.Context, id uuid.UUID) (*entities
 
 	return notificationModel.ToDomain(), nil
 }
+
+func (r *NotificationRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, "DELETE FROM notifications WHERE notification_id = $1", id)
+	return err
+}

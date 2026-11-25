@@ -27,7 +27,7 @@ docker compose -p goflow-load -f "${SCRIPT_DIR}/compose.sut.yml" up -d --build -
 echo "--> Ожидание готовности Gateway"
 READY=0
 for _ in $(seq 1 60); do
-    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/swagger | grep -q "200"; then
+    if curl --fail --silent --output /dev/null "http://127.0.0.1:${LR4_GATEWAY_PORT:-8080}/ready"; then
         READY=1
         break
     fi
@@ -50,15 +50,19 @@ echo "--> Сбор 15 с фона до нагрузки"
 sleep 15
 
 START_TIME="$(date +%s)"
+FROM_MS=$(((START_TIME - 15) * 1000))
 
 echo "--> Запуск генератора нагрузки k6 (сценарий: ${SCENARIO}, доля ошибок: ${ERROR_RATE})"
+echo "--> Grafana в реальном времени: http://localhost:3000/d/lr4-live?var-testid=${OUT_DIR_NAME}&from=${FROM_MS}&to=now&refresh=5s"
 set +e
 docker run --rm --network goflow-load --cpuset-cpus "${CPUS_LOADGEN:-4,5}" --memory 1g \
+  --label com.docker.compose.project=goflow-load \
   --label com.docker.compose.service=k6 \
   -v "${SCRIPT_DIR}/k6:/scripts:ro" \
   -v "${OUT}:/results" \
   -e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write \
-  -e K6_PROMETHEUS_RW_TREND_STATS="p(50),p(75),p(90),p(95),p(99),min,max,avg" \
+  -e K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true \
+  -e K6_PROMETHEUS_RW_STALE_MARKERS=true \
   -e K6_PROMETHEUS_RW_PUSH_INTERVAL=5s \
   -e K6_CSV_TIME_FORMAT=unix_milli \
   -e BASE_URL=http://gateway:8080 \
@@ -71,7 +75,9 @@ docker run --rm --network goflow-load --cpuset-cpus "${CPUS_LOADGEN:-4,5}" --mem
   -e RAMP_START_VUS="${RAMP_START_VUS}" \
   -e RAMP_STEP_VUS="${RAMP_STEP_VUS}" \
   -e RAMP_STEPS="${RAMP_STEPS}" \
+  -e RAMP_TRANSITION_DURATION="${RAMP_TRANSITION_DURATION}" \
   -e RAMP_STEP_DURATION="${RAMP_STEP_DURATION}" \
+  -e RAMP_GRACEFUL_STOP="${RAMP_GRACEFUL_STOP}" \
   -e NORMAL_VUS="${NORMAL_VUS}" \
   -e STRESS_VUS="${STRESS_VUS}" \
   -e STRESS_BASELINE="${STRESS_BASELINE}" \
@@ -95,7 +101,7 @@ sleep 30
 
 GIT_COMMIT="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo "unknown")"
 python3 -c "
-import json
+import json, os
 data = {
     'scenario': '${SCENARIO}',
     'error_rate': float('${ERROR_RATE}'),
@@ -109,7 +115,11 @@ data = {
         'RAMP_START_VUS': '${RAMP_START_VUS}',
         'RAMP_STEP_VUS': '${RAMP_STEP_VUS}',
         'RAMP_STEPS': '${RAMP_STEPS}',
+        'RAMP_TRANSITION_DURATION': '${RAMP_TRANSITION_DURATION}',
         'RAMP_STEP_DURATION': '${RAMP_STEP_DURATION}',
+        'RAMP_GRACEFUL_STOP': '${RAMP_GRACEFUL_STOP}',
+        'LR4_GATEWAY_GRPC_TIMEOUT': os.getenv('LR4_GATEWAY_GRPC_TIMEOUT') or '3s',
+        'LR4_GATEWAY_HTTP_TIMEOUT': os.getenv('LR4_GATEWAY_HTTP_TIMEOUT') or '4s',
         'NORMAL_VUS': '${NORMAL_VUS}',
         'STRESS_VUS': '${STRESS_VUS}',
         'STRESS_BASELINE': '${STRESS_BASELINE}',
@@ -132,9 +142,6 @@ docker compose -p goflow-load -f "${SCRIPT_DIR}/compose.sut.yml" logs > "${OUT}/
 docker compose -p goflow-load -f "${SCRIPT_DIR}/compose.sut.yml" down -v
 
 echo "--> Загрузка результатов ЛР4 и сбор ресурсов"
-"${SCRIPT_DIR}/load.sh" "${OUT}"
 python3 "${SCRIPT_DIR}/resources.py" "${OUT}"
-
-FROM_MS=$(((START_TIME - 15) * 1000))
-TO_MS=$(((END_TIME + 30) * 1000))
-echo "http://localhost:3000/d/lr4-load?var-testid=${OUT_DIR_NAME}&from=${FROM_MS}&to=${TO_MS}"
+"${SCRIPT_DIR}/load.sh" "${OUT}"
+exit "${K6_EXIT}"

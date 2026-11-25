@@ -4,9 +4,6 @@ WORKDIR /app
 COPY shared/go.mod shared/go.sum ./shared/
 COPY services/auth/go.mod services/auth/go.sum ./services/auth/
 
-WORKDIR /app/services/auth
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
-
 WORKDIR /app
 COPY shared/ ./shared/
 COPY services/auth/ ./services/auth/

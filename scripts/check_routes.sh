@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# HTTP-проверки маршрутизации NGINX (ЛР4 по Web).
-# Использование: ADMIN_USER=admin ADMIN_PASSWORD=... ./scripts/check_routes.sh [base_url]
 set -uo pipefail
 
 BASE="${1:-http://127.0.0.1:${NGINX_PORT:-80}}"
@@ -13,7 +11,6 @@ fail=0
 ok()  { echo "  OK   $1"; pass=$((pass + 1)); }
 bad() { echo "  FAIL $1"; fail=$((fail + 1)); }
 
-# check <описание> <ожидаемый код> <ожидаемая подстрока в теле или ""> <curl args...>
 check() {
     local name="$1" want_code="$2" want_body="$3"
     shift 3
@@ -33,7 +30,6 @@ check() {
     ok "$name ($code)"
 }
 
-# check_header <описание> <имя заголовка> <подстрока> <curl args...>
 check_header() {
     local name="$1" header="$2" want="$3"
     shift 3
@@ -100,6 +96,56 @@ if [[ -n "$ADMIN_PASSWORD" ]]; then
 else
     echo "  SKIP /admin с Basic Auth: ADMIN_PASSWORD не задан"
 fi
+
+echo "[лимит запросов к API]"
+limited=$(docker compose exec -T nginx sh -c 'for i in $(seq 1 40); do curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/api/v2/accounts; done' | grep -c '^429$')
+if [[ "$limited" -gt 0 ]]; then
+    ok "40 запросов подряд с одного адреса: $limited получили 429"
+else
+    bad "limit_req не сработал на 40 запросах подряд"
+fi
+sleep 3
+
+echo "[имя сервера]"
+check_header "Server на статике" "Server" "GoFlow Pay" "$BASE/"
+check_header "Server на API" "Server" "GoFlow Pay" "$BASE/api/v2/accounts"
+check_header "Server на ошибке nginx" "Server" "GoFlow Pay" "$BASE/no-such-file.html"
+
+echo "[кэширование]"
+check_header "HTML ревалидируется" "Cache-Control" "no-cache" "$BASE/"
+check_header "картинки кэшируются на сутки" "Cache-Control" "max-age=86400" "$BASE/img/dashboard.svg"
+if [[ -n "$asset" ]]; then
+    check_header "хэшированные ассеты SPA immutable" "Cache-Control" "immutable" "$BASE$asset"
+    curl -s -o /dev/null "$BASE$asset"
+    check_header "ассет SPA отдаётся из кэша nginx" "X-Cache-Status" "HIT" "$BASE$asset"
+fi
+etag=$(curl -s -o /dev/null -D - "$BASE/" | grep -i '^etag:' | cut -d' ' -f2- | tr -d '\r')
+check "повторный запрос с ETag -> 304" 304 "" -H "If-None-Match: $etag" "$BASE/"
+check_header "API не кэшируется" "Cache-Control" "no-store" "$BASE/api/v2/accounts"
+check_header "/management не кэшируется" "Cache-Control" "no-store" "$BASE/management"
+check_header "/status не кэшируется" "Cache-Control" "no-store" "$BASE/status"
+check_header "/health не кэшируется" "Cache-Control" "no-store" "$BASE/health"
+check_header "/admin не кэшируется" "Cache-Control" "no-store" "$BASE/admin/"
+check_header "/monitoring не кэшируется" "Cache-Control" "no-store" "$BASE/monitoring/"
+
+echo "[gzip]"
+check_header "HTML сжимается" "Content-Encoding" "gzip" -H 'Accept-Encoding: gzip' "$BASE/"
+check_header "SVG сжимается" "Content-Encoding" "gzip" -H 'Accept-Encoding: gzip' "$BASE/img/dashboard.svg"
+check_header "OpenAPI-спецификация сжимается" "Content-Encoding" "gzip" -H 'Accept-Encoding: gzip' "$BASE/api/v2/docs/openapi.yaml"
+check_header "Vary: Accept-Encoding" "Vary" "Accept-Encoding" -H 'Accept-Encoding: gzip' "$BASE/"
+if curl -s -o /dev/null -D - "$BASE/" | grep -qi '^content-encoding:'; then
+    bad "без Accept-Encoding ответ сжат"
+else
+    ok "без Accept-Encoding не сжимается"
+fi
+
+echo "[мониторинг]"
+check "/monitoring редиректит на /monitoring/" 301 "" "$BASE/monitoring"
+check "/monitoring/ отдаёт Grafana" 200 "Grafana" "$BASE/monitoring/"
+check "Grafana видит базу" 200 '"database": "ok"' "$BASE/monitoring/api/health"
+check "дашборд GoFlow Pay подключен" 200 '"uid":"goflow-pay"' "$BASE/monitoring/api/search?query=GoFlow"
+check "источник Prometheus" 200 '"status":"success"' "$BASE/monitoring/api/datasources/proxy/uid/prometheus/api/v1/query?query=up"
+check "источник Loki" 200 '"status":"success"' "$BASE/monitoring/api/datasources/proxy/uid/loki/loki/api/v1/labels"
 
 echo
 echo "Итого: $pass OK, $fail FAIL"

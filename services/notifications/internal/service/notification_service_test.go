@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"notifications/internal/domain"
 	"notifications/internal/domain/entities"
 	"notifications/internal/service"
 	mocks "notifications/internal/service/mocks"
@@ -100,6 +101,19 @@ func TestNotificationService_NotifyTransferCompleted(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "smtp error")
 	})
+}
+
+func TestNotificationService_DuplicateEventDoesNotSendTwice(t *testing.T) {
+	svc, userClient, repo, emailSender := setupNotificationService(t)
+	userID, sourceID, eventID := uuid.New(), uuid.New(), uuid.New()
+	userClient.On("GetUserById", mock.Anything, userID).Return(mockUser(userID, "user@test.com"), nil)
+	repo.On("Save", mock.Anything, mock.MatchedBy(func(n *entities.Notification) bool {
+		return n.NotificationId() == eventID
+	})).Return(domain.ErrNotificationAlreadyExists)
+
+	err := svc.NotifyTransferCompleted(service.WithEventID(context.Background(), eventID), userID, sourceID, 100, "USD")
+	assert.NoError(t, err)
+	emailSender.AssertNotCalled(t, "Send", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestNotificationService_NotifyTransferFailed(t *testing.T) {

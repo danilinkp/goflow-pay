@@ -16,10 +16,12 @@ import (
 	postgresPool "shared/pkg/db/postgres"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
+	"shared/pkg/metrics"
 	"shared/pkg/outbox"
 	"shared/pkg/outbox/publisher/kafka"
 	outboxMongoRepository "shared/pkg/outbox/repository/mongo"
 	outboxPgRepository "shared/pkg/outbox/repository/postgres"
+	"shared/pkg/tracing"
 	trmmongo "shared/pkg/transactor/mongo"
 	"sync"
 	"syscall"
@@ -33,6 +35,11 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
+	shutdownTrace, err := tracing.Init(context.Background(), "accounts")
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = shutdownTrace(context.Background()) }()
 
 	start := time.Now()
 
@@ -41,7 +48,7 @@ func main() {
 		slog.String("env", cfg.Env),
 	)
 
-	log.Info("starting account service", "env", cfg.Env)
+	log.Info("starting account service", "env", cfg.Env, "read_only", cfg.ReadOnly)
 
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stopApp()
@@ -91,12 +98,16 @@ func main() {
 			os.Exit(1)
 		}
 		defer pool.Close()
-		err = migrations.RunMigrations(pool)
-		if err != nil {
-			log.Error("failed to run migrations", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-			os.Exit(1)
+		if cfg.ReadOnly {
+			log.Info("read-only mode: migrations skipped")
+		} else {
+			err = migrations.RunMigrations(pool)
+			if err != nil {
+				log.Error("failed to run migrations", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
+				os.Exit(1)
+			}
+			log.Info("migrations applied")
 		}
-		log.Info("migrations applied")
 
 		getter := trmpgx.DefaultCtxGetter
 		accountRepo = postgres.NewAccountRepo(pool, getter)
@@ -114,22 +125,28 @@ func main() {
 	accountsService := services.NewAccountService(accountRepo, accountOperationRepo, bankAccountRepo,
 		bankOperationRepo, statementRepo, bankGateway, outboxRepo, trmAdapter, log)
 
-	pub := kafka.NewPublisher(cfg.Kafka.Brokers())
-	defer func() {
-		if closeErr := pub.Close(); closeErr != nil {
-			log.Error("failed to close kafka publisher", sl.ErrWithStack(closeErr), sl.Duration(time.Since(start)))
-		}
-	}()
-
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		worker := outbox.NewWorker(log, outboxRepo, pub, cfg.Outbox.Interval, cfg.Outbox.BatchSize)
-		worker.Run(ctx)
-		log.Info("outbox worker stopped")
-	}()
+	if cfg.ReadOnly {
+		log.Info("read-only mode: outbox worker disabled")
+	} else {
+		pub := kafka.NewPublisher(cfg.Kafka.Brokers())
+		defer func() {
+			if closeErr := pub.Close(); closeErr != nil {
+				log.Error("failed to close kafka publisher", sl.ErrWithStack(closeErr), sl.Duration(time.Since(start)))
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			worker := outbox.NewWorker(log, outboxRepo, pub, cfg.Outbox.Interval, cfg.Outbox.BatchSize)
+			worker.Run(ctx)
+			log.Info("outbox worker stopped")
+		}()
+	}
+
+	metrics.Serve(log, cfg.MetricsAddr)
 
 	gRPCServer := grpcapp.NewAccountsApp(log, accountsService, cfg.GRPCServer.Port)
 

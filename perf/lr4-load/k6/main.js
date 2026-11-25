@@ -26,7 +26,9 @@ const ACTIONS_PER_SESSION = parseInt(__ENV.ACTIONS_PER_SESSION || '3', 10);
 const RAMP_START_VUS = parseInt(__ENV.RAMP_START_VUS || '10', 10);
 const RAMP_STEP_VUS = parseInt(__ENV.RAMP_STEP_VUS || '20', 10);
 const RAMP_STEPS = parseInt(__ENV.RAMP_STEPS || '15', 10);
+const RAMP_TRANSITION_DURATION = __ENV.RAMP_TRANSITION_DURATION || '10s';
 const RAMP_STEP_DURATION = __ENV.RAMP_STEP_DURATION || '60s';
+const RAMP_GRACEFUL_STOP = __ENV.RAMP_GRACEFUL_STOP || '30s';
 
 const NORMAL_VUS = parseInt(__ENV.NORMAL_VUS || '50', 10);
 const STRESS_VUS = parseInt(__ENV.STRESS_VUS || '300', 10);
@@ -51,11 +53,9 @@ function buildStages(scenarioName) {
 
   if (scenarioName === 'ramp') {
     const stages = [];
-    stages.push({ duration: '10s', target: RAMP_START_VUS });
-    stages.push({ duration: RAMP_STEP_DURATION, target: RAMP_START_VUS });
-    for (let s = 1; s < RAMP_STEPS; s++) {
+    for (let s = 0; s < RAMP_STEPS; s++) {
       const target = RAMP_START_VUS + s * RAMP_STEP_VUS;
-      stages.push({ duration: '10s', target });
+      stages.push({ duration: RAMP_TRANSITION_DURATION, target });
       stages.push({ duration: RAMP_STEP_DURATION, target });
     }
     return stages;
@@ -89,6 +89,7 @@ const scenarioConfig = {
   executor: 'ramping-vus',
   startVUs: SCENARIO === 'smoke' ? 5 : (SCENARIO === 'ramp' ? RAMP_START_VUS : NORMAL_VUS),
   stages: buildStages(SCENARIO),
+  gracefulStop: SCENARIO === 'ramp' ? RAMP_GRACEFUL_STOP : '30s',
   gracefulRampDown: '30s',
 };
 

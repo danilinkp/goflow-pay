@@ -16,6 +16,7 @@ import (
 	postgresPool "shared/pkg/db/postgres"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
+	"shared/pkg/tracing"
 	"syscall"
 	"time"
 
@@ -26,6 +27,11 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
+	shutdownTrace, err := tracing.Init(context.Background(), "notifications")
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = shutdownTrace(context.Background()) }()
 
 	start := time.Now()
 	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
@@ -56,12 +62,14 @@ func main() {
 			os.Exit(1)
 		}
 		defer pool.Close()
-		err = migrations.RunMigrations(pool)
-		if err != nil {
-			log.Error("failed to run migrations", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-			os.Exit(1)
+		if os.Getenv("NOTIFICATIONS_SKIP_MIGRATIONS") != "true" {
+			err = migrations.RunMigrations(pool)
+			if err != nil {
+				log.Error("failed to run migrations", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
+				os.Exit(1)
+			}
+			log.Info("migrations applied")
 		}
-		log.Info("migrations applied")
 
 		getter := trmpgx.DefaultCtxGetter
 		notificationRepo = postgres.NewNotificationRepo(pool, getter)
@@ -69,7 +77,7 @@ func main() {
 
 	emailSender := email.NewSmtpSender(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.Password, cfg.SMTP.From)
 
-	conn, err := grpc.NewClient(cfg.AuthGRPC.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(cfg.AuthGRPC.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptor()))
 	if err != nil {
 		log.Error("failed to create grpc client", "err", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)

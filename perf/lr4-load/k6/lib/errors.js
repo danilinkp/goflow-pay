@@ -1,6 +1,5 @@
 import http from 'k6/http';
-import { check } from 'k6';
-import { uuidv4 } from './api.js';
+import { checkResponse, uuidv4 } from './api.js';
 
 // overdraft возвращает 500 из-за дефекта сервиса transactions: маппинг ошибки "недостаточно средств" в Internal
 export const EXPECTED = {
@@ -30,7 +29,7 @@ export function doErroneous(ctx) {
         responseCallback: http.expectedStatuses(expectedStatus),
       }
     );
-    check(res, { 'wrong_password expected status': (r) => r.status === expectedStatus });
+    checkResponse(res, { 'wrong_password expected status': (r) => r.status === expectedStatus }, {}, expectedStatus);
     return;
   }
 
@@ -43,7 +42,7 @@ export function doErroneous(ctx) {
         responseCallback: http.expectedStatuses(expectedStatus),
       }
     );
-    check(res, { 'foreign_balance expected status': (r) => r.status === expectedStatus });
+    checkResponse(res, { 'foreign_balance expected status': (r) => r.status === expectedStatus }, {}, expectedStatus);
     return;
   }
 
@@ -57,7 +56,7 @@ export function doErroneous(ctx) {
         responseCallback: http.expectedStatuses(expectedStatus),
       }
     );
-    check(res, { 'bad_token expected status': (r) => r.status === expectedStatus });
+    checkResponse(res, { 'bad_token expected status': (r) => r.status === expectedStatus }, {}, expectedStatus);
     return;
   }
 
@@ -80,7 +79,7 @@ export function doErroneous(ctx) {
         responseCallback: http.expectedStatuses(expectedStatus),
       }
     );
-    check(res, { 'invalid_body expected status': (r) => r.status === expectedStatus });
+    checkResponse(res, { 'invalid_body expected status': (r) => r.status === expectedStatus }, {}, expectedStatus);
     return;
   }
 
@@ -103,6 +102,6 @@ export function doErroneous(ctx) {
         responseCallback: http.expectedStatuses(expectedStatus),
       }
     );
-    check(res, { 'overdraft expected status': (r) => r.status === expectedStatus });
+    checkResponse(res, { 'overdraft expected status': (r) => r.status === expectedStatus }, {}, expectedStatus);
   }
 }

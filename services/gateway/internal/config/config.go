@@ -10,7 +10,8 @@ import (
 )
 
 type Config struct {
-	Env              string      `yaml:"env" env-default:"local"`
+	Env              string      `yaml:"env" env:"ENV" env-default:"local"`
+	ReadOnly         bool        `yaml:"read_only" env:"READ_ONLY" env-default:"false"`
 	HTTPServer       HTTPServer  `yaml:"http_server"`
 	Log              LogConfig   `yaml:"log"`
 	GRPCClients      GRPCClients `yaml:"grpc_clients"`
@@ -20,7 +21,7 @@ type Config struct {
 
 type HTTPServer struct {
 	Address     string        `yaml:"address" env-default:"0.0.0.0:8080"`
-	Timeout     time.Duration `yaml:"timeout" env-default:"4s"`
+	Timeout     time.Duration `yaml:"timeout" env:"GATEWAY_HTTP_TIMEOUT" env-default:"4s"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 }
 
@@ -31,9 +32,10 @@ type LogConfig struct {
 }
 
 type GRPCClients struct {
-	AuthAddress        string `yaml:"auth_address" env-default:"auth_service:50051"`
-	AccountAddress     string `yaml:"account_address" env-default:"account_service:50051"`
-	TransactionAddress string `yaml:"transaction_address" env-default:"transaction_service:50051"`
+	AuthAddress        string        `yaml:"auth_address" env:"GRPC_AUTH_ADDRESS" env-default:"auth_service:50051"`
+	AccountAddress     string        `yaml:"account_address" env:"GRPC_ACCOUNT_ADDRESS" env-default:"account_service:50051"`
+	TransactionAddress string        `yaml:"transaction_address" env:"GRPC_TRANSACTION_ADDRESS" env-default:"transaction_service:50051"`
+	Timeout            time.Duration `yaml:"timeout" env:"GATEWAY_GRPC_TIMEOUT" env-default:"3s"`
 }
 
 func MustLoad() *Config {

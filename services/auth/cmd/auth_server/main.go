@@ -20,6 +20,8 @@ import (
 	jwtValidator "shared/pkg/jwt"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
+	"shared/pkg/metrics"
+	"shared/pkg/tracing"
 	trm "shared/pkg/transactor"
 	trmmongo "shared/pkg/transactor/mongo"
 	"syscall"
@@ -31,12 +33,18 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
+	shutdownTrace, err := tracing.Init(context.Background(), "auth")
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = shutdownTrace(context.Background()) }()
 
 	start := time.Now()
 
 	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
 	log.Info("starting auth service",
 		slog.String("env", cfg.Env),
+		slog.Bool("read_only", cfg.ReadOnly),
 	)
 
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -76,7 +84,9 @@ func main() {
 		}
 		defer pool.Close()
 
-		if err = migrations.RunMigrations(pool); err != nil {
+		if cfg.ReadOnly {
+			log.Info("read-only mode: migrations skipped")
+		} else if err = migrations.RunMigrations(pool); err != nil {
 			log.Error("failed to run migrations", sl.Err(err))
 			os.Exit(1)
 		}
@@ -107,6 +117,8 @@ func main() {
 	blackListRepo := redis.NewBlackListRepository(redisClient)
 
 	authService := services.NewAuthService(userRepo, companyRepo, trmAdapter, blackListRepo, jwtManager, validator, hasher, log)
+
+	metrics.Serve(log, cfg.MetricsAddr)
 
 	gRPCServer := grpcapp.NewAuthApp(log, authService, cfg.GRPCServer.Port)
 

@@ -119,12 +119,7 @@ test-integration:
 	@echo "=== Запуск Интеграционных тестов ==="
 	go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration"
 
-.PHONY: test-stand-build
-test-stand-build:
-	@echo "=== Сборка образов тестового стенда (test-runner, e2e-client, auth, accounts, transactions, gateway) ==="
-	docker compose -f docker-compose.test.yml build test-runner e2e-client auth accounts transactions gateway
-
-.PHONY: test-e2e
+.PHONY:
 test-e2e:
 	@echo "=== Запуск Сквозного E2E тестирования (Black-Box через Gateway HTTP API) ==="
 	@./scripts/test_stand_up.sh && ./scripts/run_e2e_client.sh ; STATUS=$$? ; ./scripts/test_stand_down.sh ; exit $$STATUS
@@ -278,12 +273,15 @@ run-gateway:
 	cd services/gateway && go run ./cmd/gateway/main.go
 
 # ЛР3 ТИОПО: микробенчмарк map в Go 1.23 vs Go 1.25
-.PHONY: lr3-bench lr3-bench-smoke lr3-load
+.PHONY: lr3-bench lr3-bench-smoke lr3-bench-live lr3-load
 lr3-bench:
 	./perf/lr3-bench/run.sh
 
 lr3-bench-smoke:
 	RUNS=1 WARMUP=1s DURATION=2s TEARDOWN=1s SIZES="1000 100000" ./perf/lr3-bench/run.sh
+
+lr3-bench-live:
+	LIVE=1 ./perf/lr3-bench/run.sh
 
 lr3-load:
 	./perf/lr3-bench/load.sh $(abspath $(DIR))
@@ -298,12 +296,18 @@ mon-down:
 	docker compose -p goflow-mon -f perf/monitoring/compose.yml down
 
 # ЛР4 ТИОПО: нагрузочное тестирование
-.PHONY: lr4-smoke lr4-ramp lr4-stress lr4-soak lr4-soak-all lr4-load
+.PHONY: lr4-smoke lr4-ramp lr4-ramp-limit lr4-stress lr4-soak lr4-soak-all lr4-load
 lr4-smoke:
 	./perf/lr4-load/run.sh smoke 0.1
 
 lr4-ramp:
 	./perf/lr4-load/run.sh ramp 0
+
+lr4-ramp-limit:
+	RAMP_START_VUS="$${RAMP_START_VUS:-90}" RAMP_STEP_VUS="$${RAMP_STEP_VUS:-20}" \
+		RAMP_STEPS="$${RAMP_STEPS:-19}" RAMP_TRANSITION_DURATION="$${RAMP_TRANSITION_DURATION:-10s}" \
+		RAMP_STEP_DURATION="$${RAMP_STEP_DURATION:-30s}" RAMP_GRACEFUL_STOP="$${RAMP_GRACEFUL_STOP:-30s}" \
+		./perf/lr4-load/run.sh ramp 0
 
 lr4-stress:
 	./perf/lr4-load/run.sh stress 0
@@ -319,13 +323,33 @@ lr4-soak-all:
 lr4-load:
 	./perf/lr4-load/load.sh $(abspath $(DIR))
 
-# Web ЛР4: стенд за NGINX и HTTP-проверки маршрутов
 .PHONY: web-up web-down web-check
 web-up:
-	docker compose up -d --build --wait nginx
+	docker compose up -d --build --wait
 
 web-down:
 	docker compose down
 
 web-check:
 	@set -a; [ -f .env ] && . ./.env; set +a; ./scripts/check_routes.sh
+
+.PHONY: replication-status
+replication-status:
+	./scripts/replication_status.sh
+
+SCENARIO ?= steady
+
+.PHONY: web-load
+web-load:
+	@set -a; [ -f .env ] && . ./.env; set +a; ./perf/web-balance/run.sh $(SCENARIO)
+
+.PHONY: web-traces
+web-traces:
+	@set -a; [ ! -f .env ] || . ./.env; set +a; python3 scripts/web_traces.py
+
+.PHONY: web-get-120
+web-get-120:
+	@set -eu; [ ! -f .env ] || . ./.env; i=0; while [ $$i -lt 120 ]; do \
+		curl --silent --show-error --output /dev/null --max-time 5 "http://127.0.0.1:$${NGINX_PORT:-80}/api/v1/companies/accounts"; \
+		i=$$((i + 1)); sleep 0.15; \
+	done; echo "Отправлено 120 GET-запросов"

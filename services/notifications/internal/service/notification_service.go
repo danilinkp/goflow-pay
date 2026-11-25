@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"notifications/internal/domain"
 	"notifications/internal/domain/entities"
 	"shared/pkg/logger/sl"
 	"strings"
@@ -375,20 +377,37 @@ func (n *NotificationService) notify(ctx context.Context, userId, sourceId uuid.
 		return err
 	}
 
-	notification, err := entities.NewNotification(userId, title, message, sourceId)
+	eventID, _ := ctx.Value(eventIDContextKey{}).(uuid.UUID)
+	notification, err := entities.NewNotification(userId, title, message, sourceId, eventID)
 	if err != nil {
 		return err
 	}
 
 	if err = n.notificationRepository.Save(ctx, notification); err != nil {
+		if errors.Is(err, domain.ErrNotificationAlreadyExists) {
+			return nil
+		}
 		return err
 	}
 
 	if err = n.emailSender.Send(ctx, user.Email, notification.Title(), notification.Message()); err != nil {
+		if repo, ok := n.notificationRepository.(interface {
+			DeleteByID(context.Context, uuid.UUID) error
+		}); ok {
+			if deleteErr := repo.DeleteByID(ctx, notification.NotificationId()); deleteErr != nil {
+				return fmt.Errorf("email: %w; release notification: %v", err, deleteErr)
+			}
+		}
 		return err
 	}
 
 	return nil
+}
+
+type eventIDContextKey struct{}
+
+func WithEventID(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, eventIDContextKey{}, id)
 }
 
 func wrapInHTML(content string) string {

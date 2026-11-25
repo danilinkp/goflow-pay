@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"shared/pkg/auth"
+	pgdb "shared/pkg/db/postgres"
 	authv1 "shared/pkg/gen/go/auth/v1"
 
 	"github.com/google/uuid"
@@ -273,6 +274,8 @@ func (s *AuthServer) RemoveCompanyUser(ctx context.Context, req *authv1.RemoveCo
 
 func mapError(err error) error {
 	switch {
+	case pgdb.IsReadOnlyViolation(err):
+		return status.Error(codes.Unavailable, pgdb.ErrReadOnlyInstance.Error())
 	case errors.Is(err, services.ErrInvalidCredentials):
 		return status.Error(codes.Unauthenticated, err.Error())
 	case errors.Is(err, services.ErrInvalidInviteCode):

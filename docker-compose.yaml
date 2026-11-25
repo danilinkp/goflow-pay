@@ -1,3 +1,122 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-ro-db-env: &ro-db-env
+  READ_ONLY: "true"
+  DATABASE_USER: ${READONLY_DB_USER:-readonly}
+  DATABASE_PASSWORD: ${READONLY_DB_PASSWORD:-}
+
+x-auth-instance: &auth-instance
+  image: goflow/auth:local
+  pull_policy: never
+  restart: unless-stopped
+  env_file:
+    - services/auth/.env
+    - deploy/docker.env
+  logging: *default-logging
+  volumes:
+    - ./certs:/app/certs:ro
+    - ./services/auth/config/config.yaml:/app/config/config.yaml:ro
+  networks:
+    - goflow_network
+
+x-accounts-instance: &accounts-instance
+  image: goflow/accounts:local
+  pull_policy: never
+  restart: unless-stopped
+  env_file:
+    - services/accounts/.env
+    - deploy/docker.env
+  logging: *default-logging
+  volumes:
+    - ./services/accounts/config/local.yaml:/app/config/local.yaml:ro
+  networks:
+    - goflow_network
+
+x-transactions-instance: &transactions-instance
+  image: goflow/transactions:local
+  pull_policy: never
+  restart: unless-stopped
+  env_file:
+    - services/transactions/.env
+    - deploy/docker.env
+  logging: *default-logging
+  volumes:
+    - ./services/transactions/config/local.yaml:/app/config/local.yaml:ro
+  networks:
+    - goflow_network
+
+x-gateway-instance: &gateway-instance
+  image: goflow/gateway:local
+  pull_policy: never
+  restart: unless-stopped
+  env_file:
+    - services/gateway/.env
+    - deploy/docker.env
+  logging: *default-logging
+  volumes:
+    - ./certs:/app/certs:ro
+    - ./services/gateway/config/local.yaml:/app/config/local.yaml:ro
+  networks:
+    - goflow_network
+
+x-notifications-instance: &notifications-instance
+  image: goflow/notifications:local
+  pull_policy: never
+  restart: unless-stopped
+  env_file:
+    - services/notifications/.env
+    - deploy/docker.env
+  logging: *default-logging
+  volumes:
+    - ./services/notifications/config/local.yaml:/app/config/local.yaml:ro
+  networks:
+    - goflow_network
+
+x-postgres-roles: &postgres-roles
+  image: postgres:16
+  restart: "no"
+  environment: &postgres-roles-env
+    PGUSER: postgres
+    PGPASSWORD: postgres
+    RO_USER: ${READONLY_DB_USER:-readonly}
+    RO_PASSWORD: ${READONLY_DB_PASSWORD:-}
+    REPL_USER: ${REPLICATION_DB_USER:-replicator}
+    REPL_PASSWORD: ${REPLICATION_DB_PASSWORD:-}
+    REPL_SLOT: mirror
+  volumes:
+    - ./deploy/postgres/readonly-role.sql:/sql/readonly-role.sql:ro
+    - ./deploy/postgres/replication-role.sql:/sql/replication-role.sql:ro
+  command:
+    - sh
+    - -c
+    - |
+      if [ -z "$$RO_PASSWORD" ] || [ -z "$$REPL_PASSWORD" ]; then
+        echo "READONLY_DB_PASSWORD and REPLICATION_DB_PASSWORD must be set in .env" >&2
+        exit 1
+      fi
+      psql -v ro_user="$$RO_USER" -v ro_password="$$RO_PASSWORD" -f /sql/readonly-role.sql
+      psql -v repl_user="$$REPL_USER" -v repl_password="$$REPL_PASSWORD" -v repl_slot="$$REPL_SLOT" -f /sql/replication-role.sql
+      echo "roles are ready in $$PGHOST/$$PGDATABASE"
+  networks:
+    - goflow_network
+
+x-postgres-replica: &postgres-replica
+  image: postgres:16
+  restart: unless-stopped
+  entrypoint: [ "sh", "/usr/local/bin/replica-entrypoint.sh" ]
+  healthcheck:
+    test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+    interval: 5s
+    timeout: 10s
+    retries: 10
+    start_period: 30s
+  networks:
+    - goflow_network
+
 services:
   postgres-auth:
     container_name: postgres_auth_container
@@ -15,8 +134,10 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+    command: [ "postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf" ]
     volumes:
       - auth_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     networks:
       - goflow_network
 
@@ -71,8 +192,10 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+    command: [ "postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf" ]
     volumes:
       - account_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     networks:
       - goflow_network
 
@@ -128,8 +251,10 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+    command: [ "postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf" ]
     volumes:
       - transaction_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     networks:
       - goflow_network
 
@@ -226,6 +351,90 @@ services:
     networks:
       - goflow_network
 
+  postgres-auth-roles:
+    <<: *postgres-roles
+    environment:
+      <<: *postgres-roles-env
+      PGHOST: postgres-auth
+      PGDATABASE: auth_service
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+
+  postgres-auth-replica:
+    <<: *postgres-replica
+    environment:
+      PRIMARY_HOST: postgres-auth
+      REPLICATION_USER: ${REPLICATION_DB_USER:-replicator}
+      PGPASSWORD: ${REPLICATION_DB_PASSWORD:-}
+      REPLICATION_SLOT: mirror
+      REPLICA_APPLY_DELAY: ${REPLICA_APPLY_DELAY:-0}
+    depends_on:
+      postgres-auth-roles:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - auth_replica_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+      - ./deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+
+  postgres-accounts-roles:
+    <<: *postgres-roles
+    environment:
+      <<: *postgres-roles-env
+      PGHOST: postgres-accounts
+      PGDATABASE: account_service
+    depends_on:
+      postgres-accounts:
+        condition: service_healthy
+
+  postgres-accounts-replica:
+    <<: *postgres-replica
+    environment:
+      PRIMARY_HOST: postgres-accounts
+      REPLICATION_USER: ${REPLICATION_DB_USER:-replicator}
+      PGPASSWORD: ${REPLICATION_DB_PASSWORD:-}
+      REPLICATION_SLOT: mirror
+      REPLICA_APPLY_DELAY: ${REPLICA_APPLY_DELAY:-0}
+    depends_on:
+      postgres-accounts-roles:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:5437:5432"
+    volumes:
+      - accounts_replica_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+      - ./deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+
+  postgres-transactions-roles:
+    <<: *postgres-roles
+    environment:
+      <<: *postgres-roles-env
+      PGHOST: postgres-transactions
+      PGDATABASE: transaction_service
+    depends_on:
+      postgres-transactions:
+        condition: service_healthy
+
+  postgres-transactions-replica:
+    <<: *postgres-replica
+    environment:
+      PRIMARY_HOST: postgres-transactions
+      REPLICATION_USER: ${REPLICATION_DB_USER:-replicator}
+      PGPASSWORD: ${REPLICATION_DB_PASSWORD:-}
+      REPLICATION_SLOT: mirror
+      REPLICA_APPLY_DELAY: ${REPLICA_APPLY_DELAY:-0}
+    depends_on:
+      postgres-transactions-roles:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:5438:5432"
+    volumes:
+      - transactions_replica_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+      - ./deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+
   redis:
     image: redis:8-alpine
     container_name: blacklist-redis
@@ -268,10 +477,33 @@ services:
     networks:
       - goflow_network
 
+  kafka-notifications-topic:
+    image: confluentinc/cp-kafka:7.9.0
+    restart: "no"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - bash
+      - -ec
+      - |
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists \
+          --topic notifications --partitions 3 --replication-factor 1
+        partitions="$$(kafka-topics --bootstrap-server kafka:29092 --describe \
+          --topic notifications | sed -n 's/.*PartitionCount:[[:space:]]*\([0-9]*\).*/\1/p' | head -n 1)"
+        test -n "$$partitions"
+        if [ "$$partitions" -lt 3 ]; then
+          kafka-topics --bootstrap-server kafka:29092 --alter \
+            --topic notifications --partitions 3
+        fi
+    networks:
+      - goflow_network
+
   auth:
     build:
       context: .
       dockerfile: services/auth/Dockerfile
+    image: goflow/auth:local
     container_name: auth_service
     restart: unless-stopped
     depends_on:
@@ -283,6 +515,7 @@ services:
         condition: service_started
     env_file:
       - services/auth/.env
+      - deploy/docker.env
     environment:
       CONFIG_PATH: config/config.yaml
       JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
@@ -302,6 +535,7 @@ services:
     build:
       context: .
       dockerfile: services/accounts/Dockerfile
+    image: goflow/accounts:local
     container_name: accounts_service
     restart: unless-stopped
     depends_on:
@@ -313,6 +547,7 @@ services:
         condition: service_healthy
     env_file:
       - services/accounts/.env
+      - deploy/docker.env
     environment:
       CONFIG_PATH: config/local.yaml
     logging:
@@ -330,6 +565,7 @@ services:
     build:
       context: .
       dockerfile: services/transactions/Dockerfile
+    image: goflow/transactions:local
     container_name: transactions_service
     restart: unless-stopped
     depends_on:
@@ -343,6 +579,7 @@ services:
         condition: service_started
     env_file:
       - services/transactions/.env
+      - deploy/docker.env
     environment:
       CONFIG_PATH: config/local.yaml
     logging:
@@ -360,6 +597,7 @@ services:
     build:
       context: .
       dockerfile: services/notifications/Dockerfile
+    image: goflow/notifications:local
     container_name: notifications_service
     restart: unless-stopped
     depends_on:
@@ -367,12 +605,13 @@ services:
         condition: service_healthy
       mongo-notifications-init:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka-notifications-topic:
+        condition: service_completed_successfully
       auth:
         condition: service_started
     env_file:
       - services/notifications/.env
+      - deploy/docker.env
     environment:
       CONFIG_PATH: config/local.yaml
     logging:
@@ -386,10 +625,33 @@ services:
     networks:
       - goflow_network
 
+  notifications-2:
+    <<: *notifications-instance
+    environment:
+      CONFIG_PATH: config/local.yaml
+      NOTIFICATIONS_SKIP_MIGRATIONS: "true"
+    depends_on:
+      notifications:
+        condition: service_started
+      kafka-notifications-topic:
+        condition: service_completed_successfully
+
+  notifications-3:
+    <<: *notifications-instance
+    environment:
+      CONFIG_PATH: config/local.yaml
+      NOTIFICATIONS_SKIP_MIGRATIONS: "true"
+    depends_on:
+      notifications:
+        condition: service_started
+      kafka-notifications-topic:
+        condition: service_completed_successfully
+
   gateway:
     build:
       context: .
       dockerfile: services/gateway/Dockerfile
+    image: goflow/gateway:local
     container_name: gateway
     restart: unless-stopped
     depends_on:
@@ -403,6 +665,7 @@ services:
         condition: service_started
     env_file:
       - services/gateway/.env
+      - deploy/docker.env
     environment:
       CONFIG_PATH: config/local.yaml
       JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
@@ -420,9 +683,288 @@ services:
     networks:
       - goflow_network
 
+  auth-ro-1:
+    <<: *auth-instance
+    environment:
+      <<: *ro-db-env
+      CONFIG_PATH: config/config.yaml
+      JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    depends_on:
+      postgres-auth-roles:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  accounts-ro-1:
+    <<: *accounts-instance
+    environment:
+      <<: *ro-db-env
+      CONFIG_PATH: config/local.yaml
+    depends_on:
+      postgres-accounts-roles:
+        condition: service_completed_successfully
+
+  transactions-ro-1:
+    <<: *transactions-instance
+    environment:
+      <<: *ro-db-env
+      CONFIG_PATH: config/local.yaml
+      GRPC_ACCOUNT_ADDRESS: accounts-ro-1:50051
+    depends_on:
+      postgres-transactions-roles:
+        condition: service_completed_successfully
+      accounts-ro-1:
+        condition: service_started
+
+  gateway-ro-1:
+    <<: *gateway-instance
+    environment:
+      READ_ONLY: "true"
+      CONFIG_PATH: config/local.yaml
+      JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+      GRPC_AUTH_ADDRESS: auth-ro-1:50051
+      GRPC_ACCOUNT_ADDRESS: accounts-ro-1:50051
+      GRPC_TRANSACTION_ADDRESS: transactions-ro-1:50051
+    depends_on:
+      auth-ro-1:
+        condition: service_started
+      accounts-ro-1:
+        condition: service_started
+      transactions-ro-1:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  auth-ro-2:
+    <<: *auth-instance
+    environment:
+      <<: *ro-db-env
+      CONFIG_PATH: config/config.yaml
+      JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    depends_on:
+      postgres-auth-roles:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  accounts-ro-2:
+    <<: *accounts-instance
+    environment:
+      <<: *ro-db-env
+      CONFIG_PATH: config/local.yaml
+    depends_on:
+      postgres-accounts-roles:
+        condition: service_completed_successfully
+
+  transactions-ro-2:
+    <<: *transactions-instance
+    environment:
+      <<: *ro-db-env
+      CONFIG_PATH: config/local.yaml
+      GRPC_ACCOUNT_ADDRESS: accounts-ro-2:50051
+    depends_on:
+      postgres-transactions-roles:
+        condition: service_completed_successfully
+      accounts-ro-2:
+        condition: service_started
+
+  gateway-ro-2:
+    <<: *gateway-instance
+    environment:
+      READ_ONLY: "true"
+      CONFIG_PATH: config/local.yaml
+      JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+      GRPC_AUTH_ADDRESS: auth-ro-2:50051
+      GRPC_ACCOUNT_ADDRESS: accounts-ro-2:50051
+      GRPC_TRANSACTION_ADDRESS: transactions-ro-2:50051
+    depends_on:
+      auth-ro-2:
+        condition: service_started
+      accounts-ro-2:
+        condition: service_started
+      transactions-ro-2:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8082:8080"
+
+  auth-mirror:
+    <<: *auth-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-auth-replica
+      CONFIG_PATH: config/config.yaml
+      JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    depends_on:
+      postgres-auth-replica:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  accounts-mirror:
+    <<: *accounts-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-accounts-replica
+      CONFIG_PATH: config/local.yaml
+    depends_on:
+      postgres-accounts-replica:
+        condition: service_healthy
+
+  transactions-mirror:
+    <<: *transactions-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-transactions-replica
+      CONFIG_PATH: config/local.yaml
+      GRPC_ACCOUNT_ADDRESS: accounts-mirror:50051
+    depends_on:
+      postgres-transactions-replica:
+        condition: service_healthy
+      accounts-mirror:
+        condition: service_started
+
+  gateway-mirror:
+    <<: *gateway-instance
+    environment:
+      READ_ONLY: "true"
+      CONFIG_PATH: config/local.yaml
+      JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+      GRPC_AUTH_ADDRESS: auth-mirror:50051
+      GRPC_ACCOUNT_ADDRESS: accounts-mirror:50051
+      GRPC_TRANSACTION_ADDRESS: transactions-mirror:50051
+    depends_on:
+      auth-mirror:
+        condition: service_started
+      accounts-mirror:
+        condition: service_started
+      transactions-mirror:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8090:8080"
+
+  auth-mirror-ro-1:
+    <<: *auth-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-auth-replica
+      CONFIG_PATH: config/config.yaml
+      JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    depends_on:
+      postgres-auth-replica:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  accounts-mirror-ro-1:
+    <<: *accounts-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-accounts-replica
+      CONFIG_PATH: config/local.yaml
+    depends_on:
+      postgres-accounts-replica:
+        condition: service_healthy
+
+  transactions-mirror-ro-1:
+    <<: *transactions-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-transactions-replica
+      CONFIG_PATH: config/local.yaml
+      GRPC_ACCOUNT_ADDRESS: accounts-mirror-ro-1:50051
+    depends_on:
+      postgres-transactions-replica:
+        condition: service_healthy
+      accounts-mirror-ro-1:
+        condition: service_started
+
+  gateway-mirror-ro-1:
+    <<: *gateway-instance
+    environment:
+      READ_ONLY: "true"
+      CONFIG_PATH: config/local.yaml
+      JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+      GRPC_AUTH_ADDRESS: auth-mirror-ro-1:50051
+      GRPC_ACCOUNT_ADDRESS: accounts-mirror-ro-1:50051
+      GRPC_TRANSACTION_ADDRESS: transactions-mirror-ro-1:50051
+    depends_on:
+      auth-mirror-ro-1:
+        condition: service_started
+      accounts-mirror-ro-1:
+        condition: service_started
+      transactions-mirror-ro-1:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8091:8080"
+
+  auth-mirror-ro-2:
+    <<: *auth-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-auth-replica
+      CONFIG_PATH: config/config.yaml
+      JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    depends_on:
+      postgres-auth-replica:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  accounts-mirror-ro-2:
+    <<: *accounts-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-accounts-replica
+      CONFIG_PATH: config/local.yaml
+    depends_on:
+      postgres-accounts-replica:
+        condition: service_healthy
+
+  transactions-mirror-ro-2:
+    <<: *transactions-instance
+    environment:
+      <<: *ro-db-env
+      DATABASE_HOST: postgres-transactions-replica
+      CONFIG_PATH: config/local.yaml
+      GRPC_ACCOUNT_ADDRESS: accounts-mirror-ro-2:50051
+    depends_on:
+      postgres-transactions-replica:
+        condition: service_healthy
+      accounts-mirror-ro-2:
+        condition: service_started
+
+  gateway-mirror-ro-2:
+    <<: *gateway-instance
+    environment:
+      READ_ONLY: "true"
+      CONFIG_PATH: config/local.yaml
+      JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+      GRPC_AUTH_ADDRESS: auth-mirror-ro-2:50051
+      GRPC_ACCOUNT_ADDRESS: accounts-mirror-ro-2:50051
+      GRPC_TRANSACTION_ADDRESS: transactions-mirror-ro-2:50051
+    depends_on:
+      auth-mirror-ro-2:
+        condition: service_started
+      accounts-mirror-ro-2:
+        condition: service_started
+      transactions-mirror-ro-2:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8092:8080"
+
   frontend:
     build:
       context: ./frontend
+    networks:
+      - goflow_network
+
+  frontend-mirror:
+    build:
+      context: ./frontend
+      args:
+        VITE_BASE: /mirror/legacy/
+        VITE_API_BASE: /mirror/api/v1
+    restart: unless-stopped
     networks:
       - goflow_network
 
@@ -431,6 +973,17 @@ services:
     restart: unless-stopped
     environment:
       BASE_URL: /api/v2/docs
+      SWAGGER_JSON: /spec/openapi.yaml
+    volumes:
+      - ./docs/openapi:/spec:ro
+    networks:
+      - goflow_network
+
+  swagger-ui-mirror:
+    image: swaggerapi/swagger-ui:v5.17.14
+    restart: unless-stopped
+    environment:
+      BASE_URL: /mirror/api/v2/docs
       SWAGGER_JSON: /spec/openapi.yaml
     volumes:
       - ./docs/openapi:/spec:ro
@@ -464,7 +1017,8 @@ services:
       - nginx_secrets:/secrets
 
   nginx:
-    image: nginx:1.31.8-alpine
+    build: ./nginx
+    image: goflow/nginx:local
     restart: unless-stopped
     ports:
       - "${NGINX_BIND:-127.0.0.1}:${NGINX_PORT:-80}:80"
@@ -492,17 +1046,140 @@ services:
       retries: 3
     networks:
       - goflow_network
+      - loadtest
 
   mailpit:
     image: axllent/mailpit:latest
     container_name: mailpit
+    command: ["--disable-version-check", "--database", "/data/mailpit.db", "--webroot", "/mailpit/"]
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
     volumes:
       - mailpit-data:/data
     environment:
       MP_MAX_MESSAGES: 500
+    networks:
+      - goflow_network
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=native-histograms"
+      - "--web.enable-admin-api"
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    mem_limit: 384m
+    logging: *default-logging
+    networks:
+      - goflow_network
+      - loadtest
+
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./deploy/monitoring/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki_data:/loki
+    mem_limit: 768m
+    logging: *default-logging
+    networks:
+      - goflow_network
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./deploy/monitoring/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    mem_limit: 768m
+    logging: *default-logging
+    networks:
+      - goflow_network
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    restart: unless-stopped
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    environment:
+      COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-iu7-ppo}
+    volumes:
+      - ./deploy/monitoring/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    mem_limit: 192m
+    logging: *default-logging
+    networks:
+      - goflow_network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    command:
+      - "--docker_only=true"
+      - "--housekeeping_interval=10s"
+      - "--store_container_labels=false"
+      - "--whitelisted_container_labels=com.docker.compose.service"
+      - "--disable_metrics=percpu,sched,tcp,udp,disk,diskIO,hugetlb,referenced_memory,cpu_topology,resctrl,process,advtcp,memory_numa"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    mem_limit: 256m
+    logging: *default-logging
+    networks:
+      - goflow_network
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.0
+    restart: unless-stopped
+    command: ["--nginx.scrape-uri=http://nginx/status"]
+    depends_on:
+      - nginx
+    mem_limit: 32m
+    logging: *default-logging
+    networks:
+      - goflow_network
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    environment:
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/monitoring/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/goflow.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL: grafana-lokiexplore-app@1.0.10
+    volumes:
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    mem_limit: 256m
+    logging: *default-logging
     networks:
       - goflow_network
 
@@ -514,11 +1191,24 @@ volumes:
   transaction_pgdata:
   mongo_transactions_data:
   notification_pgdata:
+  tempo_data:
   mongo_notifications_data:
   blacklist_redis_data:
   mailpit-data:
   nginx_secrets:
+  auth_replica_pgdata:
+  accounts_replica_pgdata:
+  transactions_replica_pgdata:
+  prometheus_data:
+  loki_data:
+  grafana_data:
 
 networks:
   goflow_network:
     driver: bridge
+  loadtest:
+    name: goflow_loadtest
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.250.0/24

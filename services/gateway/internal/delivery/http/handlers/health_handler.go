@@ -20,9 +20,6 @@ func NewHealthHandler(deps map[string]*grpc.ClientConn) *HealthHandler {
 	return &HealthHandler{deps: deps}
 }
 
-// Health reports only that the gateway process is alive and serving HTTP;
-// it must not depend on downstream services, otherwise an orchestrator would
-// restart a healthy gateway because of someone else's outage.
 func (h *HealthHandler) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
@@ -48,8 +45,6 @@ func (h *HealthHandler) Ready(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ready", "checks": checks})
 }
 
-// grpc.NewClient connects lazily, so an idle connection has to be kicked
-// explicitly before its state says anything about the backend.
 func waitReady(ctx context.Context, conn *grpc.ClientConn) connectivity.State {
 	for {
 		state := conn.GetState()

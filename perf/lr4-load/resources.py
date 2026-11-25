@@ -5,12 +5,12 @@ import urllib.parse
 import urllib.request
 
 QUERIES = {
-    "cpu_cores": 'sum by (svc) (label_replace(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
-    "ram_bytes": 'sum by (svc) (label_replace(container_memory_working_set_bytes{container_label_com_docker_compose_service!=""}, "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
-    "disk_read_Bps": 'sum by (svc) (label_replace(rate(container_blkio_device_usage_total{operation="Read",container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
-    "disk_write_Bps": 'sum by (svc) (label_replace(rate(container_blkio_device_usage_total{operation="Write",container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
-    "net_rx_Bps": 'sum by (svc) (label_replace(rate(container_network_receive_bytes_total{container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
-    "net_tx_Bps": 'sum by (svc) (label_replace(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
+    "cpu_cores": 'sum by (svc) (label_replace(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_project="goflow-load",container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
+    "ram_bytes": 'sum by (svc) (label_replace(container_memory_working_set_bytes{container_label_com_docker_compose_project="goflow-load",container_label_com_docker_compose_service!=""}, "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
+    "disk_read_Bps": 'sum by (svc) (label_replace(rate(container_blkio_device_usage_total{operation="Read",container_label_com_docker_compose_project="goflow-load",container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
+    "disk_write_Bps": 'sum by (svc) (label_replace(rate(container_blkio_device_usage_total{operation="Write",container_label_com_docker_compose_project="goflow-load",container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
+    "net_rx_Bps": 'sum by (svc) (label_replace(rate(container_network_receive_bytes_total{container_label_com_docker_compose_project="goflow-load",container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
+    "net_tx_Bps": 'sum by (svc) (label_replace(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_project="goflow-load",container_label_com_docker_compose_service!=""}[15s]), "svc", "$1", "container_label_com_docker_compose_service", "(.*)"))',
 }
 
 def series_stats(vals: list[float]) -> dict[str, float]:

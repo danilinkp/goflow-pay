@@ -37,7 +37,7 @@ func TestAccountService_RollbackAndCompensation_Integration(t *testing.T) {
 		withdrawAmount := int64(2000)
 		txID := uuid.New()
 
-		// Arrange (п. 17b методички: один раз в начале теста)
+		// Arrange
 		a.Step("Arrange: заведение счетов в PostgreSQL с начальным балансом 5 000 руб.", func(a *allure.Context) {
 			insertTestAccount(t, ctx, pool, senderAcc)
 			insertTestAccount(t, ctx, pool, receiverAcc)

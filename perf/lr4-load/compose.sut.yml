@@ -24,7 +24,7 @@ services:
       interval: 2s
       timeout: 2s
       retries: 20
-    cpuset: ${CPUS_APP:-2,3}
+    cpuset: ${CPUS_REDIS:-2,3}
     mem_limit: 128m
     networks:
       - goflow-load
@@ -61,7 +61,7 @@ services:
       redis:
         condition: service_healthy
     cpuset: ${CPUS_APP:-2,3}
-    mem_limit: 256m
+    mem_limit: 64m
     networks:
       - goflow-load
 
@@ -80,7 +80,7 @@ services:
       postgres:
         condition: service_healthy
     cpuset: ${CPUS_APP:-2,3}
-    mem_limit: 256m
+    mem_limit: 64m
     networks:
       - goflow-load
 
@@ -101,7 +101,7 @@ services:
       accounts:
         condition: service_started
     cpuset: ${CPUS_APP:-2,3}
-    mem_limit: 256m
+    mem_limit: 64m
     networks:
       - goflow-load
 
@@ -111,11 +111,13 @@ services:
       dockerfile: services/gateway/Dockerfile
     image: goflow-load-gateway:local
     ports:
-      - "8080:8080"
+      - "${LR4_GATEWAY_PORT:-8080}:8080"
     environment:
       CONFIG_PATH: /app/config/gateway.yaml
       JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
       BOOTSTRAP_TOKEN: test-bootstrap-token
+      GATEWAY_GRPC_TIMEOUT: ${LR4_GATEWAY_GRPC_TIMEOUT:-3s}
+      GATEWAY_HTTP_TIMEOUT: ${LR4_GATEWAY_HTTP_TIMEOUT:-4s}
     volumes:
       - ./config/gateway.yaml:/app/config/gateway.yaml:ro
       - ../../certs:/app/certs:ro
@@ -127,7 +129,7 @@ services:
       transactions:
         condition: service_started
     cpuset: ${CPUS_APP:-2,3}
-    mem_limit: 256m
+    mem_limit: 64m
     networks:
       - goflow-load
 

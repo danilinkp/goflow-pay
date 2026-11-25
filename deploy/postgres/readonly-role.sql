@@ -1,0 +1,21 @@
+\set ON_ERROR_STOP on
+
+SELECT format('CREATE ROLE %I LOGIN', :'ro_user')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'ro_user')
+\gexec
+
+ALTER ROLE :"ro_user" WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+    PASSWORD :'ro_password';
+
+ALTER ROLE :"ro_user" SET default_transaction_read_only = on;
+
+GRANT CONNECT ON DATABASE :"DBNAME" TO :"ro_user";
+GRANT USAGE ON SCHEMA public TO :"ro_user";
+
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO :"ro_user";
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO :"ro_user";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    GRANT SELECT ON TABLES TO :"ro_user";
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    GRANT SELECT ON SEQUENCES TO :"ro_user";

@@ -5,11 +5,18 @@ import (
 	"gateway/internal/delivery/http/handlers"
 	"gateway/internal/delivery/http/middleware"
 	v2 "gateway/internal/delivery/http/v2"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"log/slog"
 	"net/http"
+	"shared/pkg/tracing"
+	"strings"
 
 	jwtValidator "shared/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func NewRouter(
@@ -21,10 +28,36 @@ func NewRouter(
 	txHandler *handlers.TransactionHandler,
 	healthHandler *handlers.HealthHandler,
 	v2Server *v2.Server,
+	readOnly bool,
+	log *slog.Logger,
 ) *gin.Engine {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
+	r.Use(func(c *gin.Context) {
+		ctx := otel.GetTextMapPropagator().Extract(c.Request.Context(), propagation.HeaderCarrier(c.Request.Header))
+		ctx, span := otel.Tracer("goflow/http").Start(ctx, c.Request.Method+" "+c.FullPath())
+		c.Request = c.Request.WithContext(ctx)
+		c.Header("X-Trace-ID", span.SpanContext().TraceID().String())
+		defer func() {
+			if path := c.FullPath(); path != "" {
+				span.SetName(c.Request.Method + " " + path)
+			}
+			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+				log.InfoContext(ctx, "http request completed",
+					"method", c.Request.Method,
+					"path", c.FullPath(),
+					"status", c.Writer.Status(),
+					"trace_id", tracing.TraceID(ctx))
+			}
+			if c.Writer.Status() >= 500 {
+				span.SetStatus(codes.Error, http.StatusText(c.Writer.Status()))
+			}
+			span.End()
+		}()
+		c.Next()
+	})
+	r.Use(middleware.Metrics())
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -41,6 +74,11 @@ func NewRouter(
 		c.Next()
 	})
 
+	if readOnly {
+		r.Use(middleware.ReadOnly())
+	}
+
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	r.GET("/health", healthHandler.Health)
 	r.GET("/ready", healthHandler.Ready)
 
