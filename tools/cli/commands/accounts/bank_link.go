@@ -42,7 +42,7 @@ func NewLinkBankAccountCmd(httpClient *client.Client) *cobra.Command {
 		Short: "Link a bank account (company_admin only)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var resp bankAccountResponse
-			if err := httpClient.Post(context.Background(), "/api/v1/accounts/bank",
+			if err := httpClient.Post(context.Background(), "/api/v2/bank-accounts",
 				linkBankAccountRequest{
 					AccountId:         uuid.MustParse(accountID),
 					Name:              name,
@@ -70,7 +70,6 @@ func NewLinkBankAccountCmd(httpClient *client.Client) *cobra.Command {
 	cmd.Flags().StringVar(&settlementAccount, "settlement-account", "", "Settlement account")
 	cmd.Flags().StringVar(&currency, "currency", "", "Currency (EUR, USD, RUB, CNY)")
 	_ = cmd.MarkFlagRequired("account-id")
-	_ = cmd.MarkFlagRequired("bank-id")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("bic")
 	_ = cmd.MarkFlagRequired("settlement-account")

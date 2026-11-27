@@ -21,7 +21,7 @@ func NewDeactivateAccountCmd(httpClient *client.Client) *cobra.Command {
 				return err
 			}
 
-			url := "/api/v1/accounts/" + accountIDFlag
+			url := "/api/v2/accounts/" + accountIDFlag
 			if companyIDFlag != "" {
 				if creds.Role != "admin" {
 					return fmt.Errorf("only admin can deactivate accounts of other companies")

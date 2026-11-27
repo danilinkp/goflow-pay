@@ -7,23 +7,30 @@ import (
 	"gateway/internal/config"
 	"gateway/internal/delivery/http/handlers"
 	"gateway/internal/delivery/http/router"
+	v2 "gateway/internal/delivery/http/v2"
 	"net/http"
 	"os"
 	"os/signal"
 	jwtValidator "shared/pkg/jwt"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
+	"shared/pkg/tracing"
 	"syscall"
 	"time"
 )
 
 func main() {
 	cfg := config.MustLoad()
+	shutdownTrace, err := tracing.Init(context.Background(), "gateway")
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = shutdownTrace(context.Background()) }()
 
 	start := time.Now()
 	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
 
-	log.Info("starting gateway service", "env", cfg.Env)
+	log.Info("starting gateway service", "env", cfg.Env, "read_only", cfg.ReadOnly)
 
 	publicKeyBytes, err := os.ReadFile(cfg.JWTPublicKeyPath)
 	if err != nil {
@@ -39,6 +46,7 @@ func main() {
 		cfg.GRPCClients.AuthAddress,
 		cfg.GRPCClients.AccountAddress,
 		cfg.GRPCClients.TransactionAddress,
+		cfg.GRPCClients.Timeout,
 	)
 	if err != nil {
 		log.Error("failed to init grpc clients", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
@@ -50,8 +58,10 @@ func main() {
 	systemHandler := handlers.NewSystemHandler(clients.Auth, cfg.BootstrapToken)
 	accountHandler := handlers.NewAccountHandler(clients.Account)
 	transactionHandler := handlers.NewTransactionHandler(clients.Transaction)
+	healthHandler := handlers.NewHealthHandler(clients.Conns())
+	v2Server := v2.NewServer(clients.Auth, clients.Account, clients.Transaction)
 
-	engine := router.NewRouter(validator, authHandler, clients.Auth, systemHandler, accountHandler, transactionHandler)
+	engine := router.NewRouter(validator, authHandler, clients.Auth, systemHandler, accountHandler, transactionHandler, healthHandler, v2Server, cfg.ReadOnly, log)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPServer.Address,

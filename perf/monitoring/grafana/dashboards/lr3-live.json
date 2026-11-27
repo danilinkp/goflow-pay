@@ -1,0 +1,631 @@
+{
+  "uid": "lr3-live",
+  "title": "ЛР3: map Go 1.23 vs Go 1.25 (реальное время)",
+  "tags": [
+    "lr3",
+    "bench",
+    "live"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "liveNow": true,
+  "refresh": "1s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-3m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1s",
+      "2s",
+      "5s",
+      "10s",
+      "30s"
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Итоговые результаты",
+      "type": "link",
+      "url": "/d/lr3-maps",
+      "targetBlank": false
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Сейчас выполняется",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  CASE WHEN ts > now() - interval '3 seconds' THEN 'идёт' ELSE 'остановлен' END AS \"Статус\",\n  bench_id AS \"Бенчмарк\",\n  scenario AS \"Сценарий\",\n  to_char(size, 'FM9 999 999') AS \"N\",\n  version AS \"Версия\",\n  run::text AS \"Прогон\",\n  phase AS \"Фаза\",\n  ts AS \"Последние данные\"\nFROM lr3_live\nORDER BY ts DESC\nLIMIT 1;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Статус"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "идёт": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "остановлен": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Последние данные"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "lg"
+      }
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Во времени",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Латентность операции во времени: p50 и p99 (окно 250 мс)",
+      "description": "Все фазы. Перцентили считаются по гистограмме с бакетами шириной до 3%. Пунктир — p99. Ось Y логарифмическая.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 16,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT time, metric, p50, p99\nFROM (\n  SELECT\n    ts AS time,\n    version || ' ' || op || ' N=' || size AS metric,\n    min(mid) FILTER (WHERE cum >= 0.5 * total) / 1000 AS p50,\n    min(mid) FILTER (WHERE cum >= 0.99 * total) / 1000 AS p99\n  FROM (\n    SELECT\n      ts, version, op, size,\n      (lo_ns + hi_ns) / 2.0 AS mid,\n      sum(n) OVER (PARTITION BY ts, version, op ORDER BY lo_ns) AS cum,\n      sum(n) OVER (PARTITION BY ts, version, op) AS total\n    FROM lr3_live\n    WHERE $__timeFilter(ts)\n  ) b\n  GROUP BY ts, version, op, size\n) t\nORDER BY time;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": 1000,
+            "scaleDistribution": {
+              "type": "log",
+              "log": 10
+            },
+            "axisLabel": "мкс на операцию"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*p99.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    4,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Пропускная способность (операций в секунду)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT time, metric, ops / extract(epoch FROM time - prev) AS \"оп/с\"\nFROM (\n  SELECT\n    ts AS time,\n    version || ' ' || op || ' N=' || size AS metric,\n    sum(n) AS ops,\n    lag(ts) OVER (PARTITION BY bench_id, version, scenario, size, run, op ORDER BY ts) AS prev\n  FROM lr3_live\n  WHERE $__timeFilter(ts)\n  GROUP BY ts, bench_id, version, scenario, size, run, op\n) t\nWHERE prev IS NOT NULL\nORDER BY time;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": 1000,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "row",
+      "title": "Текущий сценарий: go1.23 против go1.25",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Распределение по перцентилям, текущий сценарий (фаза measure)",
+      "description": "Текущий сценарий, N и прогон: обе версии, как только каждая отработала. Ось Y логарифмическая.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  'p' || trim_scale((q * 100)::numeric) AS \"Перцентиль\",\n  version || ' ' || op AS series,\n  min(mid) FILTER (WHERE cum >= q * total) / 1000 AS value\nFROM (\n  SELECT\n    l.version, l.op,\n    (l.lo_ns + l.hi_ns) / 2.0 AS mid,\n    sum(sum(l.n)) OVER (PARTITION BY l.version, l.op ORDER BY l.bucket) AS cum,\n    sum(sum(l.n)) OVER (PARTITION BY l.version, l.op) AS total\n  FROM lr3_live l\n  JOIN (SELECT bench_id, scenario, size, run FROM lr3_live ORDER BY ts DESC LIMIT 1) c USING (bench_id, scenario, size, run)\n  WHERE l.phase = 'measure'\n  GROUP BY l.version, l.op, l.bucket, l.lo_ns, l.hi_ns\n) b\nCROSS JOIN unnest('{0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.75,0.8,0.9,0.95,0.99,0.999,0.9999}'::float8[]) AS q\nGROUP BY q, version, op\nORDER BY q, version, op;"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "rowField": "Перцентиль",
+            "columnField": "series",
+            "valueField": "value",
+            "emptyValue": "zero"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": {
+            "scaleDistribution": {
+              "type": "log",
+              "log": 10
+            },
+            "fillOpacity": 80,
+            "axisLabel": "мкс на операцию"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "barWidth": 0.9,
+        "groupWidth": 0.8,
+        "showValue": "never",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Гистограмма, текущий сценарий (фаза measure)",
+      "description": "Бакеты шириной 1/32 октавы (до 3%), диапазон от общего p0.5 до p99. По Y доля операций версии в бакете.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH h AS (\n  SELECT l.version || ' ' || l.op AS series, l.bucket, sum(l.n) AS n\n  FROM lr3_live l\n  JOIN (SELECT bench_id, scenario, size, run FROM lr3_live ORDER BY ts DESC LIMIT 1) c USING (bench_id, scenario, size, run)\n  WHERE l.phase = 'measure'\n  GROUP BY 1, 2\n),\nr AS (\n  SELECT\n    min(bucket) FILTER (WHERE cum >= 0.005 * total) AS lo_b,\n    min(bucket) FILTER (WHERE cum >= 0.99 * total) AS hi_b\n  FROM (\n    SELECT bucket, sum(sum(n)) OVER (ORDER BY bucket) AS cum, sum(sum(n)) OVER () AS total\n    FROM h\n    GROUP BY bucket\n  ) t\n)\nSELECT\n  round((CASE WHEN g.b < 32 THEN g.b ELSE ((g.b % 32) + 32)::bigint << (g.b / 32 - 1) END) / 1000.0, 2)::text AS \"Бин от (мкс)\",\n  s.series,\n  COALESCE(h.n, 0)::float8 / s.total AS value\nFROM r\nCROSS JOIN generate_series(r.lo_b, r.hi_b) AS g(b)\nCROSS JOIN (SELECT series, sum(n) AS total FROM h GROUP BY series) s\nLEFT JOIN h ON h.series = s.series AND h.bucket = g.b\nORDER BY g.b, s.series;"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "rowField": "Бин от (мкс)",
+            "columnField": "series",
+            "valueField": "value",
+            "emptyValue": "zero"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 70,
+            "axisLabel": "доля операций"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^Бин от.*"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "µs"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100,
+        "barWidth": 1,
+        "groupWidth": 0.9,
+        "showValue": "never",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Перцентили одной операции, мкс (фаза measure, текущий сценарий)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  version AS \"Версия\",\n  op AS \"Операция\",\n  round((min(mid) FILTER (WHERE cum >= 0.5 * total) / 1000)::numeric, 2) AS \"p50\",\n  round((min(mid) FILTER (WHERE cum >= 0.75 * total) / 1000)::numeric, 2) AS \"p75\",\n  round((min(mid) FILTER (WHERE cum >= 0.9 * total) / 1000)::numeric, 2) AS \"p90\",\n  round((min(mid) FILTER (WHERE cum >= 0.95 * total) / 1000)::numeric, 2) AS \"p95\",\n  round((min(mid) FILTER (WHERE cum >= 0.99 * total) / 1000)::numeric, 2) AS \"p99\",\n  max(total) AS \"Операций\"\nFROM (\n  SELECT\n    l.version, l.op,\n    (l.lo_ns + l.hi_ns) / 2.0 AS mid,\n    sum(sum(l.n)) OVER (PARTITION BY l.version, l.op ORDER BY l.bucket) AS cum,\n    sum(sum(l.n)) OVER (PARTITION BY l.version, l.op) AS total\n  FROM lr3_live l\n  JOIN (SELECT bench_id, scenario, size, run FROM lr3_live ORDER BY ts DESC LIMIT 1) c USING (bench_id, scenario, size, run)\n  WHERE l.phase = 'measure'\n  GROUP BY l.version, l.op, l.bucket, l.lo_ns, l.hi_ns\n) b\nGROUP BY version, op\nORDER BY version, op;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Длительность и число операций по фазам (текущий сценарий)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  l.version AS \"Версия\",\n  l.op AS \"Операция\",\n  round(extract(epoch FROM max(l.ts) - min(l.ts))::numeric, 1) AS \"Длительность (с)\",\n  sum(l.n) FILTER (WHERE l.phase = 'warmup') AS \"warmup\",\n  sum(l.n) FILTER (WHERE l.phase = 'measure') AS \"measure\",\n  sum(l.n) FILTER (WHERE l.phase = 'teardown') AS \"teardown\"\nFROM lr3_live l\nJOIN (SELECT bench_id, scenario, size, run FROM lr3_live ORDER BY ts DESC LIMIT 1) c USING (bench_id, scenario, size, run)\nGROUP BY l.version, l.op\nORDER BY l.version, l.op;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    }
+  ]
+}

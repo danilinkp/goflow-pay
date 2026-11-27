@@ -8,9 +8,13 @@ import (
 	"log/slog"
 	"notifications/internal/service"
 	"shared/pkg/outbox"
+	"shared/pkg/tracing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type NotificationConsumer struct {
@@ -50,14 +54,41 @@ func (c *NotificationConsumer) Run(ctx context.Context) error {
 		}
 
 		eventType := extractEventType(m.Headers)
-
-		if err = c.dispatch(ctx, eventType, m.Value); err != nil {
-			c.logger.Error("failed to dispatch event",
-				slog.String("event_type", string(eventType)),
-				slog.String("error", err.Error()),
-			)
-			continue
+		carrier := propagation.MapCarrier{}
+		for _, header := range m.Headers {
+			carrier[header.Key] = string(header.Value)
 		}
+		eventCtx, span := otel.Tracer("goflow/kafka").Start(otel.GetTextMapPropagator().Extract(ctx, carrier), "consume "+string(eventType))
+		eventID := carrier["event_id"]
+		for _, header := range m.Headers {
+			if header.Key == "event_id" {
+				if id, parseErr := uuid.Parse(string(header.Value)); parseErr == nil {
+					eventCtx = service.WithEventID(eventCtx, id)
+				}
+			}
+		}
+
+		for attempt := 1; attempt <= 3; attempt++ {
+			err = c.dispatch(eventCtx, eventType, m.Value)
+			if err == nil {
+				break
+			}
+			c.logger.Error("failed to dispatch event", slog.String("event_id", eventID), slog.String("event_type", string(eventType)), slog.String("trace_id", tracing.TraceID(eventCtx)), slog.Int("attempt", attempt), slog.String("error", err.Error()))
+			if attempt < 3 {
+				select {
+				case <-time.After(time.Duration(attempt) * 200 * time.Millisecond):
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		}
+		if err != nil {
+			span.RecordError(err)
+			span.End()
+			return fmt.Errorf("event processing failed after 3 attempts: %w", err)
+		}
+		c.logger.Info("event processed", slog.String("event_id", eventID), slog.String("event_type", string(eventType)), slog.String("trace_id", tracing.TraceID(eventCtx)))
+		span.End()
 
 		if err = c.reader.CommitMessages(ctx, m); err != nil {
 			return fmt.Errorf("commit message: %w", err)
@@ -135,7 +166,7 @@ func (c *NotificationConsumer) dispatch(ctx context.Context, eventType outbox.Ev
 			p.ClosingBalance, p.TotalDebit, p.TotalCredit, p.Currency, domainEntries)
 
 	default:
-		c.logger.Warn("unknown event type, skipping", slog.String("event_type", string(eventType)))
+		c.logger.Warn("unknown event type, skipping", slog.String("event_type", string(eventType)), slog.String("trace_id", tracing.TraceID(ctx)))
 		return nil
 	}
 }

@@ -100,3 +100,39 @@ func (c *AccountGRPCClient) GenerateStatement(ctx context.Context, req *accounts
 	}
 	return resp, nil
 }
+
+func (c *AccountGRPCClient) GetAccount(ctx context.Context, req *accountsv1.GetAccountRequest) (*accountsv1.GetAccountResponse, error) {
+	op := "accountGRPCClient.GetAccount"
+	resp, err := c.client.GetAccount(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}
+
+func (c *AccountGRPCClient) UpdateAccountStatus(ctx context.Context, req *accountsv1.UpdateAccountStatusRequest) (*accountsv1.UpdateAccountStatusResponse, error) {
+	op := "accountGRPCClient.UpdateAccountStatus"
+	resp, err := c.client.UpdateAccountStatus(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}
+
+func (c *AccountGRPCClient) GetBankAccount(ctx context.Context, req *accountsv1.GetBankAccountRequest) (*accountsv1.GetBankAccountResponse, error) {
+	op := "accountGRPCClient.GetBankAccount"
+	resp, err := c.client.GetBankAccount(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}
+
+func (c *AccountGRPCClient) DeleteBankAccount(ctx context.Context, req *accountsv1.DeleteBankAccountRequest) (*accountsv1.DeleteBankAccountResponse, error) {
+	op := "accountGRPCClient.DeleteBankAccount"
+	resp, err := c.client.DeleteBankAccount(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}

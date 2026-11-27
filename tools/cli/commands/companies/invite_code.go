@@ -25,14 +25,6 @@ func NewGetInviteCodeCmd(httpClient *client.Client) *cobra.Command {
 				return err
 			}
 
-			url := "/api/v1/companies/invite-code"
-			if companyIDFlag != "" {
-				if creds.Role != "admin" || creds.CompanyID != companyIDFlag {
-					return fmt.Errorf("only admin can get invite code of other companies")
-				}
-				url += "?company_id=" + companyIDFlag
-			}
-
 			finalID := companyIDFlag
 			if finalID == "" {
 				finalID = creds.CompanyID
@@ -41,6 +33,12 @@ func NewGetInviteCodeCmd(httpClient *client.Client) *cobra.Command {
 			if finalID == "" {
 				return fmt.Errorf("company_id is required")
 			}
+
+			if companyIDFlag != "" && creds.Role != "admin" && creds.CompanyID != companyIDFlag {
+				return fmt.Errorf("only admin can get invite code of other companies")
+			}
+
+			url := "/api/v2/companies/" + finalID + "/invite-codes"
 
 			var resp InviteCodeResponse
 			if err = httpClient.Get(context.Background(), url, &resp); err != nil {

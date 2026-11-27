@@ -111,3 +111,36 @@ func (r *CompanyRepo) GetInviteCodeById(ctx context.Context, companyId uuid.UUID
 
 	return result.InviteCode, nil
 }
+
+func (r *CompanyRepo) GetAll(ctx context.Context, search string, limit, offset int) ([]*entities.Company, int, error) {
+	op := "CompanyRepo.GetAll"
+	filter := bson.M{}
+	if search != "" {
+		filter["name"] = bson.M{"$regex": search, "$options": "i"}
+	}
+	total, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	findOpts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
+	if limit > 0 {
+		findOpts.SetLimit(int64(limit))
+	}
+	if offset > 0 {
+		findOpts.SetSkip(int64(offset))
+	}
+	cursor, err := r.collection.Find(ctx, filter, findOpts)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	defer cursor.Close(ctx)
+	var modelsList []models.CompanyModel
+	if err := cursor.All(ctx, &modelsList); err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	res := make([]*entities.Company, len(modelsList))
+	for i, m := range modelsList {
+		res[i] = m.ToDomain()
+	}
+	return res, int(total), nil
+}

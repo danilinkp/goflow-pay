@@ -13,6 +13,8 @@ import (
 
 type Config struct {
 	Env         string      `yaml:"env" env:"ENV" env-default:"local"`
+	ReadOnly    bool        `yaml:"read_only" env:"READ_ONLY" env-default:"false"`
+	MetricsAddr string      `yaml:"metrics_addr" env:"METRICS_ADDR" env-default:":9464"`
 	Log         LogConfig   `yaml:"log"`
 	GRPCServer  GRPCServer  `yaml:"grpc"`
 	Storage     Storage     `yaml:"storage"`
@@ -39,7 +41,7 @@ type Storage struct {
 }
 
 type PostgresDB struct {
-	Host           string        `yaml:"host"`
+	Host           string        `yaml:"host" env:"DATABASE_HOST"`
 	Port           string        `yaml:"port"`
 	User           string        `env:"DATABASE_USER"`
 	Password       string        `env:"DATABASE_PASSWORD"`
@@ -77,7 +79,7 @@ type Outbox struct {
 }
 
 type BankGateway struct {
-	FailureRate float64 `yaml:"failure_rate" env-default:"0.1"`
+	FailureRate float64 `yaml:"failure_rate" env:"BANK_GATEWAY_FAILURE_RATE"`
 }
 
 func MustLoad() *Config {

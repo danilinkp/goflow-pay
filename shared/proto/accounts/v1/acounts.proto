@@ -20,6 +20,10 @@ service AccountService {
   rpc GetAccounts(GetAccountsRequest) returns (GetAccountsResponse);
   rpc GetBankAccounts(GetBankAccountsRequest) returns (GetBankAccountsResponse);
   rpc GenerateStatement(GenerateStatementRequest) returns (GenerateStatementResponse);
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+  rpc UpdateAccountStatus(UpdateAccountStatusRequest) returns (UpdateAccountStatusResponse);
+  rpc GetBankAccount(GetBankAccountRequest) returns (GetBankAccountResponse);
+  rpc DeleteBankAccount(DeleteBankAccountRequest) returns (DeleteBankAccountResponse);
 }
 
 enum AccountStatus {
@@ -252,3 +256,36 @@ message GenerateStatementRequest {
 message GenerateStatementResponse {
   Statement statement = 1;
 }
+
+message GetAccountRequest {
+  string account_id = 1;
+}
+
+message GetAccountResponse {
+  Account account = 1;
+}
+
+message UpdateAccountStatusRequest {
+  string account_id = 1;
+  AccountStatus status = 2;
+}
+
+message UpdateAccountStatusResponse {
+  Account account = 1;
+}
+
+message GetBankAccountRequest {
+  string bank_account_id = 1;
+}
+
+message GetBankAccountResponse {
+  BankAccount bank_account = 1;
+}
+
+message DeleteBankAccountRequest {
+  string bank_account_id = 1;
+  string company_id = 2;
+}
+
+message DeleteBankAccountResponse {}
+

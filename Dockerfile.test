@@ -1,0 +1,37 @@
+FROM golang:1.25.4-alpine
+
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    postgresql-client \
+    redis \
+    tcpdump \
+    openssl \
+    python3
+
+# Install Goose for database schema migrations
+RUN go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
+
+WORKDIR /app
+
+# Cache Go modules across workspaces
+COPY go.work go.work.sum* ./
+COPY services/accounts/go.mod services/accounts/go.sum* ./services/accounts/
+COPY services/transactions/go.mod services/transactions/go.sum* ./services/transactions/
+COPY services/auth/go.mod services/auth/go.sum* ./services/auth/
+COPY services/notifications/go.mod services/notifications/go.sum* ./services/notifications/
+COPY services/gateway/go.mod services/gateway/go.sum* ./services/gateway/
+COPY shared/go.mod shared/go.sum* ./shared/
+COPY tools/cli/go.mod tools/cli/go.sum* ./tools/cli/
+COPY tests/e2e/go.mod tests/e2e/go.sum* ./tests/e2e/
+
+# Bake every workspace dependency into the image so test runs need no module proxy
+RUN go mod download
+
+COPY . .
+
+CMD ["/bin/bash", "-c", "./scripts/test_init.sh && make test"]

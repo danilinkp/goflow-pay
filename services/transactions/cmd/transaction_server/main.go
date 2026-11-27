@@ -8,10 +8,12 @@ import (
 	postgresPool "shared/pkg/db/postgres"
 	"shared/pkg/logger"
 	"shared/pkg/logger/sl"
+	"shared/pkg/metrics"
 	"shared/pkg/outbox"
 	"shared/pkg/outbox/publisher/kafka"
 	outboxMongoRepository "shared/pkg/outbox/repository/mongo"
 	outboxRepository "shared/pkg/outbox/repository/postgres"
+	"shared/pkg/tracing"
 	trmmongo "shared/pkg/transactor/mongo"
 	"sync"
 	"syscall"
@@ -30,16 +32,22 @@ import (
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
 	cfg := config.MustLoad()
+	shutdownTrace, err := tracing.Init(context.Background(), "transactions")
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = shutdownTrace(context.Background()) }()
 
 	start := time.Now()
 	log := logger.New(cfg.Env, cfg.Log.Level, cfg.Log.Output, cfg.Log.File)
 
-	log.Info("starting transaction service", "env", cfg.Env)
+	log.Info("starting transaction service", "env", cfg.Env, "read_only", cfg.ReadOnly)
 
 	ctx, stopApp := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stopApp()
@@ -79,12 +87,16 @@ func main() {
 			os.Exit(1)
 		}
 		defer pool.Close()
-		err = migrations.RunMigrations(pool)
-		if err != nil {
-			log.Error("failed to run migrations", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-			os.Exit(1)
+		if cfg.ReadOnly {
+			log.Info("read-only mode: migrations skipped")
+		} else {
+			err = migrations.RunMigrations(pool)
+			if err != nil {
+				log.Error("failed to run migrations", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
+				os.Exit(1)
+			}
+			log.Info("migrations applied")
 		}
-		log.Info("migrations applied")
 
 		trManager := manager.Must(trmpgx.NewDefaultFactory(pool))
 		trmAdapter = trm.NewAvitoAdapter(trManager)
@@ -94,39 +106,55 @@ func main() {
 		outboxRepo = outboxRepository.NewOutboxRepo(pool, getter)
 	}
 
-	conn, err := grpc.NewClient(cfg.GRPCClient.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(cfg.GRPCClient.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptor()))
 	if err != nil {
 		log.Error("failed to create account grpc client", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
 		os.Exit(1)
 	}
 	defer func() { _ = conn.Close() }()
+	conn.Connect()
+	readyCtx, readyCancel := context.WithTimeout(ctx, 10*time.Second)
+	for state := conn.GetState(); state != connectivity.Ready; state = conn.GetState() {
+		if !conn.WaitForStateChange(readyCtx, state) {
+			log.Warn("account grpc client is not ready at startup", "state", conn.GetState())
+			break
+		}
+	}
+	readyCancel()
 	accountClient := grpcclient.NewAccountGRPCClient(conn)
 
 	transactionService := service.NewTransactionService(accountClient, transactionRepo, outboxRepo, trmAdapter, log)
 
-	pub := kafka.NewPublisher(cfg.Kafka.Brokers())
-	defer func() {
-		if closeErr := pub.Close(); closeErr != nil {
-			log.Error("failed to close kafka publisher", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
-		}
-	}()
-
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		worker := outbox.NewWorker(log, outboxRepo, pub, cfg.Outbox.Interval, cfg.Outbox.BatchSize)
-		worker.Run(ctx)
-		log.Info("outbox worker stopped")
-	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		recoverWorker := workers.NewRecoverWorker(transactionRepo, transactionService, cfg.Recover.Interval, cfg.Recover.StaleAfter)
-		recoverWorker.Run(ctx)
-		log.Info("recover worker stopped")
-	}()
+	if cfg.ReadOnly {
+		log.Info("read-only mode: outbox and recover workers disabled")
+	} else {
+		pub := kafka.NewPublisher(cfg.Kafka.Brokers())
+		defer func() {
+			if closeErr := pub.Close(); closeErr != nil {
+				log.Error("failed to close kafka publisher", sl.ErrWithStack(closeErr), sl.Duration(time.Since(start)))
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			worker := outbox.NewWorker(log, outboxRepo, pub, cfg.Outbox.Interval, cfg.Outbox.BatchSize)
+			worker.Run(ctx)
+			log.Info("outbox worker stopped")
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			recoverWorker := workers.NewRecoverWorker(transactionRepo, transactionService, cfg.Recover.Interval, cfg.Recover.StaleAfter)
+			recoverWorker.Run(ctx)
+			log.Info("recover worker stopped")
+		}()
+	}
+
+	metrics.Serve(log, cfg.MetricsAddr)
 
 	gRPCServer := grpcapp.NewTransactionApp(log, transactionService, cfg.GRPCServer.Port)
 

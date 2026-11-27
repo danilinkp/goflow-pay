@@ -21,7 +21,7 @@ func NewGetBankAccountsCmd(httpClient *client.Client) *cobra.Command {
 				return err
 			}
 
-			url := "/api/v1/companies/banks"
+			url := "/api/v2/bank-accounts"
 			if companyIDFlag != "" {
 				if creds.Role != "admin" {
 					return fmt.Errorf("only admin can query other companies")

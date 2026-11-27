@@ -22,19 +22,21 @@ func NewBankWithdrawalCmd(httpClient *client.Client) *cobra.Command {
 		Use:   "bank-withdrawal",
 		Short: "Make a bank withdrawal (company_admin or admin only)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, err := credentials.Load()
-			if err != nil {
+			if _, err := credentials.Load(); err != nil {
 				return err
 			}
 
+			headers := map[string]string{
+				"Idempotency-Key": idempotencyKey,
+			}
 			var resp bankOperationResponse
-			if err = httpClient.Post(context.Background(), "/api/v1/accounts/bank/withdrawal",
+			if err := httpClient.PostWithHeaders(context.Background(), "/api/v2/bank-operations",
+				headers,
 				bankOperationRequest{
-					CompanyId:      uuid.MustParse(creds.CompanyID),
-					AccountId:      uuid.MustParse(accountID),
-					BankAccountId:  uuid.MustParse(bankAccountID),
-					Amount:         amount,
-					IdempotencyKey: idempotencyKey,
+					AccountId:     uuid.MustParse(accountID),
+					BankAccountId: uuid.MustParse(bankAccountID),
+					Amount:        amount,
+					OperationType: "WITHDRAWAL",
 				}, &resp,
 			); err != nil {
 				return fmt.Errorf("failed to make bank withdrawal: %w", err)

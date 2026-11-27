@@ -47,6 +47,7 @@ func (r *OutboxRepo) EnsureIndexes(ctx context.Context) error {
 
 func (r *OutboxRepo) Save(ctx context.Context, event *outbox.Event) error {
 	op := "OutboxRepo.Save"
+	event.CaptureTrace(ctx)
 
 	_, err := r.collection.InsertOne(ctx, event)
 	if err != nil {

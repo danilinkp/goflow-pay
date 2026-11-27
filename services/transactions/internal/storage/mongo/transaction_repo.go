@@ -176,3 +176,52 @@ func (r *TransactionRepo) UpdateStatus(ctx context.Context, txId uuid.UUID, stat
 
 	return nil
 }
+
+func (r *TransactionRepo) List(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error) {
+	op := "TransactionRepo.List"
+
+	filter := bson.M{}
+	if len(accountIds) > 0 {
+		filter["$or"] = []bson.M{
+			{"from_account_id": bson.M{"$in": accountIds}},
+			{"to_account_id": bson.M{"$in": accountIds}},
+		}
+	}
+	if status != "" {
+		filter["status"] = status
+	}
+	if currency != "" {
+		filter["currency"] = currency
+	}
+
+	total, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	findOpts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
+	if limit > 0 {
+		findOpts.SetLimit(int64(limit))
+	}
+	if offset > 0 {
+		findOpts.SetSkip(int64(offset))
+	}
+
+	cursor, err := r.collection.Find(ctx, filter, findOpts)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	defer cursor.Close(ctx)
+
+	var txModels []models.TransactionModel
+	if err = cursor.All(ctx, &txModels); err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	res := make([]*entities.Transaction, len(txModels))
+	for i, tx := range txModels {
+		res[i] = tx.ToDomain()
+	}
+
+	return res, int(total), nil
+}

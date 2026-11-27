@@ -28,6 +28,10 @@ func handleGRPCError(c *gin.Context, err error) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": st.Message()})
 	case codes.PermissionDenied:
 		c.JSON(http.StatusForbidden, gin.H{"error": st.Message()})
+	case codes.Unavailable:
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": st.Message()})
+	case codes.DeadlineExceeded:
+		c.JSON(http.StatusGatewayTimeout, gin.H{"error": st.Message()})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": st.Message()})
 	}

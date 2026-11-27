@@ -103,3 +103,54 @@ func (r *CompanyRepo) GetInviteCodeById(ctx context.Context, companyId uuid.UUID
 
 	return inviteCode, nil
 }
+
+func (r *CompanyRepo) GetAll(ctx context.Context, search string, limit, offset int) ([]*entities.Company, int, error) {
+	op := "CompanyRepo.GetAll"
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
+	query := "SELECT company_id, name, invite_code, created_at, updated_at FROM companies"
+	countQuery := "SELECT COUNT(*) FROM companies"
+	var args []any
+	var countArgs []any
+
+	if search != "" {
+		query += " WHERE name ILIKE $1"
+		countQuery += " WHERE name ILIKE $1"
+		args = append(args, "%"+search+"%")
+		countArgs = append(countArgs, "%"+search+"%")
+	}
+
+	var total int
+	if err := conn.QueryRow(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	query += " ORDER BY created_at DESC"
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	if offset > 0 {
+		args = append(args, offset)
+		query += fmt.Sprintf(" OFFSET $%d", len(args))
+	}
+
+	rows, err := conn.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	var companies []*entities.Company
+	for rows.Next() {
+		var m models.CompanyModel
+		if err := rows.Scan(&m.CompanyId, &m.Name, &m.InviteCode, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, 0, fmt.Errorf("%s: %w", op, err)
+		}
+		companies = append(companies, m.ToDomain())
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	return companies, total, nil
+}

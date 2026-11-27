@@ -16,6 +16,8 @@ func NewCompaniesCmd(httpClient *client.Client) *cobra.Command {
 	cmd.AddCommand(NewGetInviteCodeCmd(httpClient))
 	cmd.AddCommand(NewGetAccountsCmd(httpClient))
 	cmd.AddCommand(NewGetBanksCommand(httpClient))
+	cmd.AddCommand(NewListCompaniesCmd(httpClient))
+	cmd.AddCommand(NewRemoveUserCmd(httpClient))
 
 	return cmd
 }

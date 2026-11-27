@@ -3,6 +3,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+ARG VITE_BASE=/legacy/
+ARG VITE_API_BASE=/api/v1
+ENV VITE_BASE=$VITE_BASE VITE_API_BASE=$VITE_API_BASE
 RUN npm run build
 
 FROM nginx:alpine

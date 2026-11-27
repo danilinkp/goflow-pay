@@ -15,21 +15,24 @@ func NewGetAllTransactionsCmd(httpClient *client.Client) *cobra.Command {
 		Use:   "list",
 		Short: "List all transactions for an account",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var resp []transactionResponse
+			var resp struct {
+				Items []transactionResponse `json:"items"`
+				Total int                   `json:"total"`
+			}
 			if err := httpClient.Get(
 				context.Background(),
-				"/api/v1/transactions/"+accountIDFlag,
+				"/api/v2/accounts/"+accountIDFlag+"/transactions",
 				&resp,
 			); err != nil {
 				return fmt.Errorf("failed to get transactions: %w", err)
 			}
 
-			if len(resp) == 0 {
+			if len(resp.Items) == 0 {
 				fmt.Println("No transactions found")
 				return nil
 			}
 
-			for _, t := range resp {
+			for _, t := range resp.Items {
 				fmt.Printf("ID: %s | Amount: %d %s | Status: %s | Date: %s\n",
 					t.TransactionId,
 					t.Amount,

@@ -29,13 +29,14 @@ func NewGetUsersCmd(httpClient *client.Client) *cobra.Command {
 				return err
 			}
 
-			url := "/api/v1/companies/users"
+			targetCompanyID := creds.CompanyID
 			if companyIDFlag != "" {
-				if creds.Role != "admin" || creds.CompanyID != companyIDFlag {
+				if creds.Role != "admin" && creds.CompanyID != companyIDFlag {
 					return fmt.Errorf("only admin can query other companies")
 				}
-				url += "?company_id=" + companyIDFlag
+				targetCompanyID = companyIDFlag
 			}
+			url := "/api/v2/companies/" + targetCompanyID + "/users"
 
 			var resp []userResponse
 			if err = httpClient.Get(

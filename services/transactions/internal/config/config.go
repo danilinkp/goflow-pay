@@ -12,14 +12,16 @@ import (
 )
 
 type Config struct {
-	Env        string     `yaml:"env" env:"ENV" env-default:"local"`
-	Log        LogConfig  `yaml:"log"`
-	GRPCServer GRPCServer `yaml:"grpc"`
-	GRPCClient GRPCClient `yaml:"grpc_client"`
-	Storage    Storage    `yaml:"storage"`
-	Kafka      Kafka      `yaml:"kafka"`
-	Outbox     Outbox     `yaml:"outbox"`
-	Recover    Recover    `yaml:"recover"`
+	Env         string     `yaml:"env" env:"ENV" env-default:"local"`
+	ReadOnly    bool       `yaml:"read_only" env:"READ_ONLY" env-default:"false"`
+	MetricsAddr string     `yaml:"metrics_addr" env:"METRICS_ADDR" env-default:":9464"`
+	Log         LogConfig  `yaml:"log"`
+	GRPCServer  GRPCServer `yaml:"grpc"`
+	GRPCClient  GRPCClient `yaml:"grpc_client"`
+	Storage     Storage    `yaml:"storage"`
+	Kafka       Kafka      `yaml:"kafka"`
+	Outbox      Outbox     `yaml:"outbox"`
+	Recover     Recover    `yaml:"recover"`
 }
 
 type LogConfig struct {
@@ -34,7 +36,7 @@ type GRPCServer struct {
 }
 
 type GRPCClient struct {
-	Addr string `yaml:"addr"`
+	Addr string `yaml:"addr" env:"GRPC_ACCOUNT_ADDRESS"`
 }
 
 type Storage struct {
@@ -44,7 +46,7 @@ type Storage struct {
 }
 
 type PostgresDB struct {
-	Host           string        `yaml:"host"`
+	Host           string        `yaml:"host" env:"DATABASE_HOST"`
 	Port           string        `yaml:"port"`
 	User           string        `env:"DATABASE_USER"`
 	Password       string        `env:"DATABASE_PASSWORD"`

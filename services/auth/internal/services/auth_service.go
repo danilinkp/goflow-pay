@@ -25,6 +25,7 @@ type UserRepository interface {
 	GetById(ctx context.Context, userId uuid.UUID) (*entities.User, error)
 	GetByEmail(ctx context.Context, email string) (*entities.User, error)
 	GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.User, error)
+	Delete(ctx context.Context, userId uuid.UUID) error
 }
 
 type CompanyRepository interface {
@@ -32,6 +33,7 @@ type CompanyRepository interface {
 	GetById(ctx context.Context, companyId uuid.UUID) (*entities.Company, error)
 	GetByInviteCode(ctx context.Context, inviteCode string) (*entities.Company, error)
 	GetInviteCodeById(ctx context.Context, companyId uuid.UUID) (string, error)
+	GetAll(ctx context.Context, search string, limit, offset int) ([]*entities.Company, int, error)
 }
 
 type Transactor interface {
@@ -609,5 +611,65 @@ func (a *AuthService) AddAdmin(ctx context.Context, req AddAdminInput) (*AuthOut
 		Role:      string(user.Role()),
 		Token:     token,
 	}, nil
+}
 
+func (a *AuthService) GetCompanyById(ctx context.Context, companyId uuid.UUID) (*entities.Company, error) {
+	const op = "AuthService.GetCompanyById"
+
+	company, err := a.companyRepository.GetById(ctx, companyId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return company, nil
+}
+
+func (a *AuthService) ListCompanies(ctx context.Context, search string, limit, offset int) ([]*entities.Company, int, error) {
+	const op = "AuthService.ListCompanies"
+
+	companies, total, err := a.companyRepository.GetAll(ctx, search, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return companies, total, nil
+}
+
+func (a *AuthService) RemoveCompanyUser(ctx context.Context, companyId, userId, requesterId uuid.UUID) error {
+	const op = "AuthService.RemoveCompanyUser"
+
+	if userId == requesterId {
+		return domain.ErrCannotDeleteSelf
+	}
+
+	user, err := a.userRepository.GetById(ctx, userId)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if user.CompanyId() != companyId {
+		return domain.ErrUserNotInCompany
+	}
+
+	if user.Role() == entities.RoleCompanyAdmin {
+		users, err := a.userRepository.GetByCompanyId(ctx, companyId)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		adminCount := 0
+		for _, u := range users {
+			if u.Role() == entities.RoleCompanyAdmin {
+				adminCount++
+			}
+		}
+		if adminCount <= 1 {
+			return domain.ErrCannotDeleteLastAdmin
+		}
+	}
+
+	if err := a.userRepository.Delete(ctx, userId); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }

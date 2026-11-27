@@ -17,6 +17,9 @@ service AuthService {
   rpc IsTokenValid(IsTokenValidRequest) returns (IsTokenValidResponse);
   rpc InitSystem(InitSystemRequest) returns (AuthResponse);
   rpc AddAdmin(AddAdminRequest) returns (AuthResponse);
+  rpc GetCompanyById(GetCompanyByIdRequest) returns (GetCompanyByIdResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+  rpc RemoveCompanyUser(RemoveCompanyUserRequest) returns (RemoveCompanyUserResponse);
 }
 
 message RegisterWithNewCompanyRequest {
@@ -108,3 +111,36 @@ message IsTokenValidResponse {
   string role = 4;
   google.protobuf.Timestamp expires_at = 5;
 }
+
+message CompanyInfo {
+  string company_id = 1;
+  string name = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
+message GetCompanyByIdRequest {
+  string company_id = 1;
+}
+
+message GetCompanyByIdResponse {
+  CompanyInfo company = 1;
+}
+
+message ListCompaniesRequest {
+  string search = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListCompaniesResponse {
+  repeated CompanyInfo companies = 1;
+  int32 total = 2;
+}
+
+message RemoveCompanyUserRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string requester_id = 3;
+}
+
+message RemoveCompanyUserResponse {}

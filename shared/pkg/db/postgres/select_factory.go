@@ -7,17 +7,16 @@ import (
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type SelectFactory[T any] struct {
-	pool    *pgxpool.Pool
+	pool    trmpgx.Tr
 	getter  *trmpgx.CtxGetter
 	table   string
 	columns []string
 }
 
-func NewSelectFactory[T any](pool *pgxpool.Pool, getter *trmpgx.CtxGetter, table string, columns []string) *SelectFactory[T] {
+func NewSelectFactory[T any](pool trmpgx.Tr, getter *trmpgx.CtxGetter, table string, columns []string) *SelectFactory[T] {
 	return &SelectFactory[T]{
 		pool:    pool,
 		getter:  getter,

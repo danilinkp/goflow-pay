@@ -1,0 +1,19 @@
+FROM golang:1.25.4-alpine AS builder
+
+WORKDIR /app/tests/e2e
+COPY tests/e2e/go.mod tests/e2e/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY tests/e2e/*.go ./
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go test -c -tags=e2e -o /e2e.test .
+
+# The client image holds only the compiled black-box test: no service code, Go
+# toolchain or database clients, so it can talk to the system solely over HTTP
+FROM alpine:3.19
+
+WORKDIR /app
+COPY --from=builder /e2e.test /usr/local/bin/e2e.test
+
+CMD ["e2e.test", "-test.v", "-test.count=1"]

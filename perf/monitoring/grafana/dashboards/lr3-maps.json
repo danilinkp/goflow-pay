@@ -1,0 +1,2676 @@
+{
+  "uid": "lr3-maps",
+  "title": "ЛР3: map Go 1.23 vs Go 1.25",
+  "tags": [
+    "lr3",
+    "bench"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "version": 6,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "name": "bench",
+        "label": "Бенчмарк",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "resultsdb"
+        },
+        "query": "SELECT DISTINCT bench_id FROM lr3_runs ORDER BY bench_id DESC",
+        "definition": "SELECT DISTINCT bench_id FROM lr3_runs ORDER BY bench_id DESC",
+        "refresh": 1
+      },
+      {
+        "name": "size",
+        "label": "Размер map (N)",
+        "type": "custom",
+        "query": "1 000 : 1000,100 000 : 100000,1 000 000 : 1000000",
+        "current": {
+          "selected": true,
+          "text": "1 000",
+          "value": "1000"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "1 000",
+            "value": "1000"
+          },
+          {
+            "selected": false,
+            "text": "100 000",
+            "value": "100000"
+          },
+          {
+            "selected": false,
+            "text": "1 000 000",
+            "value": "1000000"
+          }
+        ]
+      },
+      {
+        "name": "run",
+        "label": "Прогон",
+        "type": "custom",
+        "query": "All,1,2,3",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "All"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "All"
+          },
+          {
+            "selected": false,
+            "text": "1",
+            "value": "1"
+          },
+          {
+            "selected": false,
+            "text": "2",
+            "value": "2"
+          },
+          {
+            "selected": false,
+            "text": "3",
+            "value": "3"
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "lookup_hit: поиск существующих ключей",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "type": "trend",
+      "title": "Среднее время операции во времени, N = ${size:text}",
+      "description": "Все фазы: warmup, measure, teardown. Среднее время операции в окнах по 50 мс.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  t_s AS \"Время (с)\",\n  round((avg_23_ns / 1000)::numeric, 2) AS \"go1.23\",\n  round((avg_25_ns / 1000)::numeric, 2) AS \"go1.25\"\nFROM lr3_timeline\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_hit'\n  AND op = 'lookup_hit'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY t_s;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisLabel": "мкс на операцию"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время (с)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "секунды от начала прогона"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время (с)",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "trend",
+      "title": "Распределение по перцентилям, N = ${size:text}",
+      "description": "Фаза measure. По X время операции, по Y перцентиль: какая доля операций уложилась в это время. Пример: линия на высоте 90 при X = 7.5 мкс значит, что 90% операций выполнились за 7.5 мкс или быстрее. Точки — перцентили от p1 до p99 с шагом 1, затем p99.9 и p99.99.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  round((u.p / 1000)::numeric, 3) AS \"Время операции\",\n  CASE WHEN version = 'go1.23' THEN round((u.q * 100)::numeric, 2) END AS \"go1.23\",\n  CASE WHEN version = 'go1.25' THEN round((u.q * 100)::numeric, 2) END AS \"go1.25\"\nFROM lr3_dist\nCROSS JOIN unnest(q, p_ns) AS u(q, p)\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_hit'\n  AND op = 'lookup_hit'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\n  AND u.q > 0 AND u.q < 1\nORDER BY u.p, version;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "перцентиль, %"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.2[35]$"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время операции"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "µs"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "время операции, мкс"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время операции",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Гистограмма времени операции (под столбцом границы бакета в мкс), N = ${size:text}",
+      "description": "Фаза measure, диапазон от p0.1 до p99, бакеты одинаковой ширины. Под столбцом — от какого до какого времени операции в бакете. По Y доля операций версии, попавших в бакет.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  trim_scale(round(lo_us::numeric, 3)) || '–' || trim_scale(round(hi_us::numeric, 3)) AS \"Бакет\",\n  v23::float8 / NULLIF(sum(v23) OVER (), 0) AS \"go1.23\",\n  v25::float8 / NULLIF(sum(v25) OVER (), 0) AS \"go1.25\"\nFROM lr3_hist\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_hit'\n  AND op = 'lookup_hit'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY bin;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 80,
+            "axisLabel": "доля операций"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Бакет",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "barWidth": 0.9,
+        "groupWidth": 0.85,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Перцентили одной операции, мкс (фаза measure)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p50\",\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p50\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p75\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p75\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p90\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p90\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p95\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p95\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p99\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p99\"\nFROM lr3_dist\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_hit'\n  AND op = 'lookup_hit'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Длительность теста и операций по фазам (на один прогон)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  avg((meta->>'total_duration_ns')::numeric) / 1e9 AS \"Длительность теста\",\n  round(avg((meta->'counts'->'warmup'->>'lookup_hit')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 warmup\",\n  round(avg((meta->'counts'->'measure'->>'lookup_hit')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 measure\",\n  round(avg((meta->'counts'->'teardown'->>'lookup_hit')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 teardown\",\n  round(avg((meta->'counts'->'warmup'->>'lookup_hit')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 warmup\",\n  round(avg((meta->'counts'->'measure'->>'lookup_hit')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 measure\",\n  round(avg((meta->'counts'->'teardown'->>'lookup_hit')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 teardown\"\nFROM lr3_runs\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_hit'\n  AND size = $size\n  AND (run::text = '$run' OR '$run' = 'All');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Длительность теста"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "lookup_miss: поиск отсутствующих ключей",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      }
+    },
+    {
+      "id": 8,
+      "type": "trend",
+      "title": "Среднее время операции во времени, N = ${size:text}",
+      "description": "Все фазы: warmup, measure, teardown. Среднее время операции в окнах по 50 мс.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  t_s AS \"Время (с)\",\n  round((avg_23_ns / 1000)::numeric, 2) AS \"go1.23\",\n  round((avg_25_ns / 1000)::numeric, 2) AS \"go1.25\"\nFROM lr3_timeline\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_miss'\n  AND op = 'lookup_miss'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY t_s;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisLabel": "мкс на операцию"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время (с)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "секунды от начала прогона"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время (с)",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "trend",
+      "title": "Распределение по перцентилям, N = ${size:text}",
+      "description": "Фаза measure. По X время операции, по Y перцентиль: какая доля операций уложилась в это время. Пример: линия на высоте 90 при X = 7.5 мкс значит, что 90% операций выполнились за 7.5 мкс или быстрее. Точки — перцентили от p1 до p99 с шагом 1, затем p99.9 и p99.99.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  round((u.p / 1000)::numeric, 3) AS \"Время операции\",\n  CASE WHEN version = 'go1.23' THEN round((u.q * 100)::numeric, 2) END AS \"go1.23\",\n  CASE WHEN version = 'go1.25' THEN round((u.q * 100)::numeric, 2) END AS \"go1.25\"\nFROM lr3_dist\nCROSS JOIN unnest(q, p_ns) AS u(q, p)\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_miss'\n  AND op = 'lookup_miss'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\n  AND u.q > 0 AND u.q < 1\nORDER BY u.p, version;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "перцентиль, %"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.2[35]$"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время операции"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "µs"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "время операции, мкс"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время операции",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "barchart",
+      "title": "Гистограмма времени операции (под столбцом границы бакета в мкс), N = ${size:text}",
+      "description": "Фаза measure, диапазон от p0.1 до p99, бакеты одинаковой ширины. Под столбцом — от какого до какого времени операции в бакете. По Y доля операций версии, попавших в бакет.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  trim_scale(round(lo_us::numeric, 3)) || '–' || trim_scale(round(hi_us::numeric, 3)) AS \"Бакет\",\n  v23::float8 / NULLIF(sum(v23) OVER (), 0) AS \"go1.23\",\n  v25::float8 / NULLIF(sum(v25) OVER (), 0) AS \"go1.25\"\nFROM lr3_hist\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_miss'\n  AND op = 'lookup_miss'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY bin;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 80,
+            "axisLabel": "доля операций"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Бакет",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "barWidth": 0.9,
+        "groupWidth": 0.85,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Перцентили одной операции, мкс (фаза measure)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 52
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p50\",\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p50\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p75\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p75\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p90\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p90\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p95\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p95\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p99\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p99\"\nFROM lr3_dist\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_miss'\n  AND op = 'lookup_miss'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Длительность теста и операций по фазам (на один прогон)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 52
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  avg((meta->>'total_duration_ns')::numeric) / 1e9 AS \"Длительность теста\",\n  round(avg((meta->'counts'->'warmup'->>'lookup_miss')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 warmup\",\n  round(avg((meta->'counts'->'measure'->>'lookup_miss')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 measure\",\n  round(avg((meta->'counts'->'teardown'->>'lookup_miss')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 teardown\",\n  round(avg((meta->'counts'->'warmup'->>'lookup_miss')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 warmup\",\n  round(avg((meta->'counts'->'measure'->>'lookup_miss')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 measure\",\n  round(avg((meta->'counts'->'teardown'->>'lookup_miss')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 teardown\"\nFROM lr3_runs\nWHERE bench_id = '$bench'\n  AND scenario = 'lookup_miss'\n  AND size = $size\n  AND (run::text = '$run' OR '$run' = 'All');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Длительность теста"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "update: перезапись значений",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      }
+    },
+    {
+      "id": 14,
+      "type": "trend",
+      "title": "Среднее время операции во времени, N = ${size:text}",
+      "description": "Все фазы: warmup, measure, teardown. Среднее время операции в окнах по 50 мс.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 57
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  t_s AS \"Время (с)\",\n  round((avg_23_ns / 1000)::numeric, 2) AS \"go1.23\",\n  round((avg_25_ns / 1000)::numeric, 2) AS \"go1.25\"\nFROM lr3_timeline\nWHERE bench_id = '$bench'\n  AND scenario = 'update'\n  AND op = 'update'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY t_s;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisLabel": "мкс на операцию"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время (с)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "секунды от начала прогона"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время (с)",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "trend",
+      "title": "Распределение по перцентилям, N = ${size:text}",
+      "description": "Фаза measure. По X время операции, по Y перцентиль: какая доля операций уложилась в это время. Пример: линия на высоте 90 при X = 7.5 мкс значит, что 90% операций выполнились за 7.5 мкс или быстрее. Точки — перцентили от p1 до p99 с шагом 1, затем p99.9 и p99.99.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 57
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  round((u.p / 1000)::numeric, 3) AS \"Время операции\",\n  CASE WHEN version = 'go1.23' THEN round((u.q * 100)::numeric, 2) END AS \"go1.23\",\n  CASE WHEN version = 'go1.25' THEN round((u.q * 100)::numeric, 2) END AS \"go1.25\"\nFROM lr3_dist\nCROSS JOIN unnest(q, p_ns) AS u(q, p)\nWHERE bench_id = '$bench'\n  AND scenario = 'update'\n  AND op = 'update'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\n  AND u.q > 0 AND u.q < 1\nORDER BY u.p, version;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "перцентиль, %"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.2[35]$"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время операции"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "µs"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "время операции, мкс"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время операции",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "barchart",
+      "title": "Гистограмма времени операции (под столбцом границы бакета в мкс), N = ${size:text}",
+      "description": "Фаза measure, диапазон от p0.1 до p99, бакеты одинаковой ширины. Под столбцом — от какого до какого времени операции в бакете. По Y доля операций версии, попавших в бакет.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 66
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  trim_scale(round(lo_us::numeric, 3)) || '–' || trim_scale(round(hi_us::numeric, 3)) AS \"Бакет\",\n  v23::float8 / NULLIF(sum(v23) OVER (), 0) AS \"go1.23\",\n  v25::float8 / NULLIF(sum(v25) OVER (), 0) AS \"go1.25\"\nFROM lr3_hist\nWHERE bench_id = '$bench'\n  AND scenario = 'update'\n  AND op = 'update'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY bin;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 80,
+            "axisLabel": "доля операций"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Бакет",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "barWidth": 0.9,
+        "groupWidth": 0.85,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Перцентили одной операции, мкс (фаза measure)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 80
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p50\",\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p50\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p75\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p75\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p90\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p90\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p95\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p95\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p99\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p99\"\nFROM lr3_dist\nWHERE bench_id = '$bench'\n  AND scenario = 'update'\n  AND op = 'update'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Длительность теста и операций по фазам (на один прогон)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 80
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  avg((meta->>'total_duration_ns')::numeric) / 1e9 AS \"Длительность теста\",\n  round(avg((meta->'counts'->'warmup'->>'update')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 warmup\",\n  round(avg((meta->'counts'->'measure'->>'update')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 measure\",\n  round(avg((meta->'counts'->'teardown'->>'update')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 teardown\",\n  round(avg((meta->'counts'->'warmup'->>'update')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 warmup\",\n  round(avg((meta->'counts'->'measure'->>'update')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 measure\",\n  round(avg((meta->'counts'->'teardown'->>'update')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 teardown\"\nFROM lr3_runs\nWHERE bench_id = '$bench'\n  AND scenario = 'update'\n  AND size = $size\n  AND (run::text = '$run' OR '$run' = 'All');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Длительность теста"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "mixed: чтение (3 читателя под RLock)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 84
+      }
+    },
+    {
+      "id": 20,
+      "type": "trend",
+      "title": "Среднее время операции во времени, N = ${size:text}",
+      "description": "Все фазы: warmup, measure, teardown. Среднее время операции в окнах по 50 мс. Ось Y логарифмическая: ожидание блокировки даёт выбросы в тысячи раз больше типичного значения.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 85
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  t_s AS \"Время (с)\",\n  round((avg_23_ns / 1000)::numeric, 2) AS \"go1.23\",\n  round((avg_25_ns / 1000)::numeric, 2) AS \"go1.25\"\nFROM lr3_timeline\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_read'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY t_s;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "scaleDistribution": {
+              "type": "log",
+              "log": 10
+            },
+            "axisLabel": "мкс на операцию"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время (с)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "секунды от начала прогона"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время (с)",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "trend",
+      "title": "Распределение по перцентилям (до p99), N = ${size:text}",
+      "description": "Фаза measure. По X время операции, по Y перцентиль: какая доля операций уложилась в это время. Пример: линия на высоте 90 при X = 7.5 мкс значит, что 90% операций выполнились за 7.5 мкс или быстрее. Показано до p99: дальше хвост из-за ожидания блокировки доходит до десятков миллисекунд и сжал бы остальной график в линию.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 85
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  round((u.p / 1000)::numeric, 3) AS \"Время операции\",\n  CASE WHEN version = 'go1.23' THEN round((u.q * 100)::numeric, 2) END AS \"go1.23\",\n  CASE WHEN version = 'go1.25' THEN round((u.q * 100)::numeric, 2) END AS \"go1.25\"\nFROM lr3_dist\nCROSS JOIN unnest(q, p_ns) AS u(q, p)\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_read'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\n  AND u.q > 0 AND u.q <= 0.99\nORDER BY u.p, version;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "перцентиль, %"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.2[35]$"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время операции"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "µs"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "время операции, мкс"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время операции",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 22,
+      "type": "barchart",
+      "title": "Гистограмма времени операции (под столбцом границы бакета в мкс), N = ${size:text}",
+      "description": "Фаза measure, диапазон от p0.1 до p99, бакеты одинаковой ширины. Под столбцом — от какого до какого времени операции в бакете. По Y доля операций версии, попавших в бакет.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 94
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  trim_scale(round(lo_us::numeric, 3)) || '–' || trim_scale(round(hi_us::numeric, 3)) AS \"Бакет\",\n  v23::float8 / NULLIF(sum(v23) OVER (), 0) AS \"go1.23\",\n  v25::float8 / NULLIF(sum(v25) OVER (), 0) AS \"go1.25\"\nFROM lr3_hist\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_read'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY bin;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 80,
+            "axisLabel": "доля операций"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Бакет",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "barWidth": 0.9,
+        "groupWidth": 0.85,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "type": "stat",
+      "title": "Перцентили одной операции, мкс (фаза measure)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 108
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p50\",\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p50\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p75\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p75\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p90\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p90\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p95\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p95\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p99\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p99\"\nFROM lr3_dist\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_read'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 24,
+      "type": "stat",
+      "title": "Длительность теста и операций по фазам (на один прогон)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 108
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  avg((meta->>'total_duration_ns')::numeric) / 1e9 AS \"Длительность теста\",\n  round(avg((meta->'counts'->'warmup'->>'mixed_read')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 warmup\",\n  round(avg((meta->'counts'->'measure'->>'mixed_read')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 measure\",\n  round(avg((meta->'counts'->'teardown'->>'mixed_read')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 teardown\",\n  round(avg((meta->'counts'->'warmup'->>'mixed_read')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 warmup\",\n  round(avg((meta->'counts'->'measure'->>'mixed_read')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 measure\",\n  round(avg((meta->'counts'->'teardown'->>'mixed_read')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 teardown\"\nFROM lr3_runs\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND size = $size\n  AND (run::text = '$run' OR '$run' = 'All');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Длительность теста"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 25,
+      "type": "row",
+      "title": "mixed: запись (1 писатель под Lock, 100 удалений + 100 вставок)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 112
+      }
+    },
+    {
+      "id": 26,
+      "type": "trend",
+      "title": "Среднее время операции во времени, N = ${size:text}",
+      "description": "Все фазы: warmup, measure, teardown. Среднее время операции в окнах по 50 мс. Ось Y логарифмическая: ожидание блокировки даёт выбросы в тысячи раз больше типичного значения.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 113
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  t_s AS \"Время (с)\",\n  round((avg_23_ns / 1000)::numeric, 2) AS \"go1.23\",\n  round((avg_25_ns / 1000)::numeric, 2) AS \"go1.25\"\nFROM lr3_timeline\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_write'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY t_s;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "scaleDistribution": {
+              "type": "log",
+              "log": 10
+            },
+            "axisLabel": "мкс на операцию"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время (с)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "секунды от начала прогона"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время (с)",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "type": "trend",
+      "title": "Распределение по перцентилям (до p99), N = ${size:text}",
+      "description": "Фаза measure. По X время операции, по Y перцентиль: какая доля операций уложилась в это время. Пример: линия на высоте 90 при X = 7.5 мкс значит, что 90% операций выполнились за 7.5 мкс или быстрее. Показано до p99: дальше хвост из-за ожидания блокировки доходит до десятков миллисекунд и сжал бы остальной график в линию.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 113
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  round((u.p / 1000)::numeric, 3) AS \"Время операции\",\n  CASE WHEN version = 'go1.23' THEN round((u.q * 100)::numeric, 2) END AS \"go1.23\",\n  CASE WHEN version = 'go1.25' THEN round((u.q * 100)::numeric, 2) END AS \"go1.25\"\nFROM lr3_dist\nCROSS JOIN unnest(q, p_ns) AS u(q, p)\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_write'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\n  AND u.q > 0 AND u.q <= 0.99\nORDER BY u.p, version;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "перцентиль, %"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.2[35]$"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время операции"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "µs"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "время операции, мкс"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время операции",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 28,
+      "type": "barchart",
+      "title": "Гистограмма времени операции (под столбцом границы бакета в мкс), N = ${size:text}",
+      "description": "Фаза measure, диапазон от p0.1 до p99, бакеты одинаковой ширины. Под столбцом — от какого до какого времени операции в бакете. По Y доля операций версии, попавших в бакет.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 122
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  trim_scale(round(lo_us::numeric, 3)) || '–' || trim_scale(round(hi_us::numeric, 3)) AS \"Бакет\",\n  v23::float8 / NULLIF(sum(v23) OVER (), 0) AS \"go1.23\",\n  v25::float8 / NULLIF(sum(v25) OVER (), 0) AS \"go1.25\"\nFROM lr3_hist\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_write'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0')\nORDER BY bin;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 80,
+            "axisLabel": "доля операций"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.23"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "go1.25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Бакет",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "barWidth": 0.9,
+        "groupWidth": 0.85,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 29,
+      "type": "stat",
+      "title": "Перцентили одной операции, мкс (фаза measure)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 136
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p50\",\n  max(p_ns[array_position(q, 0.5)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p50\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p75\",\n  max(p_ns[array_position(q, 0.75)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p75\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p90\",\n  max(p_ns[array_position(q, 0.9)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p90\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p95\",\n  max(p_ns[array_position(q, 0.95)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p95\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.23') / 1000 AS \"go1.23 p99\",\n  max(p_ns[array_position(q, 0.99)]) FILTER (WHERE version = 'go1.25') / 1000 AS \"go1.25 p99\"\nFROM lr3_dist\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND op = 'mixed_write'\n  AND size = $size\n  AND run::text = replace('$run', 'All', '0');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "Длительность теста и операций по фазам (на один прогон)",
+      "datasource": {
+        "type": "postgres",
+        "uid": "resultsdb"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 136
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "resultsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  avg((meta->>'total_duration_ns')::numeric) / 1e9 AS \"Длительность теста\",\n  round(avg((meta->'counts'->'warmup'->>'mixed_write')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 warmup\",\n  round(avg((meta->'counts'->'measure'->>'mixed_write')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 measure\",\n  round(avg((meta->'counts'->'teardown'->>'mixed_write')::bigint) FILTER (WHERE version = 'go1.23')) AS \"go1.23 teardown\",\n  round(avg((meta->'counts'->'warmup'->>'mixed_write')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 warmup\",\n  round(avg((meta->'counts'->'measure'->>'mixed_write')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 measure\",\n  round(avg((meta->'counts'->'teardown'->>'mixed_write')::bigint) FILTER (WHERE version = 'go1.25')) AS \"go1.25 teardown\"\nFROM lr3_runs\nWHERE bench_id = '$bench'\n  AND scenario = 'mixed'\n  AND size = $size\n  AND (run::text = '$run' OR '$run' = 'All');"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.23.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^go1\\.25.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Длительность теста"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    }
+  ]
+}

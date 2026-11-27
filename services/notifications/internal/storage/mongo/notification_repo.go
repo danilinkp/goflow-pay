@@ -52,3 +52,8 @@ func (r *NotificationRepo) GetById(ctx context.Context, id uuid.UUID) (*entities
 
 	return notificationModel.ToDomain(), nil
 }
+
+func (r *NotificationRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+	return err
+}

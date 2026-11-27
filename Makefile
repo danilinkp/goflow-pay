@@ -5,3 +5,351 @@ build-cli:
 .PHONY: install-cli
 install-cli:
 	go install ./tools/cli/cmd/goflow-cli
+
+REPORTS_DIR := reports
+ALLURE_RESULTS := $(REPORTS_DIR)/allure-results
+ALLURE_REPORT := $(REPORTS_DIR)/allure-report
+
+.PHONY: test
+test:
+	@echo "=== Запуск Лондонских тестов (TransactionService) ==="
+	go test -v ./services/transactions/internal/service/...
+	@echo ""
+	@echo "=== Запуск Классических тестов (AccountService + Real Postgres Repos + pgxmock) ==="
+	go test -v -run TestAccountService_Classic ./services/accounts/internal/services/...
+
+.PHONY: test-random
+test-random:
+	@echo "=== Запуск тестов в случайном порядке (-shuffle=on) ==="
+	go test -v -shuffle=on ./services/transactions/internal/service/...
+	go test -v -shuffle=on -run TestAccountService_Classic ./services/accounts/internal/services/...
+
+.PHONY: test-offline
+test-offline:
+	@echo "=== Запуск тестов в автономном режиме (без внешних зависимостей) ==="
+	GOPROXY=off go test -v ./services/transactions/internal/service/...
+	GOPROXY=off go test -v -run TestAccountService_Classic ./services/accounts/internal/services/...
+
+export PATH := $(shell go env GOPATH)/bin:$(PATH)
+
+COVERPKG_TX := transactions/...
+COVERPKG_ACC := accounts/...,shared/...
+
+.PHONY: test-coverage
+test-coverage:
+	@mkdir -p $(REPORTS_DIR)
+	@go test -coverprofile=$(REPORTS_DIR)/coverage-tx.out -covermode=atomic -coverpkg=$(COVERPKG_TX) ./services/transactions/internal/service/... > /dev/null
+	@go test -coverprofile=$(REPORTS_DIR)/coverage-acc.out -covermode=atomic -coverpkg=$(COVERPKG_ACC) -run TestAccountService_Classic ./services/accounts/internal/services/... > /dev/null
+	@echo "mode: atomic" > $(REPORTS_DIR)/coverage.out
+	@tail -n +2 $(REPORTS_DIR)/coverage-tx.out >> $(REPORTS_DIR)/coverage.out
+	@tail -n +2 $(REPORTS_DIR)/coverage-acc.out >> $(REPORTS_DIR)/coverage.out
+	@grep -v "/mocks/" $(REPORTS_DIR)/coverage.out | grep -v "shared/pkg/db/postgres/pool.go" > $(REPORTS_DIR)/coverage-clean.out
+	@echo "=== Сводка покрытия по функциям и блокам (ветвлениям) ==="
+	@go tool cover -func=$(REPORTS_DIR)/coverage-clean.out
+
+.PHONY: test-coverage-html
+test-coverage-html: test-coverage
+	@go tool cover -html=$(REPORTS_DIR)/coverage-clean.out -o $(REPORTS_DIR)/coverage-std.html
+	@gocov convert $(REPORTS_DIR)/coverage-clean.out | gocov-html -t kit > $(REPORTS_DIR)/coverage.html
+	@echo "Информативный HTML-отчет (gocov-html) сохранен в: $(REPORTS_DIR)/coverage.html"
+	@echo "Стандартный HTML-отчет (go tool cover) сохранен в: $(REPORTS_DIR)/coverage-std.html"
+
+.PHONY: test-coverage-open
+test-coverage-open: test-coverage-html
+	@xdg-open $(REPORTS_DIR)/coverage.html 2>/dev/null || open $(REPORTS_DIR)/coverage.html 2>/dev/null || echo "Откройте в браузере: file://$(abspath $(REPORTS_DIR)/coverage.html)"
+
+.PHONY: test-report
+test-report:
+	@echo "=== Генерация Allure-отчета с пирамидой тестирования и проверкой Requirement 8 ==="
+	@./scripts/generate_allure_report.sh
+
+
+.PHONY: test-report-open
+test-report-open:
+	npx -y allure-commandline open $(ALLURE_REPORT)
+
+.PHONY: clean-reports
+clean-reports:
+	rm -rf $(REPORTS_DIR)
+
+.PHONY: test-process-trace
+test-process-trace:
+	@echo "=== Трассировка создания процессов ОС (execve) при запуске тестов ==="
+	@strace -f -q -e trace=execve go test -count=1 ./services/transactions/internal/service ./services/accounts/internal/services 2>&1 | grep --color=never '\.test"' || true
+
+.PHONY: lint-api
+lint-api:
+	npx -y @redocly/cli lint docs/openapi/openapi.yaml
+
+.PHONY: mock-api
+mock-api:
+	npx -y -p @faker-js/faker -p @stoplight/prism-cli prism mock docs/openapi/openapi.yaml -p 4010
+
+.PHONY: test-api-mock
+test-api-mock:
+	./scripts/test_mock.sh
+
+# Тестовый стенд и окружение ЛР №2 (Docker, Test Stand, Teardown)
+.PHONY: test-env-up
+test-env-up:
+	@echo "=== Запуск тестовой инфраструктуры (PostgreSQL + Redis) ==="
+	docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test
+	@echo "=== Применение миграций и инициализация тестовых БД ==="
+	./scripts/test_init.sh
+
+.PHONY: test-env-down
+test-env-down:
+	@echo "=== Остановка и удаление тестового стенда (с томами) ==="
+	docker compose -f docker-compose.test.yml down -v
+
+.PHONY: test-clean
+test-clean:
+	@echo "=== Очистка состояния БД и кеша ==="
+	./scripts/test_teardown.sh
+
+.PHONY: test-docker
+test-docker:
+	@echo "=== Запуск тестов внутри изолированного контейнера test-runner ==="
+	docker compose -f docker-compose.test.yml run --rm test-runner
+
+.PHONY: test-integration
+test-integration:
+	@echo "=== Применение миграций и подготовка БД ==="
+	@./scripts/test_init.sh
+	@echo "=== Запуск Интеграционных тестов ==="
+	go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration"
+
+.PHONY:
+test-e2e:
+	@echo "=== Запуск Сквозного E2E тестирования (Black-Box через Gateway HTTP API) ==="
+	@./scripts/test_stand_up.sh && ./scripts/run_e2e_client.sh ; STATUS=$$? ; ./scripts/test_stand_down.sh ; exit $$STATUS
+
+.PHONY: test-stand-up
+test-stand-up:
+	@./scripts/test_stand_up.sh
+
+.PHONY: test-e2e-run
+test-e2e-run:
+	@echo "=== Запуск E2E-клиента против уже поднятого стенда ==="
+	@./scripts/run_e2e_client.sh
+
+.PHONY: test-stand-down
+test-stand-down:
+	@./scripts/test_stand_down.sh
+
+.PHONY: test-int-seq
+test-int-seq:
+	@echo "======================================================================"
+	@echo " Запуск интеграционных тестов 3 раза подряд на одном окружении..."
+	@echo "======================================================================"
+	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
+	@./scripts/test_init.sh
+	@for i in 1 2 3; do \
+		echo ""; \
+		echo "--> [Прогон $$i / 3] Выполнение интеграционных тестов..."; \
+		go test -v -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" || exit 1; \
+		echo "--> [Прогон $$i / 3] УСПЕШНО пройден!"; \
+	done
+
+.PHONY: test-int-paral
+test-int-paral:
+	@echo "======================================================================"
+	@echo " Одновременный запуск 4 параллельных разработчиков в общей БД..."
+	@echo "======================================================================"
+	@docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test > /dev/null 2>&1 || true
+	@./scripts/test_init.sh
+	@mkdir -p /tmp/req15_logs
+	@( \
+		echo "--> Запуск потока разработчика #1..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev1.log 2>&1 & PID1=$$!; \
+		echo "--> Запуск потока разработчика #2..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev2.log 2>&1 & PID2=$$!; \
+		echo "--> Запуск потока разработчика #3..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev3.log 2>&1 & PID3=$$!; \
+		echo "--> Запуск потока разработчика #4..."; \
+		go test -count=1 -tags=integration ./services/accounts/internal/services/... -run "TestAccountService_.*_Integration" > /tmp/req15_logs/dev4.log 2>&1 & PID4=$$!; \
+		FAIL=0; \
+		wait $$PID1 || FAIL=1; \
+		wait $$PID2 || FAIL=1; \
+		wait $$PID3 || FAIL=1; \
+		wait $$PID4 || FAIL=1; \
+		if [ $$FAIL -ne 0 ]; then \
+			echo "ОШИБКА: Один или несколько параллельных прогонов упали!"; \
+			tail -n 20 /tmp/req15_logs/*.log; \
+			exit 1; \
+		fi \
+	)
+	@echo ""
+	@echo "Логи параллельных прогонов:"
+	@head -n 2 /tmp/req15_logs/dev1.log | sed 's/^/  [Dev 1] /'
+	@tail -n 1 /tmp/req15_logs/dev1.log | sed 's/^/  [Dev 1] /'
+	@head -n 2 /tmp/req15_logs/dev2.log | sed 's/^/  [Dev 2] /'
+	@tail -n 1 /tmp/req15_logs/dev2.log | sed 's/^/  [Dev 2] /'
+	@head -n 2 /tmp/req15_logs/dev3.log | sed 's/^/  [Dev 3] /'
+	@tail -n 1 /tmp/req15_logs/dev3.log | sed 's/^/  [Dev 3] /'
+	@head -n 2 /tmp/req15_logs/dev4.log | sed 's/^/  [Dev 4] /'
+	@tail -n 1 /tmp/req15_logs/dev4.log | sed 's/^/  [Dev 4] /'
+
+.PHONY: test-e2e-sequential
+test-e2e-sequential:
+	@echo "======================================================================"
+	@echo " [E2E SEQUENTIAL] Последовательный запуск E2E-тестов (3 прогона подряд)"
+	@echo "======================================================================"
+	@./scripts/test_stand_up.sh
+	@for i in 1 2 3; do \
+		echo ""; \
+		echo "--> [E2E Прогон $$i / 3] Запуск сквозного сценария..."; \
+		./scripts/run_e2e_client.sh || { ./scripts/test_stand_down.sh; exit 1; }; \
+		echo "--> [E2E Прогон $$i / 3] УСПЕШНО пройден!"; \
+	done
+	@./scripts/test_stand_down.sh
+	@echo ""
+	@echo "======================================================================"
+	@echo " [E2E SEQUENTIAL ВЫПОЛНЕНО]: Все 3 последовательных прогона успешны!"
+	@echo "======================================================================"
+
+.PHONY: test-e2e-parallel
+test-e2e-parallel:
+	@echo "======================================================================"
+	@echo " [E2E PARALLEL] Одновременный запуск 3 параллельных E2E-тестов"
+	@echo "======================================================================"
+	@./scripts/test_stand_up.sh
+	@mkdir -p /tmp/e2e_parallel_logs
+	@( \
+		echo "--> Запуск параллельного E2E-клиента #1..."; \
+		./scripts/run_e2e_client.sh > /tmp/e2e_parallel_logs/client1.log 2>&1 & PID1=$$!; \
+		echo "--> Запуск параллельного E2E-клиента #2..."; \
+		./scripts/run_e2e_client.sh > /tmp/e2e_parallel_logs/client2.log 2>&1 & PID2=$$!; \
+		echo "--> Запуск параллельного E2E-клиента #3..."; \
+		./scripts/run_e2e_client.sh > /tmp/e2e_parallel_logs/client3.log 2>&1 & PID3=$$!; \
+		FAIL=0; \
+		wait $$PID1 || FAIL=1; \
+		wait $$PID2 || FAIL=1; \
+		wait $$PID3 || FAIL=1; \
+		if [ $$FAIL -ne 0 ]; then \
+			echo "ОШИБКА: Один или несколько параллельных E2E-прогонов упали!"; \
+			tail -n 20 /tmp/e2e_parallel_logs/*.log; \
+			./scripts/test_stand_down.sh; \
+			exit 1; \
+		fi \
+	)
+	@./scripts/test_stand_down.sh
+	@echo ""
+	@echo "Логи параллельных E2E-клиентов:"
+	@tail -n 2 /tmp/e2e_parallel_logs/client1.log | sed 's/^/  [Client 1] /'
+	@tail -n 2 /tmp/e2e_parallel_logs/client2.log | sed 's/^/  [Client 2] /'
+	@tail -n 2 /tmp/e2e_parallel_logs/client3.log | sed 's/^/  [Client 3] /'
+	@echo ""
+	@echo "======================================================================"
+	@echo " [E2E PARALLEL ВЫПОЛНЕНО]: Все 3 параллельных E2E-клиента успешно"
+	@echo " завершили свои сценарии без взаимных коллизий!"
+	@echo "======================================================================"
+
+.PHONY: test-reqs
+test-reqs: test-int-seq test-int-paral test-e2e-sequential test-e2e-parallel
+
+# ЛР №3 WEB:
+.PHONY: generate-api
+generate-api:
+	@echo "=== Кодогенерация REST API v2 из OpenAPI 3.1 (oapi-codegen) ==="
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1 -config services/gateway/api_v2_cfg.yaml docs/openapi/openapi.yaml
+
+.PHONY: build-all
+build-all:
+	@echo "=== Сборка всех микросервисов и CLI ==="
+	go build ./services/auth/...
+	go build ./services/accounts/...
+	go build ./services/transactions/...
+	go build ./services/gateway/...
+	go build ./tools/cli/...
+	@echo "=== Все сервисы успешно собраны! ==="
+
+.PHONY: build-gateway
+build-gateway:
+	go build -o ./bin/gateway ./services/gateway/cmd/gateway/main.go
+
+.PHONY: run-gateway
+run-gateway:
+	cd services/gateway && go run ./cmd/gateway/main.go
+
+# ЛР3 ТИОПО: микробенчмарк map в Go 1.23 vs Go 1.25
+.PHONY: lr3-bench lr3-bench-smoke lr3-bench-live lr3-load
+lr3-bench:
+	./perf/lr3-bench/run.sh
+
+lr3-bench-smoke:
+	RUNS=1 WARMUP=1s DURATION=2s TEARDOWN=1s SIZES="1000 100000" ./perf/lr3-bench/run.sh
+
+lr3-bench-live:
+	LIVE=1 ./perf/lr3-bench/run.sh
+
+lr3-load:
+	./perf/lr3-bench/load.sh $(abspath $(DIR))
+
+# Мониторинг и ResultsDB
+.PHONY: mon-up mon-down
+mon-up:
+	docker network inspect goflow-load >/dev/null 2>&1 || docker network create goflow-load
+	docker compose -p goflow-mon -f perf/monitoring/compose.yml up -d --wait
+
+mon-down:
+	docker compose -p goflow-mon -f perf/monitoring/compose.yml down
+
+# ЛР4 ТИОПО: нагрузочное тестирование
+.PHONY: lr4-smoke lr4-ramp lr4-ramp-limit lr4-stress lr4-soak lr4-soak-all lr4-load
+lr4-smoke:
+	./perf/lr4-load/run.sh smoke 0.1
+
+lr4-ramp:
+	./perf/lr4-load/run.sh ramp 0
+
+lr4-ramp-limit:
+	RAMP_START_VUS="$${RAMP_START_VUS:-90}" RAMP_STEP_VUS="$${RAMP_STEP_VUS:-20}" \
+		RAMP_STEPS="$${RAMP_STEPS:-19}" RAMP_TRANSITION_DURATION="$${RAMP_TRANSITION_DURATION:-10s}" \
+		RAMP_STEP_DURATION="$${RAMP_STEP_DURATION:-30s}" RAMP_GRACEFUL_STOP="$${RAMP_GRACEFUL_STOP:-30s}" \
+		./perf/lr4-load/run.sh ramp 0
+
+lr4-stress:
+	./perf/lr4-load/run.sh stress 0
+
+lr4-soak:
+	./perf/lr4-load/run.sh soak $(or $(ERROR_RATE),0)
+
+lr4-soak-all:
+	./perf/lr4-load/run.sh soak 0
+	SOAK_DURATION=15m ./perf/lr4-load/run.sh soak 0.1
+	SOAK_DURATION=15m ./perf/lr4-load/run.sh soak 0.2
+
+lr4-load:
+	./perf/lr4-load/load.sh $(abspath $(DIR))
+
+.PHONY: web-up web-down web-check
+web-up:
+	docker compose up -d --build --wait
+
+web-down:
+	docker compose down
+
+web-check:
+	@set -a; [ -f .env ] && . ./.env; set +a; ./scripts/check_routes.sh
+
+.PHONY: replication-status
+replication-status:
+	./scripts/replication_status.sh
+
+SCENARIO ?= steady
+
+.PHONY: web-load
+web-load:
+	@set -a; [ -f .env ] && . ./.env; set +a; ./perf/web-balance/run.sh $(SCENARIO)
+
+.PHONY: web-traces
+web-traces:
+	@set -a; [ ! -f .env ] || . ./.env; set +a; python3 scripts/web_traces.py
+
+.PHONY: web-get-120
+web-get-120:
+	@set -eu; [ ! -f .env ] || . ./.env; i=0; while [ $$i -lt 120 ]; do \
+		curl --silent --show-error --output /dev/null --max-time 5 "http://127.0.0.1:$${NGINX_PORT:-80}/api/v1/companies/accounts"; \
+		i=$$((i + 1)); sleep 0.15; \
+	done; echo "Отправлено 120 GET-запросов"

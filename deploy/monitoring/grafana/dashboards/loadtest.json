@@ -1,0 +1,676 @@
+{
+  "uid": "goflow-loadtest",
+  "title": "GoFlow Pay — нагрузочное тестирование",
+  "tags": [
+    "goflow",
+    "k6"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Прогоны нагрузочного теста",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "round(max by (testid) (last_over_time(k6_run_started[30d])) * 1000 - 10000)",
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "round(max by (testid) (last_over_time(k6_run_finished[30d])) * 1000 + 10000)",
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "max by (testid) (last_over_time(k6_run_finished[30d])) - max by (testid) (last_over_time(k6_run_started[30d]))",
+          "refId": "C",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum by (testid) (last_over_time(k6_http_reqs_total[30d]))",
+          "refId": "D",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum by (testid) (last_over_time(k6_http_reqs_total[30d])) / (max by (testid) (last_over_time(k6_run_finished[30d])) - max by (testid) (last_over_time(k6_run_started[30d])))",
+          "refId": "E",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "(sum by (testid) (last_over_time(k6_http_reqs_total{expected_response=\"false\",status!=\"429\"}[30d])) or sum by (testid) (last_over_time(k6_http_reqs_total[30d])) * 0) / sum by (testid) (last_over_time(k6_http_reqs_total[30d]))",
+          "refId": "F",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum by (testid) (last_over_time(k6_http_reqs_total{status=\"429\"}[30d])) or sum by (testid) (last_over_time(k6_http_reqs_total[30d])) * 0",
+          "refId": "G",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum by (testid) (last_over_time(k6_dropped_iterations_total[30d])) or sum by (testid) (last_over_time(k6_http_reqs_total[30d])) * 0",
+          "refId": "H",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (testid) (last_over_time(k6_read_latency_seconds[30d])))",
+          "refId": "I",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (testid) (last_over_time(k6_write_latency_seconds[30d])))",
+          "refId": "J",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "max by (testid) (last_over_time(k6_read_on_primary_rate[30d]))",
+          "refId": "K",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "max by (testid) (last_over_time(k6_write_on_primary_rate[30d]))",
+          "refId": "L",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "—",
+                  "color": "transparent",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "start"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "end"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Прогон (клик — графики)"
+              },
+              {
+                "id": "custom.width",
+                "value": 240
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Открыть прогон",
+                    "url": "/monitoring/d/goflow-loadtest-run/?orgId=1&var-testid=${__value.raw}&from=${__data.fields.start}&to=${__data.fields.end}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Длительность"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Запросов"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ср. нагрузка"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ошибок"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.01
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "429"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dropped"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95 чтения"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.3
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95 записи"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Чтений на gw"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.48
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5201
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Записей на gw"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Прогон (клик — графики)",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "description": "Одна строка — один запуск make web-load. Клик по названию прогона открывает дашборд прогона с его итогами и графиками ровно на время этого прогона. Цвет ячейки: зелёный — цель выполнена. 429 — отклонено limit_req, Dropped — k6 не успел отправить запрос (стенд не справлялся).",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value #A": "start",
+              "Value #B": "end",
+              "Value #C": "Длительность",
+              "Value #D": "Запросов",
+              "Value #E": "Ср. нагрузка",
+              "Value #F": "Ошибок",
+              "Value #G": "429",
+              "Value #H": "Dropped",
+              "Value #I": "p95 чтения",
+              "Value #J": "p95 записи",
+              "Value #K": "Чтений на gw",
+              "Value #L": "Записей на gw"
+            },
+            "indexByName": {
+              "testid": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3,
+              "Value #D": 4,
+              "Value #E": 5,
+              "Value #F": 6,
+              "Value #G": 7,
+              "Value #H": 8,
+              "Value #I": 9,
+              "Value #J": 10,
+              "Value #K": 11,
+              "Value #L": 12
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Выводы",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "text",
+      "title": "Выводы",
+      "datasource": {
+        "type": "datasource",
+        "uid": "grafana"
+      },
+      "gridPos": {
+        "h": 26,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Прогоны 11.11.2026 из таблицы выше. Стенд: 8 логических CPU, 7,5 ГБ RAM; на этой же машине работают все 51 контейнер, мониторинг и сам k6.\n\n| Прогон | Нагрузка | Итог |\n|---|---|---|\n| 20261111-205822-steady | 150 GET/с, 2 мин | 18 016 запросов, 0 ошибок, p95 2,2 мс, чтения 9 001 / 4 500 / 4 500 |\n| 20261111-210032-mixed | 150 GET/с + 15 POST/с, 2 мин | 19 816 запросов, 0 ошибок, p95 чтения 3,6 мс, записи 3,8 мс, 1 816 из 1 816 записей на `gateway` |\n| 20261111-210241-ramp | 50 → 2 000 GET/с | 270 602 запроса, 0 ошибок, p95 18,8 мс, 161 не отправлен |\n| 20261111-210705-ramp | 50 → 4 000 GET/с | 475 537 запросов, 0 ошибок, p95 364 мс, 64 701 не отправлен (насыщение) |\n| 20261111-211145-ratelimit | 50 GET/с с одного IP | 792 из 1 016 отклонены с 429 (79%), пропущенные 104 / 53 / 52 |\n\n**1. Целевые показатели выполнены.** В steady и mixed ошибок нет, p95 в ~100 раз ниже цели, на `gateway` 50,00% чтений и 100% записей. Во всех прогонах доля `gateway` — 50,00%.\n\n**2. Балансировка 2:1:1 подтверждена тремя независимыми источниками** (дашборд прогона):\n- «Кто ответил на чтения» — k6 по заголовку `X-Upstream` каждого ответа;\n- «Доля чтений каждого экземпляра» — счётчики самих gateway в Prometheus, линии лежат на пунктирах 50% и 25% всё время прогона;\n- «CPU по стекам» — реальная работа: в steady основной стек (gateway + auth + accounts) тратит 0,095 ядра, копии 0,047 и 0,046.\n\nТе же числа даёт access log nginx (файлы в `perf/web-balance/results/`).\n\n**3. Почему доли ровно 50 / 25 / 25.** nginx использует smooth weighted round-robin: на каждом запросе к текущему весу сервера прибавляется базовый, выбирается сервер с наибольшим, у него вычитается сумма весов (4). Для весов 2/1/1 получается цикл `gateway, ro-1, ro-2, gateway`. Благодаря `zone` состояние общее для всех worker-процессов nginx. Время ответа алгоритм не учитывает, поэтому доли не меняются даже при перегрузке.\n\n**4. Записи всегда на `gateway`.** Это следствие `map $request_method`: GET/HEAD идут в `api_read`, остальные методы — в `api_write`, где один сервер. Экземпляры `-ro-` запись отклоняют дважды: middleware `ReadOnly` (503) и роль БД `readonly`.\n\n**5. Предел стенда — общий CPU машины.** До ~1 000 rps p95 < 6 мс, на 2 000 rps — ~35 мс. На 2 400–2 900 rps машина занята на все 8 ядер (панель «Кто занимает CPU машины»): k6 перестаёт успевать отправлять запросы, p95 растёт до 0,3–0,7 с. При этом ни одной ошибки — стенд замедляется, но не падает.\n\n**6. Основной экземпляр насыщается первым.** Он получает половину чтений и все записи. В ramp до 4 000 rps p95 на `gateway` доходил до 491 мс против 115 и 94 мс на копиях (панель «p95 на каждом gateway»). Под перегрузкой его CPU растёт уже не вдвое (1,10 ядра против 0,67): ему не хватает процессора, и запросы ждут в очереди. Round-robin при этом продолжает отправлять ему 50% чтений.\n\n**7. Логирование стоит дорого.** На пике сборщик логов Alloy тратит около 1 ядра и ещё ~0,7 ядра `dockerd` — на запись логов контейнеров и выдачу их Alloy. Это серая область «dockerd, ядро и прочее» на панели CPU машины. Причина — auth и accounts пишут несколько строк на каждый gRPC-вызов. Для продуктивного режима стоит убрать логирование `StartCall` / `PayloadReceived` на уровне INFO.\n\n**8. На одной машине копии не добавляют мощности** — они делят те же 8 ядер. Выигрыш появится при размещении копий на отдельных машинах. Тогда вес основного экземпляра стоит снизить (1:1:1) или перейти на `least_conn`, учитывающий число активных соединений.\n\n**9. `limit_req` срабатывает до балансировщика.** Флуд с одного адреса получает 429 и не доходит до бэкендов, пропущенные запросы делятся так же 2:1:1. Генератор нагрузки работает из доверенной сети `goflow_loadtest`, иначе тест мерил бы лимит (10 rps), а не балансировку.\n"
+      }
+    },
+    {
+      "id": 4,
+      "type": "row",
+      "title": "Методика",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "panels": []
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "Методика",
+      "datasource": {
+        "type": "datasource",
+        "uid": "grafana"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Что проверяем\nБалансировку чтений nginx между `gateway` (запись, вес 2) и `gateway-ro-1`, `gateway-ro-2` (только чтение, вес 1), направление всех записей на `gateway`, задержку и ошибки под нагрузкой, предел стенда и работу `limit_req`.\n\n### Целевые показатели (заданы до запуска, это `thresholds` в `perf/web-balance/k6/balance.js`)\n| Показатель | Цель |\n|---|---|\n| ошибки | < 1% |\n| p95 чтения / записи | < 300 мс / < 500 мс |\n| доля чтений на `gateway` | 48–52% (2 из 4) |\n| доля записей на `gateway` | 100% |\n| ratelimit: доля 429 при 50 rps с одного IP | > 50% |\n\n**Гипотезы:** доли будут ровно 50/25/25, т.к. round-robin не зависит от времени ответа; CPU экземпляров разделится так же 2:1:1; предел определит общий CPU ноутбука, а не nginx.\n\n### Сценарии (k6, нагрузка задаётся частотой запросов)\n| Сценарий | Нагрузка |\n|---|---|\n| steady | 150 GET/с, 2 мин |\n| mixed | 150 GET/с + 15 POST/с, 2 мин |\n| ramp | 50 → `RAMP_PEAK` GET/с, ступени по 30 с |\n| ratelimit | 50 GET/с с одного IP в обход доверенной сети, 20 с |\n\nGET — случайный из 5 запросов `/api/v1` и `/api/v2`, POST — `POST /api/v1/accounts`. Запуск: `make web-load SCENARIO=...`.\n\n### Как доказывается балансировка\nТри независимых источника: заголовок `X-Upstream` в ответах (k6), счётчики запросов каждого экземпляра gateway (Prometheus) и CPU контейнеров (cAdvisor).\n"
+      }
+    }
+  ],
+  "links": [
+    {
+      "title": "GoFlow Pay",
+      "type": "link",
+      "icon": "dashboard",
+      "url": "/monitoring/d/goflow-pay"
+    }
+  ],
+  "templating": {
+    "list": []
+  }
+}

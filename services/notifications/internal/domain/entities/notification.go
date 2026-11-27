@@ -17,7 +17,7 @@ type Notification struct {
 	updatedAt      time.Time
 }
 
-func NewNotification(userId uuid.UUID, title, message string, sourceId uuid.UUID) (*Notification, error) {
+func NewNotification(userId uuid.UUID, title, message string, sourceId uuid.UUID, eventID ...uuid.UUID) (*Notification, error) {
 	op := "create notification"
 	if userId == uuid.Nil {
 		return nil, fmt.Errorf("%s: user id is required", op)
@@ -27,8 +27,12 @@ func NewNotification(userId uuid.UUID, title, message string, sourceId uuid.UUID
 	}
 
 	now := time.Now().UTC()
+	id := uuid.New()
+	if len(eventID) > 0 && eventID[0] != uuid.Nil {
+		id = eventID[0]
+	}
 	return &Notification{
-		notificationId: uuid.New(),
+		notificationId: id,
 		userId:         userId,
 		title:          title,
 		message:        message,

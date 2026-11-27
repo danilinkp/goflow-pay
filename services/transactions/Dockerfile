@@ -4,9 +4,6 @@ WORKDIR /app
 COPY shared/go.mod shared/go.sum ./shared/
 COPY services/transactions/go.mod services/transactions/go.sum ./services/transactions/
 
-WORKDIR /app/services/transactions
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
-
 WORKDIR /app
 COPY shared/ ./shared/
 COPY services/transactions/ ./services/transactions/

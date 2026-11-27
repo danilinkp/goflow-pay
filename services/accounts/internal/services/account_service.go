@@ -44,6 +44,7 @@ type BankAccountRepository interface {
 	Save(ctx context.Context, account *entities.BankAccount) error
 	GetById(ctx context.Context, id uuid.UUID) (*entities.BankAccount, error)
 	GetByCompanyId(ctx context.Context, companyId uuid.UUID) ([]*entities.BankAccount, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type BankOperationRepository interface {
@@ -81,6 +82,7 @@ type AccountService struct {
 	outboxRepo                 OutboxRepository
 	transactor                 Transactor
 	log                        *slog.Logger
+	now                        func() time.Time
 }
 
 func NewAccountService(
@@ -93,7 +95,12 @@ func NewAccountService(
 	outboxRepo OutboxRepository,
 	transactor Transactor,
 	log *slog.Logger,
+	now ...func() time.Time,
 ) *AccountService {
+	nowFunc := func() time.Time { return time.Now().UTC() }
+	if len(now) > 0 && now[0] != nil {
+		nowFunc = now[0]
+	}
 	return &AccountService{
 		accountRepository:          accountRepo,
 		accountOperationRepository: accountOperationRepo,
@@ -104,6 +111,7 @@ func NewAccountService(
 		outboxRepo:                 outboxRepo,
 		transactor:                 transactor,
 		log:                        log,
+		now:                        nowFunc,
 	}
 }
 
@@ -294,7 +302,7 @@ func (a *AccountService) LinkBankAccount(ctx context.Context, request LinkBankIn
 func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId, counterpartyId uuid.UUID, txId uuid.UUID, amount int64) (*entities.AccountOperation, error) {
 	op := "AccountService.ReserveWithdraw"
 
-	start := time.Now()
+	start := a.now()
 	log := a.log.With(
 		sl.Op(op),
 		sl.EventID(),
@@ -337,7 +345,7 @@ func (a *AccountService) ReserveWithdraw(ctx context.Context, accountId, counter
 			return err
 		}
 
-		accOp, err = entities.NewAccountOperation(accountId, counterpartyId, txId, entities.Withdrawal, entities.PendingStatus, amount, acc.Balance())
+		accOp, err = entities.NewAccountOperation(accountId, counterpartyId, txId, entities.Withdrawal, entities.PendingStatus, amount, acc.Balance(), a.now())
 		if err != nil {
 			return err
 		}
@@ -966,4 +974,49 @@ func (a *AccountService) saveOutboxEvent(ctx context.Context, o outbox.Outboxabl
 		return fmt.Errorf("build outbox event: %w", err)
 	}
 	return a.outboxRepo.Save(ctx, evt)
+}
+
+func (a *AccountService) GetAccount(ctx context.Context, accountId uuid.UUID) (*entities.Account, error) {
+	const op = "AccountService.GetAccount"
+	acc, err := a.accountRepository.GetById(ctx, accountId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return acc, nil
+}
+
+func (a *AccountService) UpdateAccountStatus(ctx context.Context, accountId uuid.UUID, status entities.AccountStatus) (*entities.Account, error) {
+	const op = "AccountService.UpdateAccountStatus"
+	if err := a.accountRepository.UpdateStatus(ctx, accountId, status); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	acc, err := a.accountRepository.GetById(ctx, accountId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return acc, nil
+}
+
+func (a *AccountService) GetBankAccount(ctx context.Context, bankAccountId uuid.UUID) (*entities.BankAccount, error) {
+	const op = "AccountService.GetBankAccount"
+	ba, err := a.bankAccountRepository.GetById(ctx, bankAccountId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return ba, nil
+}
+
+func (a *AccountService) DeleteBankAccount(ctx context.Context, bankAccountId, companyId uuid.UUID) error {
+	const op = "AccountService.DeleteBankAccount"
+	ba, err := a.bankAccountRepository.GetById(ctx, bankAccountId)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if ba.CompanyId() != companyId {
+		return ErrDifferentCompanies
+	}
+	if err := a.bankAccountRepository.Delete(ctx, bankAccountId); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
 }

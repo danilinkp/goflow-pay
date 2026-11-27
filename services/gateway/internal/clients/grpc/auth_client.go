@@ -100,3 +100,30 @@ func (c *AuthGRPCClient) AddAdmin(ctx context.Context, req *authv1.AddAdminReque
 	}
 	return resp, nil
 }
+
+func (c *AuthGRPCClient) GetCompanyById(ctx context.Context, req *authv1.GetCompanyByIdRequest) (*authv1.GetCompanyByIdResponse, error) {
+	op := "auth.client.GetCompanyById"
+	resp, err := c.client.GetCompanyById(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}
+
+func (c *AuthGRPCClient) ListCompanies(ctx context.Context, req *authv1.ListCompaniesRequest) (*authv1.ListCompaniesResponse, error) {
+	op := "auth.client.ListCompanies"
+	resp, err := c.client.ListCompanies(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}
+
+func (c *AuthGRPCClient) RemoveCompanyUser(ctx context.Context, req *authv1.RemoveCompanyUserRequest) (*authv1.RemoveCompanyUserResponse, error) {
+	op := "auth.client.RemoveCompanyUser"
+	resp, err := c.client.RemoveCompanyUser(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return resp, nil
+}

@@ -1,0 +1,695 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "type": "timeseries",
+      "title": "Активные виртуальные пользователи",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"} and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))",
+          "legendFormat": "VUs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "type": "timeseries",
+      "title": "Среднее число запросов в секунду",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))",
+          "legendFormat": "Всего",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))",
+          "legendFormat": "Успешные",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "expr": "sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))",
+          "legendFormat": "Неуспешные",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      },
+      "description": "Скользящее среднее за 30 с. Успешные ответы имеют статус 2xx или 3xx. К отказам относятся 4xx, 5xx и сетевые ошибки, включая запланированные ошибочные запросы."
+    },
+    {
+      "id": 4,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "type": "timeseries",
+      "title": "Доля неожиданных отказов",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"unexpected\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) / ((sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) > 0)",
+          "legendFormat": "Неожиданные отказы",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      },
+      "description": "Доля запросов с expected_response=false по оценке k6, за 30 с."
+    },
+    {
+      "id": 3,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "type": "timeseries",
+      "title": "Перцентили задержки запросов во времени",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1000 * histogram_quantile(0.5, sum((rate(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))",
+          "legendFormat": "p50",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "1000 * histogram_quantile(0.75, sum((rate(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))",
+          "legendFormat": "p75",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "expr": "1000 * histogram_quantile(0.9, sum((rate(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))",
+          "legendFormat": "p90",
+          "range": true
+        },
+        {
+          "refId": "D",
+          "expr": "1000 * histogram_quantile(0.95, sum((rate(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))",
+          "legendFormat": "p95",
+          "range": true
+        },
+        {
+          "refId": "E",
+          "expr": "1000 * histogram_quantile(0.99, sum((rate(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))",
+          "legendFormat": "p99",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      },
+      "description": "По X время прогона, по Y задержка запросов в мс. Окно расчёта 30 с."
+    },
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Ресурсы",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "panels": []
+    },
+    {
+      "id": 12,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "type": "timeseries",
+      "title": "CPU по сервисам приложения",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_project=\"goflow-load\",container_label_com_docker_compose_service=~\"gateway|auth|accounts|transactions\"}[30s]), \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "type": "timeseries",
+      "title": "Память (RAM) по сервисам приложения",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(container_memory_working_set_bytes{container_label_com_docker_compose_project=\"goflow-load\",container_label_com_docker_compose_service=~\"gateway|auth|accounts|transactions\"}, \"svc\", \"$1\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "type": "timeseries",
+      "title": "Дисковые операции (I/O) (Bps)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_project=\"goflow-load\",operation=\"Read\",container_label_com_docker_compose_service!=\"\"}[30s]), \"svc\", \"$1 read\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_blkio_device_usage_total{container_label_com_docker_compose_project=\"goflow-load\",operation=\"Write\",container_label_com_docker_compose_service!=\"\"}[30s]), \"svc\", \"$1 write\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "type": "timeseries",
+      "title": "Сетевой трафик по сервисам приложения",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_network_receive_bytes_total{container_label_com_docker_compose_project=\"goflow-load\",container_label_com_docker_compose_service=~\"gateway|auth|accounts|transactions\"}[30s]), \"svc\", \"$1 rx\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}} rx",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (svc) (label_replace(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_project=\"goflow-load\",container_label_com_docker_compose_service=~\"gateway|auth|accounts|transactions\"}[30s]), \"svc\", \"$1 tx\", \"container_label_com_docker_compose_service\", \"(.*)\"))",
+          "legendFormat": "{{svc}} tx",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "id": 200,
+      "type": "row",
+      "title": "Распределения и статистика",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "panels": []
+    },
+    {
+      "id": 5,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 34
+      },
+      "type": "trend",
+      "title": "Распределение задержек по перцентилям",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_replace(1000 * histogram_quantile(0.01, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"1\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.02, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"2\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.03, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"3\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.04, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"4\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.05, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"5\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.06, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"6\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.07, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"7\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.08, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"8\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.09, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"9\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.1, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"10\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.11, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"11\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.12, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"12\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.13, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"13\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.14, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"14\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.15, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"15\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.16, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"16\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.17, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"17\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.18, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"18\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.19, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"19\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.2, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"20\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.21, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"21\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.22, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"22\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.23, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"23\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.24, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"24\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.25, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"25\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.26, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"26\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.27, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"27\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.28, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"28\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.29, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"29\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.3, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"30\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.31, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"31\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.32, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"32\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.33, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"33\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.34, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"34\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.35, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"35\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.36, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"36\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.37, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"37\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.38, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"38\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.39, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"39\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.4, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"40\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.41, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"41\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.42, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"42\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.43, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"43\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.44, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"44\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.45, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"45\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.46, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"46\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.47, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"47\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.48, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"48\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.49, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"49\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.5, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"50\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.51, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"51\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.52, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"52\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.53, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"53\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.54, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"54\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.55, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"55\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.56, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"56\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.57, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"57\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.58, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"58\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.59, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"59\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.6, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"60\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.61, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"61\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.62, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"62\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.63, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"63\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.64, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"64\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.65, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"65\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.66, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"66\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.67, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"67\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.68, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"68\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.69, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"69\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.7, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"70\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.71, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"71\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.72, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"72\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.73, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"73\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.74, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"74\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.75, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"75\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.76, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"76\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.77, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"77\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.78, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"78\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.79, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"79\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.8, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"80\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.81, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"81\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.82, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"82\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.83, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"83\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.84, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"84\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.85, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"85\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.86, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"86\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.87, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"87\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.88, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"88\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.89, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"89\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.9, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"90\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.91, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"91\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.92, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"92\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.93, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"93\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.94, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"94\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.95, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"95\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.96, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"96\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.97, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"97\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.98, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"98\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(0.99, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"99\", \"__name__\", \".*\")\nor label_replace(1000 * histogram_quantile(1, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))), \"percentile\", \"100\", \"__name__\", \".*\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "axisLabel": "Перцентиль, %",
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Время запроса, мс"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Время запроса, мс"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(?!Время запроса, мс$).*"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Время запроса, мс",
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "По X задержка запроса в мс, по Y доля запросов, которые уложились в эту задержку. Оценка по накопленной гистограмме k6. Точки рассчитаны от p1 до p100 с шагом 1 процентный пункт.",
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "percentile",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "percentile"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value": "Время запроса, мс",
+              "percentile": "Перцентиль, %"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "type": "barchart",
+      "title": "Гистограмма задержек запросов",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(-Inf, 0.001, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"01 · 0–1\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.001, 0.005, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"02 · 1–5\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.005, 0.01, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"03 · 5–10\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.01, 0.025, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"04 · 10–25\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.025, 0.05, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"05 · 25–50\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.05, 0.1, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"06 · 50–100\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.1, 0.25, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"07 · 100–250\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.25, 0.5, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"08 · 250–500\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(0.5, 1.0, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"09 · 500–1000\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(1.0, 5.0, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"10 · 1000–5000\", \"__name__\", \".*\")\nor label_replace(round(histogram_count(sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))) * histogram_fraction(5.0, +Inf, sum((last_over_time(k6_http_req_duration_seconds{testid=~\"${testid:raw}\",testid!=\"\",phase!=\"setup\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))), \"bucket\", \"11 · 5000–∞\", \"__name__\", \".*\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "groupWidth": 0.8,
+            "barWidth": 0.9
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "xField": "Интервал, мс",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        }
+      },
+      "description": "Приблизительное число запросов по интервалам задержки с начала прогона.",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "bucket"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value": "Запросы",
+              "bucket": "Интервал, мс"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 12,
+        "h": 8
+      },
+      "type": "barchart",
+      "title": "Перцентили RPS",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_replace(quantile_over_time(0.5, (sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))[$__range:5s]), \"percentile\", \"p50\", \"__name__\", \".*\")\nor label_replace(quantile_over_time(0.75, (sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))[$__range:5s]), \"percentile\", \"p75\", \"__name__\", \".*\")\nor label_replace(quantile_over_time(0.9, (sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))[$__range:5s]), \"percentile\", \"p90\", \"__name__\", \".*\")\nor label_replace(quantile_over_time(0.95, (sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))[$__range:5s]), \"percentile\", \"p95\", \"__name__\", \".*\")\nor label_replace(quantile_over_time(0.99, (sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((rate(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[30s]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))[$__range:5s]), \"percentile\", \"p99\", \"__name__\", \".*\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "groupWidth": 0.8,
+            "barWidth": 0.9
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "xField": "Перцентиль",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        }
+      },
+      "description": "Распределение RPS в выбранном интервале. RPS рассчитывается по скользящему окну 30 с с шагом 5 с.",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "percentile"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value": "Запросов/с",
+              "percentile": "Перцентиль"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Запросы за прогон",
+      "gridPos": {
+        "x": 12,
+        "y": 42,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum((last_over_time(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))) + sum((last_over_time(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end()))))))",
+          "legendFormat": "Всего",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum((last_over_time(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"success\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))",
+          "legendFormat": "Успешные",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "expr": "sum((last_over_time(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"failure\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))",
+          "legendFormat": "Неуспешные",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "expr": "sum((last_over_time(k6_lr4_requests_total{testid=~\"${testid:raw}\",testid!=\"\",outcome=\"unexpected\"}[$__range]) and on (testid) topk(1, max by (testid) (max_over_time(timestamp(k6_vus{testid=~\"${testid:raw}\",testid!=\"\"})[45m:5s] @ end())))))",
+          "legendFormat": "Неожиданные отказы",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "colorMode": "none"
+      }
+    },
+    {
+      "id": 16,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "type": "timeseries",
+      "title": "PostgreSQL TPS",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(pg_stat_database_xact_commit{job=\"postgres-exporter\"}[30s]))",
+          "legendFormat": "Commit",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(pg_stat_database_xact_rollback{job=\"postgres-exporter\"}[30s]))",
+          "legendFormat": "Rollback",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line"
+          }
+        }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "lr4",
+    "load"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "testid",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "resultsdb"
+        },
+        "definition": "SELECT testid FROM lr4_runs ORDER BY started_at DESC",
+        "query": "SELECT testid FROM lr4_runs ORDER BY started_at DESC",
+        "refresh": 1,
+        "label": "Прогон (testid)"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "title": "ЛР4: результаты нагрузочного тестирования GoFlow",
+  "uid": "lr4-load",
+  "version": 11
+}

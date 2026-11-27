@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	postgresLib "shared/pkg/db/postgres"
+	"strings"
 	"time"
 	"transactions/internal/domain"
 	"transactions/internal/domain/entities"
@@ -137,4 +138,79 @@ func (r *TransactionRepo) UpdateStatus(ctx context.Context, txId uuid.UUID, stat
 		return domain.ErrTransactionNotFound
 	}
 	return nil
+}
+
+func (r *TransactionRepo) List(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error) {
+	op := "TransactionRepo.List"
+	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
+
+	query := "SELECT transaction_id, from_account_id, to_account_id, initiator_id, amount, currency, status, idempotency_key, created_at, updated_at FROM transactions"
+	countQuery := "SELECT COUNT(*) FROM transactions"
+
+	var conditions []string
+	var args []any
+
+	if len(accountIds) > 0 {
+		args = append(args, accountIds)
+		conditions = append(conditions, fmt.Sprintf("(from_account_id = ANY($%d) OR to_account_id = ANY($%d))", len(args), len(args)))
+	}
+	if status != "" {
+		args = append(args, status)
+		conditions = append(conditions, fmt.Sprintf("status = $%d", len(args)))
+	}
+	if currency != "" {
+		args = append(args, currency)
+		conditions = append(conditions, fmt.Sprintf("currency = $%d", len(args)))
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	countQuery += whereClause
+	var total int
+	if err := conn.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	query += whereClause + " ORDER BY created_at DESC"
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	if offset > 0 {
+		args = append(args, offset)
+		query += fmt.Sprintf(" OFFSET $%d", len(args))
+	}
+
+	rows, err := conn.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	var res []*entities.Transaction
+	for rows.Next() {
+		var m models.TransactionModel
+		if err := rows.Scan(
+			&m.TransactionId,
+			&m.FromAccountId,
+			&m.ToAccountId,
+			&m.InitiatorId,
+			&m.Amount,
+			&m.Currency,
+			&m.Status,
+			&m.IdempotencyKey,
+			&m.CreatedAt,
+			&m.UpdatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("%s: %w", op, err)
+		}
+		res = append(res, m.ToDomain())
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	return res, total, nil
 }

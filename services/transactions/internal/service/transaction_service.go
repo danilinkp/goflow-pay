@@ -20,6 +20,7 @@ type TransactionRepository interface {
 	GetStale(ctx context.Context, olderThan time.Duration, statuses []string) ([]*entities.Transaction, error)
 	UpdateStatus(ctx context.Context, txId uuid.UUID, status string) error
 	EnsureIndexes(ctx context.Context) error
+	List(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error)
 }
 
 type AccountClient interface {
@@ -43,22 +44,28 @@ type TransactionService struct {
 	outboxRepository      OutboxRepository
 	transactor            Transactor
 	log                   *slog.Logger
+	now                   func() time.Time
 }
 
-func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor, log *slog.Logger) *TransactionService {
+func NewTransactionService(client AccountClient, transactionRepository TransactionRepository, outboxRepository OutboxRepository, transactor Transactor, log *slog.Logger, now ...func() time.Time) *TransactionService {
+	nowFunc := func() time.Time { return time.Now().UTC() }
+	if len(now) > 0 && now[0] != nil {
+		nowFunc = now[0]
+	}
 	return &TransactionService{
 		accountClient:         client,
 		transactionRepository: transactionRepository,
 		outboxRepository:      outboxRepository,
 		transactor:            transactor,
 		log:                   log,
+		now:                   nowFunc,
 	}
 }
 
 func (t *TransactionService) Transfer(ctx context.Context, request *TransferInput) (*entities.Transaction, error) {
 	op := "TransactionService.Transfer"
 
-	start := time.Now()
+	start := t.now()
 	log := t.log.With(
 		sl.Op(op),
 		sl.EventID(),
@@ -80,6 +87,7 @@ func (t *TransactionService) Transfer(ctx context.Context, request *TransferInpu
 		request.Currency,
 		entities.PendingStatus,
 		request.IdempotencyKey,
+		t.now(),
 	)
 	if err != nil {
 		log.Error("failed to create new transaction", sl.ErrWithStack(err), sl.Duration(time.Since(start)))
@@ -242,4 +250,13 @@ func (t *TransactionService) saveOutboxEvent(ctx context.Context, o outbox.Outbo
 		return nil
 	}
 	return t.outboxRepository.Save(ctx, evt)
+}
+
+func (t *TransactionService) ListTransactions(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error) {
+	const op = "TransactionService.ListTransactions"
+	txs, total, err := t.transactionRepository.List(ctx, accountIds, status, currency, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
+	}
+	return txs, total, nil
 }

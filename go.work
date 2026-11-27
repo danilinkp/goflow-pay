@@ -1,11 +1,12 @@
 go 1.25.4
 
 use (
+	./tools/cli
 	services/accounts
 	services/auth
+	services/gateway
 	services/notifications
 	services/transactions
-	services/gateway
 	shared
-	./tools/cli
+	tests/e2e
 )

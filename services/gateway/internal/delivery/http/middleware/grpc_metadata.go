@@ -9,7 +9,14 @@ import (
 )
 
 func GRPCContext(c *gin.Context) context.Context {
-	userID, _ := c.Get(ContextUserID)
-	md := metadata.Pairs("x-user-id", userID.(uuid.UUID).String())
+	userID, ok := c.Get(ContextUserID)
+	if !ok || userID == nil {
+		return c.Request.Context()
+	}
+	uid, ok := userID.(uuid.UUID)
+	if !ok {
+		return c.Request.Context()
+	}
+	md := metadata.Pairs("x-user-id", uid.String())
 	return metadata.NewOutgoingContext(c.Request.Context(), md)
 }

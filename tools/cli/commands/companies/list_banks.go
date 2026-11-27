@@ -16,7 +16,7 @@ type bankResponse struct {
 	CompanyId         uuid.UUID `json:"company_id"`
 	Name              string    `json:"name"`
 	BIC               string    `json:"bic"`
-	SettlementAccount uuid.UUID `json:"settlement_account"`
+	SettlementAccount string    `json:"settlement_account"`
 	Currency          string    `json:"currency"`
 	CreatedAt         time.Time `json:"created_at"`
 }
@@ -33,7 +33,7 @@ func NewGetBanksCommand(httpClient *client.Client) *cobra.Command {
 				return err
 			}
 
-			url := "/api/v1/companies/banks"
+			url := "/api/v2/bank-accounts"
 			if companyIDFlag != "" {
 				if creds.Role != "admin" || creds.CompanyID != companyIDFlag {
 					return fmt.Errorf("only admin can get bank accounts of other companies")

@@ -1,0 +1,11 @@
+.git/
+.idea/
+.go/
+bin/
+logs/
+reports/
+perf/results/
+frontend/node_modules/
+frontend/dist/
+certs/*.pem
+**/.env

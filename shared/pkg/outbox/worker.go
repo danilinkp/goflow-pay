@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"log/slog"
+	"shared/pkg/tracing"
 	"time"
 
 	"github.com/google/uuid"
@@ -79,6 +80,7 @@ func (w *Worker) processBatch(ctx context.Context) {
 		eventLog := log.With(
 			"event_id", event.ID,
 			"event_type", event.EventType,
+			"trace_id", tracing.TraceID(event.RestoreTrace(ctx)),
 		)
 
 		if err = w.publisher.Publish(ctx, event); err != nil {

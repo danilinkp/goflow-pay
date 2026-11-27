@@ -1,0 +1,141 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ../../scripts/init-test-dbs.sql:/docker-entrypoint-initdb.d/init-test-dbs.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    cpuset: ${CPUS_DB:-0,1}
+    mem_limit: 1g
+    networks:
+      - goflow-load
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    cpuset: ${CPUS_REDIS:-2,3}
+    mem_limit: 128m
+    networks:
+      - goflow-load
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:postgres@postgres:5432/postgres?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    cpuset: ${CPUS_MON:-6,7}
+    mem_limit: 64m
+    networks:
+      - goflow-load
+
+  auth:
+    build:
+      context: ../..
+      dockerfile: services/auth/Dockerfile
+    image: goflow-load-auth:local
+    environment:
+      CONFIG_PATH: /app/config/auth.yaml
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      JWT_PRIVATE_KEY_PATH: /app/certs/private.pem
+    volumes:
+      - ./config/auth.yaml:/app/config/auth.yaml:ro
+      - ../../certs:/app/certs:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cpuset: ${CPUS_APP:-2,3}
+    mem_limit: 64m
+    networks:
+      - goflow-load
+
+  accounts:
+    build:
+      context: ../..
+      dockerfile: services/accounts/Dockerfile
+    image: goflow-load-accounts:local
+    environment:
+      CONFIG_PATH: /app/config/accounts.yaml
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+    volumes:
+      - ./config/accounts.yaml:/app/config/accounts.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    cpuset: ${CPUS_APP:-2,3}
+    mem_limit: 64m
+    networks:
+      - goflow-load
+
+  transactions:
+    build:
+      context: ../..
+      dockerfile: services/transactions/Dockerfile
+    image: goflow-load-transactions:local
+    environment:
+      CONFIG_PATH: /app/config/transactions.yaml
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+    volumes:
+      - ./config/transactions.yaml:/app/config/transactions.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      accounts:
+        condition: service_started
+    cpuset: ${CPUS_APP:-2,3}
+    mem_limit: 64m
+    networks:
+      - goflow-load
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: services/gateway/Dockerfile
+    image: goflow-load-gateway:local
+    ports:
+      - "${LR4_GATEWAY_PORT:-8080}:8080"
+    environment:
+      CONFIG_PATH: /app/config/gateway.yaml
+      JWT_PUBLIC_KEY_PATH: /app/certs/public.pem
+      BOOTSTRAP_TOKEN: test-bootstrap-token
+      GATEWAY_GRPC_TIMEOUT: ${LR4_GATEWAY_GRPC_TIMEOUT:-3s}
+      GATEWAY_HTTP_TIMEOUT: ${LR4_GATEWAY_HTTP_TIMEOUT:-4s}
+    volumes:
+      - ./config/gateway.yaml:/app/config/gateway.yaml:ro
+      - ../../certs:/app/certs:ro
+    depends_on:
+      auth:
+        condition: service_started
+      accounts:
+        condition: service_started
+      transactions:
+        condition: service_started
+    cpuset: ${CPUS_APP:-2,3}
+    mem_limit: 64m
+    networks:
+      - goflow-load
+
+volumes:
+  pg-data:
+
+networks:
+  goflow-load:
+    external: true

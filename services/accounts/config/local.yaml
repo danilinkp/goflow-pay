@@ -14,10 +14,10 @@ db:
   max_retries_time: 10s
 
 storage:
-  type: "mongodb"
+  type: "postgres"
 
   postgres:
-    host: postgres-auth
+    host: postgres-accounts
     port: 5432
     name: account_service
     ssl_mode: "disable"

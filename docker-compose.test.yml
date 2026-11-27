@@ -1,0 +1,199 @@
+name: goflow-test
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5439:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 3s
+    networks:
+      - goflow_test_network
+
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6389:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 2s
+    networks:
+      - goflow_test_network
+
+  test-runner:
+    image: goflow-test-runner:ci
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      - TEST_ENV=docker
+      - PG_HOST=postgres-test
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=postgres
+      - ACCOUNTS_DB_NAME=account_test
+      - TRANSACTIONS_DB_NAME=transaction_test
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+    working_dir: /app
+    networks:
+      - goflow_test_network
+    command: ["/bin/bash", "-c", "./scripts/test_init.sh && make test"]
+
+  stand-init:
+    image: goflow-test-runner:ci
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      - TEST_ENV=docker
+      - PG_HOST=postgres-test
+      - PG_PORT=5432
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - STAND_DIR=/stand
+    volumes:
+      - stand-data:/stand
+    networks:
+      - goflow_test_network
+    command: ["./scripts/test_stand_init.sh"]
+
+  auth:
+    image: goflow-test-auth:ci
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    depends_on:
+      stand-init:
+        condition: service_completed_successfully
+    environment:
+      - CONFIG_PATH=/stand/config/auth.yaml
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - JWT_PRIVATE_KEY_PATH=/stand/certs/private.pem
+    volumes:
+      - stand-data:/stand:ro
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -ltn | grep -q ':50051 '"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - goflow_test_network
+
+  accounts:
+    image: goflow-test-accounts:ci
+    build:
+      context: .
+      dockerfile: services/accounts/Dockerfile
+    depends_on:
+      stand-init:
+        condition: service_completed_successfully
+    environment:
+      - CONFIG_PATH=/stand/config/accounts.yaml
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+    volumes:
+      - stand-data:/stand:ro
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -ltn | grep -q ':50051 '"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - goflow_test_network
+
+  transactions:
+    image: goflow-test-transactions:ci
+    build:
+      context: .
+      dockerfile: services/transactions/Dockerfile
+    depends_on:
+      accounts:
+        condition: service_healthy
+    environment:
+      - CONFIG_PATH=/stand/config/transactions.yaml
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+    volumes:
+      - stand-data:/stand:ro
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -ltn | grep -q ':50051 '"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - goflow_test_network
+
+  gateway:
+    image: goflow-test-gateway:ci
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    depends_on:
+      auth:
+        condition: service_healthy
+      accounts:
+        condition: service_healthy
+      transactions:
+        condition: service_healthy
+    environment:
+      - CONFIG_PATH=/stand/config/gateway.yaml
+      - JWT_PUBLIC_KEY_PATH=/stand/certs/public.pem
+      - BOOTSTRAP_TOKEN=test-bootstrap-token
+    volumes:
+      - stand-data:/stand:ro
+    ports:
+      - "18080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/swagger"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    # The only service on both networks: the sole entry point for the e2e client
+    networks:
+      - goflow_test_network
+      - goflow_test_client_network
+
+  # Black-box client: sees only gateway, never the services or databases behind it
+  e2e-client:
+    image: goflow-test-e2e-client:ci
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    environment:
+      - GATEWAY_URL=http://gateway:8080
+    networks:
+      - goflow_test_client_network
+
+volumes:
+  stand-data:
+
+networks:
+  goflow_test_network:
+    name: goflow_test_network
+    driver: bridge
+  goflow_test_client_network:
+    name: goflow_test_client_network
+    driver: bridge

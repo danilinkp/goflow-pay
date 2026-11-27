@@ -18,7 +18,7 @@ func NewGetTransactionCmd(httpClient *client.Client) *cobra.Command {
 			var resp transactionResponse
 			if err := httpClient.Get(
 				context.Background(),
-				"/api/v1/transactions/detail/"+txIDFlag,
+				"/api/v2/transactions/"+txIDFlag,
 				&resp,
 			); err != nil {
 				return fmt.Errorf("failed to get transaction: %w", err)

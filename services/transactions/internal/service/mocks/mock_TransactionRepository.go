@@ -486,3 +486,36 @@ func (_c *MockTransactionRepository_UpdateStatus_Call) RunAndReturn(run func(ctx
 	_c.Call.Return(run)
 	return _c
 }
+
+// List provides a mock function for the type MockTransactionRepository
+func (_mock *MockTransactionRepository) List(ctx context.Context, accountIds []uuid.UUID, status string, currency string, limit, offset int) ([]*entities.Transaction, int, error) {
+	ret := _mock.Called(ctx, accountIds, status, currency, limit, offset)
+
+	var r0 []*entities.Transaction
+	var r1 int
+	var r2 error
+
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID, string, string, int, int) ([]*entities.Transaction, int, error)); ok {
+		return rf(ctx, accountIds, status, currency, limit, offset)
+	}
+
+	if rf, ok := ret.Get(0).(func(context.Context, []uuid.UUID, string, string, int, int) []*entities.Transaction); ok {
+		r0 = rf(ctx, accountIds, status, currency, limit, offset)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]*entities.Transaction)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []uuid.UUID, string, string, int, int) int); ok {
+		r1 = rf(ctx, accountIds, status, currency, limit, offset)
+	} else if ret.Get(1) != nil {
+		r1 = ret.Get(1).(int)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, []uuid.UUID, string, string, int, int) error); ok {
+		r2 = rf(ctx, accountIds, status, currency, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}

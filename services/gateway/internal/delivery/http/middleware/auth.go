@@ -9,6 +9,8 @@ import (
 	jwtValidator "shared/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -33,6 +35,14 @@ func Auth(validator *jwtValidator.Validator, authClient *grpc.AuthGRPCClient) gi
 
 		_, err = authClient.IsTokenValid(c.Request.Context(), &authv1.IsTokenValidRequest{Token: token})
 		if err != nil {
+			if status.Code(err) == codes.Unavailable {
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "auth service unavailable"})
+				return
+			}
+			if status.Code(err) == codes.DeadlineExceeded {
+				c.AbortWithStatusJSON(http.StatusGatewayTimeout, gin.H{"error": "auth service timed out"})
+				return
+			}
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token revoked"})
 			return
 		}

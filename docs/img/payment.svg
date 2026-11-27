@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .window { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; rx: 8; }
+      .bar { fill: #f1f5f9; stroke: #cbd5e1; stroke-width: 1; }
+      .title { font-family: ui-monospace, monospace, sans-serif; font-size: 13px; font-weight: bold; fill: #0f172a; }
+      .label { font-family: ui-monospace, monospace, sans-serif; font-size: 11px; fill: #475569; }
+      .input { fill: #ffffff; stroke: #94a3b8; stroke-width: 1; rx: 4; }
+      .val-text { font-family: ui-monospace, monospace, sans-serif; font-size: 11px; fill: #1e293b; }
+      .hint { font-family: ui-monospace, monospace, sans-serif; font-size: 10px; fill: #64748b; }
+      .btn { fill: #334155; rx: 4; }
+      .btn-text { font-family: ui-monospace, monospace, sans-serif; font-size: 11px; font-weight: bold; fill: #ffffff; text-anchor: middle; }
+      .modal-bg { fill: rgba(15, 23, 42, 0.45); }
+      .modal-card { fill: #ffffff; stroke: #334155; stroke-width: 1.5; rx: 6; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15)); }
+      .code-box { fill: #f1f5f9; stroke: #cbd5e1; stroke-width: 1; rx: 4; font-family: ui-monospace, monospace; font-size: 10px; fill: #0f172a; }
+    </style>
+  </defs>
+
+  <rect width="800" height="520" class="bg"/>
+  <rect x="20" y="15" width="760" height="490" class="window"/>
+  <rect x="20" y="15" width="760" height="30" class="bar"/>
+  <text x="400" y="34" class="hint" text-anchor="middle">Wireframe #3 — Payment Creation &amp; Verification Modal (/payments/new)</text>
+
+  <!-- Background Base Form (Wireframed form underneath) -->
+  <text x="50" y="70" class="title">Создание межкорпоративного перевода</text>
+  <text x="50" y="98" class="label">Счет списания *</text>
+  <rect x="50" y="106" width="340" height="30" class="input"/>
+  <text x="60" y="125" class="val-text">ACC-8942-USD (Баланс: $124,500.00) ▼</text>
+
+  <text x="410" y="98" class="label">Счет контрагента-получателя *</text>
+  <rect x="410" y="106" width="340" height="30" class="input"/>
+  <text x="420" y="125" class="val-text">ACC-9921-USD (ООО "Партнер Софт")</text>
+
+  <text x="50" y="155" class="label">Сумма перевода *</text>
+  <rect x="50" y="163" width="220" height="30" class="input"/>
+  <text x="60" y="182" class="val-text">15000.00</text>
+  <rect x="280" y="163" width="110" height="30" class="input"/>
+  <text x="300" y="182" class="val-text">USD ▼</text>
+
+  <text x="410" y="155" class="label">Назначение платежа *</text>
+  <rect x="410" y="163" width="340" height="30" class="input"/>
+  <text x="420" y="182" class="val-text">Оплата по контракту поставки ПО #48-B</text>
+
+  <!-- Dark Overlay for Modal -->
+  <rect x="20" y="45" width="760" height="460" class="modal-bg"/>
+
+  <!-- Modal Dialog: Idempotency & Confirmation -->
+  <rect x="180" y="85" width="440" height="380" class="modal-card"/>
+  
+  <text x="210" y="120" class="title">Подтверждение деталей перевода</text>
+  <text x="210" y="140" class="hint">Проверьте реквизиты перед отправкой в платежный шлюз</text>
+  <line x1="210" y1="150" x2="590" y2="150" stroke="#cbd5e1" stroke-width="1"/>
+
+  <!-- Summary Breakdown -->
+  <text x="210" y="175" class="label">Счет списания:</text>
+  <text x="400" y="175" class="val-text" text-anchor="end">ACC-8942-USD (ООО "ТехноПром")</text>
+
+  <text x="210" y="200" class="label">Получатель:</text>
+  <text x="400" y="200" class="val-text" text-anchor="end">ACC-9921-USD (ООО "Партнер Софт")</text>
+
+  <text x="210" y="225" class="label">Сумма списания:</text>
+  <text x="400" y="225" class="title" text-anchor="end">$ 15,000.00 USD</text>
+
+  <text x="210" y="250" class="label">Комиссия сервиса:</text>
+  <text x="400" y="250" class="val-text" text-anchor="end">$ 0.00 (Внутренний клиринг)</text>
+
+  <!-- Idempotency-Key Technical Info Box -->
+  <rect x="210" y="270" width="380" height="65" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="3 3" rx="4"/>
+  <text x="220" y="288" class="label" font-weight="bold">🛡 Безопасность: Idempotency-Key сгенерирован</text>
+  <text x="220" y="306" class="code-box">Key: b9e4f58c-32bc-4187-b9c1-841f391e0a24</text>
+  <text x="220" y="324" class="hint">Защита от повторного списания при сетевых тайм-аутах</text>
+
+  <!-- Modal Action Buttons -->
+  <rect x="210" y="360" width="170" height="34" fill="#ffffff" stroke="#94a3b8" rx="4"/>
+  <text x="295" y="381" class="btn-text" fill="#334155" style="fill:#334155;">✕ Отмена</text>
+
+  <rect x="390" y="360" width="200" height="34" class="btn"/>
+  <text x="490" y="381" class="btn-text">Подтвердить (POST) →</text>
+
+  <text x="400" y="425" class="hint" font-size="9" text-anchor="middle">Header: Idempotency-Key | Endpoint: /api/v1/transactions</text>
+</svg>

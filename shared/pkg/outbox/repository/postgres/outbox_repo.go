@@ -7,15 +7,14 @@ import (
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type OutboxRepo struct {
-	pool   *pgxpool.Pool
+	pool   trmpgx.Tr
 	getter *trmpgx.CtxGetter
 }
 
-func NewOutboxRepo(pool *pgxpool.Pool, c *trmpgx.CtxGetter) *OutboxRepo {
+func NewOutboxRepo(pool trmpgx.Tr, c *trmpgx.CtxGetter) *OutboxRepo {
 	return &OutboxRepo{
 		pool:   pool,
 		getter: c,
@@ -28,10 +27,11 @@ func (r *OutboxRepo) EnsureIndexes(ctx context.Context) error {
 
 func (r *OutboxRepo) Save(ctx context.Context, event *outbox.Event) error {
 	op := "OutboxRepo.Save"
+	event.CaptureTrace(ctx)
 
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
-	query := `INSERT INTO outbox (id, aggregate_id, aggregate_type, event_type, topic, payload, failed_reason, attempts, published_at, created_at)
-			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+	query := `INSERT INTO outbox (id, aggregate_id, aggregate_type, event_type, topic, payload, failed_reason, attempts, published_at, created_at, traceparent, tracestate)
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
 	_, err := conn.Exec(ctx, query,
 		event.ID,
@@ -44,6 +44,8 @@ func (r *OutboxRepo) Save(ctx context.Context, event *outbox.Event) error {
 		event.Attempts,
 		event.PublishedAt,
 		event.CreatedAt,
+		event.Traceparent,
+		event.Tracestate,
 	)
 
 	if err != nil {
@@ -58,7 +60,7 @@ func (r *OutboxRepo) FetchPending(ctx context.Context, limit int) ([]*outbox.Eve
 	conn := r.getter.DefaultTrOrDB(ctx, r.pool)
 
 	query := `
-        SELECT id, aggregate_id, aggregate_type, event_type, topic, payload, failed_reason, attempts, created_at, published_at
+        SELECT id, aggregate_id, aggregate_type, event_type, topic, payload, failed_reason, attempts, created_at, published_at, traceparent, tracestate
         FROM outbox
         WHERE published_at IS NULL AND attempts < 5
         ORDER BY created_at ASC
@@ -85,6 +87,8 @@ func (r *OutboxRepo) FetchPending(ctx context.Context, limit int) ([]*outbox.Eve
 			&e.Attempts,
 			&e.CreatedAt,
 			&e.PublishedAt,
+			&e.Traceparent,
+			&e.Tracestate,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("%s (scan): %w", op, err)
